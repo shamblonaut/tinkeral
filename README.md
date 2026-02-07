@@ -1,0 +1,2 @@
+# tinkeral
+Mess around with LLM API functionalities
