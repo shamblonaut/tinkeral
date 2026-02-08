@@ -1,3 +1,4 @@
+import { GoogleGenAI } from "@google/genai";
 import { useState, type SubmitEvent } from "react";
 
 interface ApiKeyFormProps {
@@ -6,12 +7,21 @@ interface ApiKeyFormProps {
 
 function ApiKeyForm({ onSubmit }: ApiKeyFormProps) {
   const [input, setInput] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   const submitHandler = (event: SubmitEvent) => {
     event.preventDefault();
     if (!input) return;
 
-    onSubmit(input);
+    const ai = new GoogleGenAI({ apiKey: input });
+    ai.models
+      .list()
+      .then(() => {
+        onSubmit(input);
+      })
+      .catch((errorResponse) => {
+        setError(JSON.parse(errorResponse.message).error.message);
+      });
   };
 
   return (
@@ -32,6 +42,7 @@ function ApiKeyForm({ onSubmit }: ApiKeyFormProps) {
           value={input}
           onChange={(event) => setInput(event.target.value)}
         />
+        {error && <p className="text-xs text-red-600">{error}</p>}
       </div>
       <button type="submit" className="rounded-lg bg-blue-600 p-2 text-white">
         Get Started
