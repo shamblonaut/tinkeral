@@ -2,6 +2,7 @@ import { ApiError, GoogleGenAI } from "@google/genai";
 import { SendIcon } from "lucide-react";
 import type { SubmitEvent } from "react";
 import { useMemo, useState } from "react";
+import Markdown from "react-markdown";
 
 interface ChatProps {
   apiKey: string;
@@ -80,9 +81,9 @@ function Chat({ apiKey }: ChatProps) {
             className={`flex w-full ${message.sender === "user" ? "justify-end" : "justify-start"}`}
           >
             <div
-              className={`mx-2 max-w-[80vw] rounded-lg border border-gray-300 ${message.sender === "user" ? "bg-blue-400" : message.sender === "model" ? "bg-white" : "bg-red-400"} px-4 py-2 text-lg whitespace-pre-wrap ${message.sender === "model" ? "text-black" : "text-white"}`}
+              className={`mx-2 max-w-[80vw] rounded-lg border border-gray-300 ${message.sender === "user" ? "bg-blue-400" : message.sender === "model" ? "bg-white" : "bg-red-400"} px-4 py-2 text-lg ${message.sender === "model" ? "text-black" : "text-white"}`}
             >
-              {message.content}
+              <Markdown>{message.content}</Markdown>
             </div>
           </div>
         ))}
