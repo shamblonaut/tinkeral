@@ -18,16 +18,20 @@ function Chat({ apiKey }: ChatProps) {
   }
 
   const ai = useMemo(() => new GoogleGenAI({ apiKey }), [apiKey]);
+  const chat = useMemo(
+    () =>
+      ai.chats.create({
+        model: "gemma-3-1b-it",
+      }),
+    [ai],
+  );
 
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
 
   const getAIResponse = async (prompt: string) => {
-    ai.models
-      .generateContent({
-        model: "gemini-2.5-flash",
-        contents: prompt,
-      })
+    chat
+      .sendMessage({ message: prompt })
       .then((response) => {
         setMessages((messages) => [
           ...messages,
