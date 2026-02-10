@@ -84,12 +84,12 @@ Use mock data and responses to develop UI independently of API integration.
 
 **Tasks**:
 
-- [ ] Install Zustand
-- [ ] Create ConversationStore skeleton with types
-- [ ] Create SettingsStore skeleton with types
-- [ ] Create UIStore skeleton with types
-- [ ] Connect stores to Dexie persistence
-- [ ] Write unit tests for stores
+- [x] Install Zustand
+- [x] Create ConversationStore skeleton with types
+- [x] Create SettingsStore skeleton with types
+- [x] Create UIStore skeleton with types
+- [x] Connect stores to Dexie persistence
+- [x] Write unit tests for stores
 
 **Acceptance Criteria**:
 
