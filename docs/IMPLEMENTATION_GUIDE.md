@@ -64,13 +64,10 @@ Use mock data and responses to develop UI independently of API integration.
 
 **Tasks**:
 
-- [ ] Install and configure Dexie.js
-- [ ] Define database schema (`src/db/schema.ts`)
-  - Conversations table
-  - Settings table
-  - Functions table
-- [ ] Create basic CRUD operations
-- [ ] Write unit tests for database operations
+- [x] Install and configure Dexie.js
+- [x] Define database schema (`src/db/schema.ts`)
+- [x] Create basic CRUD operations
+- [x] Write unit tests for database operations
 
 **Acceptance Criteria**:
 
@@ -80,13 +77,6 @@ Use mock data and responses to develop UI independently of API integration.
 - Fallback to in-memory storage if IndexedDB unavailable
 
 **Estimated Time**: 2 days
-
-**Files to Create**:
-
-```
-src/db/schema.ts
-src/db/schema.test.ts
-```
 
 ---
 
