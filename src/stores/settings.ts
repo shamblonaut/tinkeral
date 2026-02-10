@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { settings } from "../db/operations";
-import { type AppSettings, type UIPreferences } from "../db/schema";
+import type { AppSettings } from "../db/schema";
+import type { UIPreferences } from "../types/settings";
 
 interface SettingsState {
   settings: AppSettings | null;

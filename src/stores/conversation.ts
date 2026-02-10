@@ -1,10 +1,7 @@
 import { create } from "zustand";
 import { conversations } from "../db/operations";
-import {
-  type Conversation,
-  type Message,
-  type ModelParameters,
-} from "../db/schema";
+import type { Conversation } from "../db/schema";
+import type { Message, ModelParameters } from "../types/conversation";
 
 interface ConversationState {
   conversations: Conversation[];
