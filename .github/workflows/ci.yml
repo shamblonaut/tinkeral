@@ -1,0 +1,43 @@
+name: React CI
+
+on:
+  push:
+    branches: ["main", "develop"]
+  pull_request:
+    branches: ["main", "develop"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check Formatting (Prettier)
+        run: pnpm run format:check
+
+      - name: Run Linting (ESLint)
+        run: pnpm run lint
+
+      - name: Run Typecheck
+        run: pnpm run typecheck
+
+      - name: Build React App
+        run: pnpm run build
+
+      - name: Run Tests
+        run: pnpm test
