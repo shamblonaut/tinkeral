@@ -29,7 +29,7 @@ interface Message {
   metadata?: {
     model?: string;
     tokens?: number;
-    finishReason?: "stop" | "length" | "function_call" | "content_filter";
+    finishReason?: FinishReason;
   };
 
   // Function calling support (v1.1+)
@@ -133,7 +133,12 @@ interface LLMProvider {
   readonly name: string; // e.g., 'Google Gemini'
 
   // Available models
-  getModels(): ModelInfo[];
+  getModels(): Promise<ModelInfo[]>;
+
+  /**
+   * Get detailed information for a specific model.
+   */
+  getModel(id: string): Promise<ModelInfo>;
 
   /**
    * Send a chat request and get complete response.
@@ -148,26 +153,9 @@ interface LLMProvider {
   streamChat(request: ChatRequest): AsyncIterableIterator<StreamChunk>;
 
   /**
-   * Validate an API key.
-   * @returns true if valid, false otherwise
+   * Estimate token count for the contents.
    */
-  validateKey(apiKey: string): Promise<boolean>;
-
-  /**
-   * Get detailed capabilities for a specific model.
-   */
-  getModelCapabilities(modelId: string): ModelCapabilities;
-
-  /**
-   * Estimate token count for text (approximation).
-   */
-  estimateTokens(text: string, modelId: string): number;
-
-  /**
-   * Calculate cost for token usage.
-   * Returns null if pricing unavailable.
-   */
-  calculateCost(usage: TokenUsage, modelId: string): Cost | null;
+  countTokens(contents: string, modelId: string): Promise<number>;
 
   /**
    * Normalize provider-specific errors to common format.
@@ -187,9 +175,9 @@ interface ModelInfo {
   readonly name: string; // Display name
   readonly provider: string; // Provider id
   description?: string; // Brief description
+
   readonly contextWindow: number;
   readonly maxOutputTokens: number;
-  pricing?: ModelPricing;
   capabilities: ModelCapabilities;
   isRecommended?: boolean; // Show in "popular" list
 }
@@ -200,25 +188,13 @@ interface ModelInfo {
 interface ModelCapabilities {
   streaming: boolean;
   functionCalling: boolean;
-  vision: boolean;
   systemPrompt: boolean;
+  vision: boolean;
 
   // Parameter ranges
   temperatureRange: [number, number];
   topPRange: [number, number];
   supportsTopK: boolean;
-
-  // Vision support details
-  supportedImageTypes?: string[]; // e.g., ['image/jpeg', 'image/png']
-}
-
-/**
- * Model pricing information
- */
-interface ModelPricing {
-  inputTokenCost: number; // Cost per 1M input tokens
-  outputTokenCost: number; // Cost per 1M output tokens
-  currency: string; // e.g., 'USD'
 }
 ```
 
@@ -237,6 +213,13 @@ interface ChatRequest {
   stream?: boolean;
 }
 
+type FinishReason =
+  | "stop"
+  | "length"
+  | "function_call"
+  | "content_filter"
+  | "unknown";
+
 /**
  * Complete response from LLM provider
  */
@@ -244,7 +227,7 @@ interface ChatResponse {
   message: Message;
   usage: TokenUsage;
   model: string;
-  finishReason: "stop" | "length" | "function_call" | "content_filter";
+  finishReason: FinishReason;
 }
 
 /**
@@ -252,7 +235,7 @@ interface ChatResponse {
  */
 interface StreamChunk {
   delta: string; // New text content
-  finishReason?: "stop" | "length" | "function_call" | "content_filter";
+  finishReason?: FinishReason;
   usage?: TokenUsage; // Only in final chunk
   functionCall?: Partial<FunctionCall>;
 }
@@ -264,18 +247,6 @@ interface TokenUsage {
   promptTokens: number;
   completionTokens: number;
   totalTokens: number;
-}
-
-/**
- * Cost calculation result
- */
-interface Cost {
-  amount: number;
-  currency: string;
-  breakdown: {
-    inputCost: number;
-    outputCost: number;
-  };
 }
 ```
 

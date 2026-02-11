@@ -116,13 +116,13 @@ src/stores/settings.test.ts
 
 **Tasks**:
 
-- [ ] Define `LLMProvider` interface (`src/types/provider.ts`)
-- [ ] Define request/response types
-- [ ] Create GoogleAPIClient skeleton
-- [ ] Implement API key validation
-- [ ] Implement basic chat (non-streaming first)
-- [ ] Add error normalization
-- [ ] Write unit tests with mocked fetch
+- [x] Define `LLMProvider` interface (`src/types/provider.ts`)
+- [x] Define request/response types
+- [x] Create GoogleAPIClient skeleton
+- [x] Implement API key validation
+- [x] Implement basic chat (non-streaming first)
+- [x] Add error normalization
+- [x] Write unit tests with mocked fetch
 
 **Acceptance Criteria**:
 
