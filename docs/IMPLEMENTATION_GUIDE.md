@@ -154,7 +154,7 @@ src/services/api/google.test.ts
 
 **Tasks**:
 
-- [ ] Setup shadcn/ui
+- [x] Setup shadcn/ui
 - [ ] Create Message component (user + model variants)
 - [ ] Create MessageList component
 - [ ] Create ChatInput component
