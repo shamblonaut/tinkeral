@@ -1,15 +1,7 @@
-import { Item, ItemContent, ItemTitle } from "@/components/ui/item";
+import { ChatInterface } from "@/components/chat/ChatInterface";
 
 function App() {
-  return (
-    <div className="max-w-xs p-4">
-      <Item variant="outline">
-        <ItemContent>
-          <ItemTitle className="text-xl">Hello, World!</ItemTitle>
-        </ItemContent>
-      </Item>
-    </div>
-  );
+  return <ChatInterface />;
 }
 
 export default App;

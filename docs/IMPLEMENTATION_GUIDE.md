@@ -155,11 +155,11 @@ src/services/api/google.test.ts
 **Tasks**:
 
 - [x] Setup shadcn/ui
-- [ ] Create Message component (user + model variants)
-- [ ] Create MessageList component
-- [ ] Create ChatInput component
-- [ ] Add basic styling with Tailwind
-- [ ] Create Storybook stories (optional but recommended)
+- [x] Create Message component (user + model variants)
+- [x] Create MessageList component
+- [x] Create ChatInput component
+- [x] Add basic styling with Tailwind
+- [x] Create Storybook stories (optional but recommended)
 
 **Acceptance Criteria**:
 
