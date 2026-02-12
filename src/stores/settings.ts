@@ -3,7 +3,7 @@ import { settings } from "../db/operations";
 import type { AppSettings } from "../db/schema";
 import type { UIPreferences } from "../types/settings";
 
-interface SettingsState {
+export interface SettingsState {
   settings: AppSettings | null;
   isLoading: boolean;
   error: string | null;

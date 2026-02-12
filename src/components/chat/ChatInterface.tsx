@@ -1,59 +1,51 @@
-import type { Message as MessageType } from "@/types/conversation";
-import { useState } from "react";
+import { Toaster } from "@/components/ui/sonner";
+import { useConversationStore } from "@/stores/conversation";
+import { useEffect } from "react";
+import { toast } from "sonner";
 import { ChatInput } from "./ChatInput";
 import { MessageList } from "./MessageList";
 
-// Mock data for verification
-const MOCK_MESSAGES: MessageType[] = [
-  {
-    id: "1",
-    role: "system",
-    content: "You are a helpful AI assistant.",
-    timestamp: Date.now() - 100000,
-  },
-  {
-    id: "2",
-    role: "user",
-    content: "Hi! Can you help me write some code?",
-    timestamp: Date.now() - 60000,
-  },
-  {
-    id: "3",
-    role: "model",
-    content:
-      "Of course! I'd be happy to help. What kind of code do you need help with?\n\nHere's a simple example in TypeScript:\n\n```typescript\nfunction greet(name: string) {\n  return `Hello, ${name}!`;\n}\n```",
-    timestamp: Date.now() - 30000,
-    metadata: {
-      model: "gemini-pro",
-    },
-  },
-];
-
 export function ChatInterface() {
-  const [messages, setMessages] = useState<MessageType[]>(MOCK_MESSAGES);
+  const {
+    activeConversationId,
+    conversations,
+    sendMessage,
+    isLoading,
+    error,
+    createConversation,
+  } = useConversationStore();
+
+  const conversation = conversations.find((c) => c.id === activeConversationId);
+  const messages = conversation?.messages || [];
+
+  // Create a default conversation if none exists
+  useEffect(() => {
+    if (!activeConversationId && !isLoading && conversations.length === 0) {
+      createConversation("gemma-3-27b-it", {
+        temperature: 0.7,
+        maxTokens: 1024,
+        topP: 0.9,
+      }).catch(console.error);
+    }
+  }, [
+    activeConversationId,
+    isLoading,
+    conversations.length,
+    createConversation,
+  ]);
+
+  // Handle errors
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+    }
+  }, [error]);
 
   const handleSend = (content: string) => {
-    const newMessage: MessageType = {
-      id: Date.now().toString(),
-      role: "user",
-      content,
-      timestamp: Date.now(),
-    };
-    setMessages((prev) => [...prev, newMessage]);
-
-    // Simulate model response
-    setTimeout(() => {
-      const modelMessage: MessageType = {
-        id: (Date.now() + 1).toString(),
-        role: "model",
-        content: `I received your message: "${content}". This is a mock response.`,
-        timestamp: Date.now(),
-        metadata: {
-          model: "gemini-pro",
-        },
-      };
-      setMessages((prev) => [...prev, modelMessage]);
-    }, 1000);
+    sendMessage(content).catch((err) => {
+      // Error handling is done via store error state, but we can also log here
+      console.error("SendMessage failed", err);
+    });
   };
 
   return (
@@ -64,7 +56,8 @@ export function ChatInterface() {
       <div className="flex-1 overflow-hidden">
         <MessageList messages={messages} className="h-full px-4" />
       </div>
-      <ChatInput onSend={handleSend} />
+      <ChatInput onSend={handleSend} disabled={isLoading} />
+      <Toaster />
     </div>
   );
 }

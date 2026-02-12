@@ -1,4 +1,5 @@
-import type { FunctionDefinition } from "../db/schema";
+import type { FunctionDefinition } from "@/db/schema";
+import type { ProviderError } from "@/services/api/base";
 import type { FinishReason, Message } from "./conversation";
 
 /**
@@ -95,20 +96,6 @@ export interface TokenUsage {
 }
 
 /**
- * Normalized error structure across all providers
- */
-export interface NormalizedError {
-  type: ErrorType;
-  message: string; // Technical message (for logs)
-  userMessage: string; // User-friendly message (for UI)
-  retriable: boolean; // Can user retry?
-  statusCode?: number; // HTTP status if applicable
-  provider?: string; // Which provider
-  originalError: unknown; // Original error object
-  retryAfter?: number; // Seconds to wait before retry
-}
-
-/**
  * Error classification
  */
 export type ErrorType =
@@ -159,5 +146,5 @@ export interface LLMProvider {
   /**
    * Normalize provider-specific errors to common format.
    */
-  normalizeError(error: unknown): NormalizedError;
+  normalizeError(error: unknown): ProviderError;
 }

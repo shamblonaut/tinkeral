@@ -1,4 +1,5 @@
 import {
+  ApiError,
   FinishReason as APIFinishReason,
   GoogleGenAI,
   type Content,
@@ -11,10 +12,9 @@ import type {
   ChatResponse,
   LLMProvider,
   ModelInfo,
-  NormalizedError,
   StreamChunk,
 } from "../../types/provider";
-import { normalizeError as normalizeBaseError } from "./base";
+import { ProviderError } from "./base";
 
 export class GoogleAPIClient implements LLMProvider {
   readonly id = "google";
@@ -173,8 +173,30 @@ export class GoogleAPIClient implements LLMProvider {
     }
   }
 
-  normalizeError(error: unknown): NormalizedError {
-    return normalizeBaseError(error, this.id);
+  normalizeError(error: unknown): ProviderError {
+    if (!(error instanceof ApiError)) {
+      return new ProviderError({
+        type: "unknown",
+        provider: "google",
+        message:
+          error instanceof Error ? error.message : "An unknown error occurred",
+        retriable: false,
+        originalError: error,
+      });
+    }
+
+    const { code, message } = JSON.parse(
+      JSON.parse(error.message).error.message,
+    ).error;
+
+    return new ProviderError({
+      type: "unknown",
+      provider: "google",
+      message,
+      retriable: false,
+      originalError: error,
+      statusCode: code,
+    });
   }
 
   private getClient(): GoogleGenAI {

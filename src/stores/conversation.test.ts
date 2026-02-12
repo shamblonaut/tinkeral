@@ -1,8 +1,25 @@
 import "fake-indexeddb/auto";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "../db/db";
 import { conversations } from "../db/operations";
+import { GoogleAPIClient } from "../services/api/google";
 import { useConversationStore } from "./conversation";
+import { type SettingsState, useSettingsStore } from "./settings";
+
+// Mock dependencies
+vi.mock("../services/api/google", () => ({
+  GoogleAPIClient: {
+    createClient: vi.fn(),
+  },
+}));
+
+vi.mock("./settings", () => ({
+  useSettingsStore: {
+    getState: vi.fn(),
+    setState: vi.fn(),
+    subscribe: vi.fn(),
+  },
+}));
 
 describe("ConversationStore", () => {
   beforeEach(async () => {
@@ -37,37 +54,6 @@ describe("ConversationStore", () => {
     expect(persisted?.modelId).toBe("test-model");
   });
 
-  it("should add a message to a conversation", async () => {
-    const store = useConversationStore.getState();
-    const conversationId = await store.createConversation("test-model", {
-      temperature: 0.7,
-      maxTokens: 100,
-      topP: 0.9,
-    });
-
-    const message = {
-      id: "msg-1",
-      role: "user" as const,
-      content: "Hello",
-      timestamp: Date.now(),
-    };
-
-    await store.addMessage(conversationId, message);
-
-    const state = useConversationStore.getState();
-    const conversation = state.conversations.find(
-      (c) => c.id === conversationId,
-    );
-
-    expect(conversation?.messages.length).toBe(1);
-    expect(conversation?.messages[0].content).toBe("Hello");
-
-    // Verify persistence
-    const persisted = await conversations.get(conversationId);
-    expect(persisted?.messages.length).toBe(1);
-    expect(persisted?.messages[0].content).toBe("Hello");
-  });
-
   it("should update a message in a conversation", async () => {
     const store = useConversationStore.getState();
     const conversationId = await store.createConversation("test-model", {
@@ -76,6 +62,7 @@ describe("ConversationStore", () => {
       topP: 0.9,
     });
 
+    // Manually add message to store and DB for testing update
     const message = {
       id: "msg-1",
       role: "user" as const,
@@ -83,7 +70,20 @@ describe("ConversationStore", () => {
       timestamp: Date.now(),
     };
 
-    await store.addMessage(conversationId, message);
+    // Update store state directly for test setup
+    useConversationStore.setState((state) => ({
+      conversations: state.conversations.map((c) =>
+        c.id === conversationId
+          ? { ...c, messages: [...c.messages, message] }
+          : c,
+      ),
+    }));
+
+    // Also update DB
+    await conversations.update(conversationId, {
+      messages: [message],
+    });
+
     await store.updateMessage(conversationId, "msg-1", "Hello World");
 
     const state = useConversationStore.getState();
@@ -117,5 +117,74 @@ describe("ConversationStore", () => {
     // Verify persistence
     const persisted = await conversations.get(conversationId);
     expect(persisted).toBeUndefined();
+  });
+
+  it("should send a message and receive response", async () => {
+    // Mock settings store state
+    vi.mocked(useSettingsStore.getState).mockReturnValue({
+      settings: {
+        id: "app-settings",
+        apiKeys: { google: "test-api-key" },
+        defaultModel: "gemini-2.5-flash",
+        defaultParameters: {
+          temperature: 0.7,
+          maxTokens: 1024,
+          topP: 0.9,
+        },
+        uiPreferences: {
+          theme: "system",
+          fontSize: "medium",
+          codeTheme: "github-dark",
+          showTokenCount: true,
+          showCostEstimate: true,
+        },
+      },
+      isLoading: false,
+      error: null,
+      loadSettings: vi.fn(),
+      updateSettings: vi.fn(),
+      setApiKey: vi.fn(),
+      updatePreferences: vi.fn(),
+    } as unknown as SettingsState);
+
+    // Mock Google client
+    const mockChat = vi.fn().mockResolvedValue({
+      message: {
+        content: "I am a helpful assistant",
+        metadata: {
+          finishReason: "stop",
+          tokens: 10,
+        },
+      },
+    });
+
+    vi.mocked(GoogleAPIClient.createClient).mockResolvedValue({
+      chat: mockChat,
+    } as unknown as GoogleAPIClient);
+
+    const store = useConversationStore.getState();
+    const conversationId = await store.createConversation("test-model", {
+      temperature: 0.7,
+      maxTokens: 100,
+      topP: 0.9,
+    });
+
+    store.setActiveConversation(conversationId);
+    await store.sendMessage("Hello");
+
+    const state = useConversationStore.getState();
+    const conversation = state.conversations.find(
+      (c) => c.id === conversationId,
+    );
+
+    // Check user message
+    expect(conversation?.messages[0].role).toBe("user");
+    expect(conversation?.messages[0].content).toBe("Hello");
+
+    // Check assistant response
+    expect(conversation?.messages[1].role).toBe("model");
+    expect(conversation?.messages[1].content).toBe("I am a helpful assistant");
+
+    expect(mockChat).toHaveBeenCalled();
   });
 });

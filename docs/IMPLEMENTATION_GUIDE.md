@@ -185,12 +185,12 @@ src/components/chat/ChatInterface.tsx
 
 **Tasks**:
 
-- [ ] Connect ChatInput to ConversationStore
-- [ ] Implement send message action
-- [ ] Display messages from store
-- [ ] Add loading state while waiting for response
-- [ ] Handle errors and display to user
-- [ ] Add simple toast notification system
+- [x] Connect ChatInput to ConversationStore
+- [x] Implement send message action
+- [x] Display messages from store
+- [x] Add loading state while waiting for response
+- [x] Handle errors and display to user
+- [x] Add simple toast notification system
 
 **Acceptance Criteria**:
 

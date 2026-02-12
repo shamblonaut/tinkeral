@@ -29,8 +29,16 @@ vi.mock("@google/genai", () => {
     };
   });
 
+  const ApiError = class extends Error {
+    constructor(message: string) {
+      super(message);
+      this.name = "ApiError";
+    }
+  };
+
   return {
     GoogleGenAI,
+    ApiError,
   };
 });
 

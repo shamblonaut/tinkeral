@@ -1,7 +1,9 @@
 import { create } from "zustand";
-import { conversations } from "../db/operations";
+import { conversations as conversationsDb } from "../db/operations";
 import type { Conversation } from "../db/schema";
+import { GoogleAPIClient } from "../services/api/google";
 import type { Message, ModelParameters } from "../types/conversation";
+import { useSettingsStore } from "./settings";
 
 interface ConversationState {
   conversations: Conversation[];
@@ -15,9 +17,11 @@ interface ConversationState {
   createConversation: (
     modelId: string,
     params: ModelParameters,
+    systemPrompt?: string,
   ) => Promise<string>;
   deleteConversation: (id: string) => Promise<void>;
-  addMessage: (conversationId: string, message: Message) => Promise<void>;
+  sendMessage: (content: string) => Promise<void>;
+  abortGeneration: () => void;
   updateMessage: (
     conversationId: string,
     messageId: string,
@@ -34,7 +38,7 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
   loadConversations: async () => {
     set({ isLoading: true, error: null });
     try {
-      const allConversations = await conversations.getAll();
+      const allConversations = await conversationsDb.getAll();
       // Sort by updatedAt descending
       allConversations.sort((a, b) => b.updatedAt - a.updatedAt);
       set({ conversations: allConversations, isLoading: false });
@@ -48,18 +52,23 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
     set({ activeConversationId: id });
   },
 
-  createConversation: async (modelId: string, params: ModelParameters) => {
+  createConversation: async (
+    modelId: string,
+    params: ModelParameters,
+    systemPrompt?: string,
+  ) => {
     set({ isLoading: true, error: null });
     try {
       const newConversation: Omit<Conversation, "id"> = {
         title: "New Conversation",
         modelId,
         parameters: params,
+        systemPrompt,
         messages: [],
         createdAt: Date.now(),
         updatedAt: Date.now(),
       };
-      const id = await conversations.create(newConversation);
+      const id = await conversationsDb.create(newConversation);
       const createdConversation = { ...newConversation, id };
 
       set((state) => ({
@@ -78,7 +87,7 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
 
   deleteConversation: async (id: string) => {
     try {
-      await conversations.delete(id);
+      await conversationsDb.delete(id);
       set((state) => {
         const newConversations = state.conversations.filter((c) => c.id !== id);
         return {
@@ -95,37 +104,174 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
     }
   },
 
-  addMessage: async (conversationId: string, message: Message) => {
+  sendMessage: async (content: string) => {
     const state = get();
-    const conversation = state.conversations.find(
-      (c) => c.id === conversationId,
-    );
+    const { activeConversationId, conversations } = state;
 
+    if (!activeConversationId) {
+      console.error("No active conversation");
+      return;
+    }
+
+    const conversation = conversations.find(
+      (c) => c.id === activeConversationId,
+    );
     if (!conversation) {
       console.error("Conversation not found");
       return;
     }
 
-    const updatedConversation = {
+    // 1. Add user message
+    const userMessage: Message = {
+      id: crypto.randomUUID(),
+      role: "user",
+      content,
+      timestamp: Date.now(),
+    };
+
+    const conversationWithUserMsg = {
       ...conversation,
-      messages: [...conversation.messages, message],
+      messages: [...conversation.messages, userMessage],
       updatedAt: Date.now(),
     };
 
+    // Optimistic update
+    set((state) => ({
+      conversations: state.conversations
+        .map((c) =>
+          c.id === activeConversationId ? conversationWithUserMsg : c,
+        )
+        .sort((a, b) => b.updatedAt - a.updatedAt),
+      isLoading: true,
+      error: null,
+    }));
+
+    // Persist user message
     try {
-      await conversations.update(conversationId, {
-        messages: updatedConversation.messages,
+      await conversationsDb.update(activeConversationId, {
+        messages: conversationWithUserMsg.messages,
+      });
+    } catch (err) {
+      console.error("Failed to persist user message:", err);
+      // Continue anyway, we can retry persistence later
+    }
+
+    // 2. Prepare for API call
+    try {
+      // Get settings from store state (synchronous)
+      const { settings } = useSettingsStore.getState();
+
+      if (!settings) {
+        throw new Error("Settings not initialized");
+      }
+
+      const apiKey = settings.apiKeys["google"]; // Hardcoded provider for now as per MVP
+      if (!apiKey) {
+        throw new Error("API key not found for Google provider");
+      }
+
+      const client = await GoogleAPIClient.createClient(apiKey);
+
+      // 3. Create placeholder assistant message
+      const assistantMessageId = crypto.randomUUID();
+      const assistantMessage: Message = {
+        id: assistantMessageId,
+        role: "model",
+        content: "",
+        timestamp: Date.now(),
+        metadata: {
+          model: conversation.modelId,
+        },
+      };
+
+      // Update state with empty assistant message
+      set((state) => {
+        const currentConv = state.conversations.find(
+          (c) => c.id === activeConversationId,
+        );
+        if (!currentConv) return {};
+
+        const updatedConv = {
+          ...currentConv,
+          messages: [...currentConv.messages, assistantMessage],
+        };
+
+        return {
+          conversations: state.conversations.map((c) =>
+            c.id === activeConversationId ? updatedConv : c,
+          ),
+          activeConversationId, // Force update
+        };
       });
 
-      set((state) => ({
-        conversations: state.conversations
-          .map((c) => (c.id === conversationId ? updatedConversation : c))
-          .sort((a, b) => b.updatedAt - a.updatedAt),
-      }));
-    } catch (error) {
-      console.error("Failed to add message:", error);
-      set({ error: "Failed to add message" });
+      // 4. Generate response
+      const response = await client.chat({
+        messages: conversationWithUserMsg.messages,
+        model: conversation.modelId,
+        parameters: conversation.parameters,
+        systemPrompt: conversation.systemPrompt,
+      });
+
+      set((state) => {
+        const currentConv = state.conversations.find(
+          (c) => c.id === activeConversationId,
+        );
+        if (!currentConv) return {};
+
+        const updatedMessages = currentConv.messages.map((m) =>
+          m.id === assistantMessageId
+            ? {
+                ...m,
+                content: response.message.content,
+                metadata: {
+                  ...m.metadata,
+                  ...response.message.metadata,
+                },
+              }
+            : m,
+        );
+
+        const updatedConv = {
+          ...currentConv,
+          messages: updatedMessages,
+        };
+
+        return {
+          conversations: state.conversations.map((c) =>
+            c.id === activeConversationId ? updatedConv : c,
+          ),
+        };
+      });
+
+      // 5. Finalize and persist
+      const finalConversation = get().conversations.find(
+        (c) => c.id === activeConversationId,
+      );
+      if (finalConversation) {
+        await conversationsDb.update(activeConversationId, {
+          messages: finalConversation.messages,
+          updatedAt: Date.now(),
+        });
+      }
+
+      set({ isLoading: false });
+    } catch (error: unknown) {
+      console.error("Chat generation failed:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to generate response";
+      set({
+        error: errorMessage,
+        isLoading: false,
+      });
+      console.log(errorMessage);
+
+      // Add error message to chat if needed, or just show toast (handled by UI via error state)
     }
+  },
+
+  abortGeneration: () => {
+    // Implement abort logic later
+    console.warn("Abort not implemented yet");
   },
 
   updateMessage: async (
@@ -154,7 +300,7 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
     };
 
     try {
-      await conversations.update(conversationId, {
+      await conversationsDb.update(conversationId, {
         messages: updatedMessages,
       });
 
