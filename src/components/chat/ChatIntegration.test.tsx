@@ -22,6 +22,16 @@ vi.mock("@/db/operations", () => ({
 
 // Mock the Google API client dynamic import
 vi.mock("@/services/api/google", () => {
+  const mockStream = async function* () {
+    yield { delta: "Hello" };
+    yield { delta: " world" };
+    yield {
+      delta: "",
+      finishReason: "stop",
+      usage: { totalTokens: 2 },
+    };
+  };
+
   return {
     GoogleAPIClient: {
       createClient: vi.fn().mockResolvedValue({
@@ -34,6 +44,7 @@ vi.mock("@/services/api/google", () => {
             },
           },
         }),
+        streamChat: vi.fn().mockReturnValue(mockStream()),
       }),
     },
   };

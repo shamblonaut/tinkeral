@@ -5,10 +5,15 @@ import { Message } from "./Message";
 
 interface MessageListProps {
   messages: MessageType[];
+  isStreaming: boolean;
   className?: string;
 }
 
-export function MessageList({ messages, className }: MessageListProps) {
+export function MessageList({
+  messages,
+  isStreaming,
+  className,
+}: MessageListProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when messages change
@@ -37,8 +42,12 @@ export function MessageList({ messages, className }: MessageListProps) {
   return (
     <ScrollArea ref={scrollRef} className={className}>
       <div className="flex flex-col py-4">
-        {messages.map((message) => (
-          <Message key={message.id} message={message} />
+        {messages.map((message, index) => (
+          <Message
+            key={message.id}
+            message={message}
+            isStreaming={isStreaming && index === messages.length - 1}
+          />
         ))}
       </div>
     </ScrollArea>

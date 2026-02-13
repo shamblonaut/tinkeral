@@ -148,18 +148,19 @@ describe("ConversationStore", () => {
     } as unknown as SettingsState);
 
     // Mock Google client
-    const mockChat = vi.fn().mockResolvedValue({
-      message: {
-        content: "I am a helpful assistant",
-        metadata: {
-          finishReason: "stop",
-          tokens: 10,
-        },
-      },
-    });
+    const mockStream = async function* () {
+      yield { delta: "I am a helpful assistant" };
+      yield {
+        delta: "",
+        finishReason: "stop",
+        usage: { totalTokens: 10 },
+      };
+    };
+
+    const mockStreamChat = vi.fn().mockReturnValue(mockStream());
 
     vi.mocked(GoogleAPIClient.createClient).mockResolvedValue({
-      chat: mockChat,
+      streamChat: mockStreamChat,
     } as unknown as GoogleAPIClient);
 
     const store = useConversationStore.getState();
@@ -185,6 +186,69 @@ describe("ConversationStore", () => {
     expect(conversation?.messages[1].role).toBe("model");
     expect(conversation?.messages[1].content).toBe("I am a helpful assistant");
 
-    expect(mockChat).toHaveBeenCalled();
+    expect(mockStreamChat).toHaveBeenCalled();
+  });
+
+  it("should stream a response and update message incrementally", async () => {
+    // Mock settings
+    vi.mocked(useSettingsStore.getState).mockReturnValue({
+      settings: {
+        id: "app-settings",
+        apiKeys: { google: "test-api-key" },
+        defaultModel: "gemini-2.5-flash",
+      },
+    } as unknown as SettingsState);
+
+    // Mock stream generator
+    const mockStream = async function* () {
+      yield { delta: "Hello" };
+      await new Promise((resolve) => setTimeout(resolve, 20)); // Force > 16ms
+      yield { delta: " World" };
+      yield {
+        delta: "",
+        finishReason: "stop",
+        usage: { totalTokens: 10 },
+      };
+    };
+
+    const mockStreamChat = vi.fn().mockReturnValue(mockStream());
+
+    vi.mocked(GoogleAPIClient.createClient).mockResolvedValue({
+      streamChat: mockStreamChat,
+    } as unknown as GoogleAPIClient);
+
+    const store = useConversationStore.getState();
+    const conversationId = await store.createConversation("test-model", {
+      temperature: 0.7,
+      maxTokens: 100,
+      topP: 0.9,
+    });
+
+    store.setActiveConversation(conversationId);
+
+    // Start streaming
+    const sendPromise = store.sendMessage("Hi");
+
+    // Verify potentially immediate streaming state
+    // Note: sendMessage is async, so we might need to wait a tick for isStreaming to flip
+    // But since it's an optimistic update at the start, it should be true quickly.
+
+    // We can't easily assert intermediate states without using fake timers or hooks,
+    // but we can sanity check the final state and ensuring the method was called.
+
+    await sendPromise;
+
+    const state = useConversationStore.getState();
+    const conversation = state.conversations.find(
+      (c) => c.id === conversationId,
+    );
+
+    // Check assistant response
+    expect(conversation?.messages[1].role).toBe("model");
+    expect(conversation?.messages[1].content).toBe("Hello World");
+    expect(conversation?.messages[1].metadata?.tokens).toBe(10);
+    expect(state.isStreaming).toBe(false);
+
+    expect(mockStreamChat).toHaveBeenCalled();
   });
 });

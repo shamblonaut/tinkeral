@@ -2,14 +2,19 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import type { Message as MessageType } from "@/types/conversation";
 import { Bot, User } from "lucide-react";
+import { memo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 interface MessageProps {
   message: MessageType;
+  isStreaming?: boolean;
 }
 
-export function Message({ message }: MessageProps) {
+export const Message = memo(function Message({
+  message,
+  isStreaming,
+}: MessageProps) {
   const isUser = message.role === "user";
   const isSystem = message.role === "system";
 
@@ -76,13 +81,27 @@ export function Message({ message }: MessageProps) {
         >
           {isUser ? (
             <p className="whitespace-pre-wrap">{message.content}</p>
+          ) : !message.content && isStreaming ? (
+            <div className="flex h-6 items-center gap-1">
+              <span className="bg-muted-foreground/40 h-1.5 w-1.5 animate-bounce rounded-full [animation-delay:-0.3s]" />
+              <span className="bg-muted-foreground/40 h-1.5 w-1.5 animate-bounce rounded-full [animation-delay:-0.15s]" />
+              <span className="bg-muted-foreground/40 h-1.5 w-1.5 animate-bounce rounded-full" />
+            </div>
           ) : (
-            <ReactMarkdown remarkPlugins={[remarkGfm]}>
-              {message.content}
-            </ReactMarkdown>
+            <div
+              className={cn(
+                "relative",
+                isStreaming &&
+                  "[&>*:last-child]:after:bg-primary [&>*:last-child]:after:ml-1 [&>*:last-child]:after:inline-block [&>*:last-child]:after:h-4 [&>*:last-child]:after:w-2 [&>*:last-child]:after:animate-pulse [&>*:last-child]:after:align-middle [&>*:last-child]:after:content-['']",
+              )}
+            >
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {message.content}
+              </ReactMarkdown>
+            </div>
           )}
         </div>
       </div>
     </div>
   );
-}
+});

@@ -211,12 +211,12 @@ src/components/chat/ChatInterface.tsx
 
 **Tasks**:
 
-- [ ] Update GoogleAPIClient for streaming
-- [ ] Update ConversationStore to handle chunks
-- [ ] Update MessageList for incremental rendering
-- [ ] Debounce renders to 60fps
-- [ ] Add "streaming" indicator
-- [ ] Optimize re-renders with React.memo
+- [x] Update GoogleAPIClient for streaming
+- [x] Update ConversationStore to handle chunks
+- [x] Update MessageList for incremental rendering
+- [x] Debounce renders to 60fps
+- [x] Add "streaming" indicator
+- [x] Optimize re-renders with React.memo
 
 **Acceptance Criteria**:
 

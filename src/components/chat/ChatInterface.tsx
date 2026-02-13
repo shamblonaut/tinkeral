@@ -11,6 +11,7 @@ export function ChatInterface() {
     conversations,
     sendMessage,
     isLoading,
+    isStreaming,
     error,
     createConversation,
   } = useConversationStore();
@@ -54,9 +55,13 @@ export function ChatInterface() {
         <h1 className="text-xl font-bold">🧩 Tinkeral</h1>
       </header>
       <div className="flex-1 overflow-hidden">
-        <MessageList messages={messages} className="h-full px-4" />
+        <MessageList
+          messages={messages}
+          isStreaming={isStreaming}
+          className="h-full px-4"
+        />
       </div>
-      <ChatInput onSend={handleSend} disabled={isLoading} />
+      <ChatInput onSend={handleSend} disabled={isLoading || isStreaming} />
       <Toaster />
     </div>
   );

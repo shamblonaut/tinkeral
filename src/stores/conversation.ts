@@ -9,6 +9,7 @@ interface ConversationState {
   conversations: Conversation[];
   activeConversationId: string | null;
   isLoading: boolean;
+  isStreaming: boolean;
   error: string | null;
 
   // Actions
@@ -33,6 +34,7 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
   conversations: [],
   activeConversationId: null,
   isLoading: false,
+  isStreaming: false,
   error: null,
 
   loadConversations: async () => {
@@ -143,6 +145,7 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
         )
         .sort((a, b) => b.updatedAt - a.updatedAt),
       isLoading: true,
+      isStreaming: true,
       error: null,
     }));
 
@@ -204,14 +207,60 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
         };
       });
 
-      // 4. Generate response
-      const response = await client.chat({
+      // 4. Stream response
+      const stream = client.streamChat({
         messages: conversationWithUserMsg.messages,
         model: conversation.modelId,
         parameters: conversation.parameters,
         systemPrompt: conversation.systemPrompt,
       });
 
+      let fullContent = "";
+      let lastUpdate = Date.now();
+      let lastMetadata = {};
+
+      for await (const chunk of stream) {
+        fullContent += chunk.delta;
+
+        // Collect metadata if present (usually in final chunk)
+        if (chunk.finishReason || chunk.usage) {
+          lastMetadata = {
+            finishReason: chunk.finishReason,
+            tokens: chunk.usage?.totalTokens,
+          };
+        }
+
+        // Throttle updates to ~60fps (16ms)
+        const now = Date.now();
+        if (now - lastUpdate >= 16) {
+          set((state) => {
+            const currentConv = state.conversations.find(
+              (c) => c.id === activeConversationId,
+            );
+            if (!currentConv) return {};
+
+            const updatedMessages = currentConv.messages.map((m) =>
+              m.id === assistantMessageId
+                ? {
+                    ...m,
+                    content: fullContent,
+                  }
+                : m,
+            );
+
+            return {
+              conversations: state.conversations.map((c) =>
+                c.id === activeConversationId
+                  ? { ...c, messages: updatedMessages }
+                  : c,
+              ),
+            };
+          });
+          lastUpdate = now;
+        }
+      }
+
+      // 5. Finalize update with complete content and metadata
       set((state) => {
         const currentConv = state.conversations.find(
           (c) => c.id === activeConversationId,
@@ -222,10 +271,10 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
           m.id === assistantMessageId
             ? {
                 ...m,
-                content: response.message.content,
+                content: fullContent,
                 metadata: {
                   ...m.metadata,
-                  ...response.message.metadata,
+                  ...lastMetadata,
                 },
               }
             : m,
@@ -240,10 +289,12 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
           conversations: state.conversations.map((c) =>
             c.id === activeConversationId ? updatedConv : c,
           ),
+          isLoading: false,
+          isStreaming: false,
         };
       });
 
-      // 5. Finalize and persist
+      // 6. Persist final conversation state
       const finalConversation = get().conversations.find(
         (c) => c.id === activeConversationId,
       );
@@ -253,8 +304,6 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
           updatedAt: Date.now(),
         });
       }
-
-      set({ isLoading: false });
     } catch (error: unknown) {
       console.error("Chat generation failed:", error);
       const errorMessage =
@@ -262,10 +311,9 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
       set({
         error: errorMessage,
         isLoading: false,
+        isStreaming: false,
       });
       console.log(errorMessage);
-
-      // Add error message to chat if needed, or just show toast (handled by UI via error state)
     }
   },
 
