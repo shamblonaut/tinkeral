@@ -11,6 +11,7 @@ interface ConversationState {
   isLoading: boolean;
   isStreaming: boolean;
   error: string | null;
+  abortController: AbortController | null;
 
   // Actions
   loadConversations: () => Promise<void>;
@@ -36,6 +37,7 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
   isLoading: false,
   isStreaming: false,
   error: null,
+  abortController: null,
 
   loadConversations: async () => {
     set({ isLoading: true, error: null });
@@ -137,6 +139,8 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
       updatedAt: Date.now(),
     };
 
+    const abortController = new AbortController();
+
     // Optimistic update
     set((state) => ({
       conversations: state.conversations
@@ -147,6 +151,7 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
       isLoading: true,
       isStreaming: true,
       error: null,
+      abortController,
     }));
 
     // Persist user message
@@ -158,6 +163,10 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
       console.error("Failed to persist user message:", err);
       // Continue anyway, we can retry persistence later
     }
+
+    // Variables needed for error handling
+    let assistantMessageId: string | undefined;
+    let fullContent = "";
 
     // 2. Prepare for API call
     try {
@@ -176,7 +185,7 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
       const client = await GoogleAPIClient.createClient(apiKey);
 
       // 3. Create placeholder assistant message
-      const assistantMessageId = crypto.randomUUID();
+      assistantMessageId = crypto.randomUUID();
       const assistantMessage: Message = {
         id: assistantMessageId,
         role: "model",
@@ -208,14 +217,16 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
       });
 
       // 4. Stream response
-      const stream = client.streamChat({
-        messages: conversationWithUserMsg.messages,
-        model: conversation.modelId,
-        parameters: conversation.parameters,
-        systemPrompt: conversation.systemPrompt,
-      });
+      const stream = client.streamChat(
+        {
+          messages: conversationWithUserMsg.messages,
+          model: conversation.modelId,
+          parameters: conversation.parameters,
+          systemPrompt: conversation.systemPrompt,
+        },
+        abortController.signal,
+      );
 
-      let fullContent = "";
       let lastUpdate = Date.now();
       let lastMetadata = {};
 
@@ -291,6 +302,7 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
           ),
           isLoading: false,
           isStreaming: false,
+          abortController: null,
         };
       });
 
@@ -308,18 +320,58 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
       console.error("Chat generation failed:", error);
       const errorMessage =
         error instanceof Error ? error.message : "Failed to generate response";
+
+      // Attempt to save partial content if any
+      if (fullContent) {
+        set((state) => {
+          const currentConv = state.conversations.find(
+            (c) => c.id === activeConversationId,
+          );
+          if (!currentConv) return {};
+
+          const updatedMessages = currentConv.messages.map((m) =>
+            m.id === assistantMessageId ? { ...m, content: fullContent } : m,
+          );
+
+          return {
+            conversations: state.conversations.map((c) =>
+              c.id === activeConversationId
+                ? { ...c, messages: updatedMessages }
+                : c,
+            ),
+          };
+        });
+      }
+
+      // Check if it was an abort error
+      const isAborted =
+        error instanceof DOMException && error.name === "AbortError";
+
       set({
-        error: errorMessage,
+        error: isAborted ? null : errorMessage, // Don't show error if aborted
         isLoading: false,
         isStreaming: false,
+        abortController: null,
       });
-      console.log(errorMessage);
+
+      if (!isAborted) {
+        // Error is already set in state
+      }
     }
   },
 
   abortGeneration: () => {
-    // Implement abort logic later
-    console.warn("Abort not implemented yet");
+    const { abortController } = get();
+    if (abortController) {
+      abortController.abort();
+      // State cleanup is handled in the catch block of sendMessage
+      // But we can optimistically update here too
+      set({
+        isLoading: false,
+        isStreaming: false,
+        abortController: null,
+      });
+    }
   },
 
   updateMessage: async (

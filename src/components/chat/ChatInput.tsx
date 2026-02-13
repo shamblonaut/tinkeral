@@ -1,14 +1,21 @@
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { SendHorizontal } from "lucide-react";
+import { SendHorizontal, Square } from "lucide-react";
 import { useRef, useState } from "react";
 
 interface ChatInputProps {
   onSend: (content: string) => void;
   disabled?: boolean;
+  isStreaming?: boolean;
+  onStop?: () => void;
 }
 
-export function ChatInput({ onSend, disabled }: ChatInputProps) {
+export function ChatInput({
+  onSend,
+  disabled,
+  isStreaming,
+  onStop,
+}: ChatInputProps) {
   const [input, setInput] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -42,15 +49,27 @@ export function ChatInput({ onSend, disabled }: ChatInputProps) {
         disabled={disabled}
         rows={1}
       />
-      <Button
-        size="icon"
-        onClick={handleSend}
-        disabled={!input.trim() || disabled}
-        className="m-1 h-10 w-10 shrink-0 rounded-full"
-      >
-        <SendHorizontal className="h-5 w-5" />
-        <span className="sr-only">Send</span>
-      </Button>
+      {isStreaming && onStop ? (
+        <Button
+          variant="destructive"
+          size="icon"
+          onClick={onStop}
+          className="m-1 h-10 w-10 shrink-0 rounded-full"
+        >
+          <Square className="h-3 w-3 fill-current" />
+          <span className="sr-only">Stop</span>
+        </Button>
+      ) : (
+        <Button
+          size="icon"
+          onClick={handleSend}
+          disabled={!input.trim() || disabled}
+          className="m-1 h-10 w-10 shrink-0 rounded-full"
+        >
+          <SendHorizontal className="h-5 w-5" />
+          <span className="sr-only">Send</span>
+        </Button>
+      )}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Message as MessageType } from "@/types/conversation";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Message } from "./Message";
 
 interface MessageListProps {
@@ -14,19 +14,38 @@ export function MessageList({
   isStreaming,
   className,
 }: MessageListProps) {
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when messages change
-  useEffect(() => {
-    if (scrollRef.current) {
-      const scrollElement = scrollRef.current.querySelector(
-        "[data-radix-scroll-area-viewport]",
-      );
-      if (scrollElement) {
-        scrollElement.scrollTop = scrollElement.scrollHeight;
-      }
+  // Track if user is at bottom to sticky scroll
+  const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
+
+  const handleScroll = () => {
+    const viewport = viewportRef.current;
+    if (viewport) {
+      const { scrollTop, scrollHeight, clientHeight } = viewport;
+      // If user is within 50px of bottom, sticky scroll
+      const isAtBottom = scrollHeight - scrollTop - clientHeight < 50;
+      setShouldAutoScroll(isAtBottom);
     }
-  }, [messages]);
+  };
+
+  // Add scroll listener
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (viewport) {
+      viewport.addEventListener("scroll", handleScroll);
+      return () => viewport.removeEventListener("scroll", handleScroll);
+    }
+  }, []);
+
+  // Auto-scroll to bottom when messages change IF we were already at bottom
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (viewport && shouldAutoScroll) {
+      viewport.scrollTop = viewport.scrollHeight;
+    }
+  }, [messages, isStreaming, shouldAutoScroll]);
 
   if (messages.length === 0) {
     return (
@@ -40,7 +59,7 @@ export function MessageList({
   }
 
   return (
-    <ScrollArea ref={scrollRef} className={className}>
+    <ScrollArea viewportRef={viewportRef} className={className}>
       <div className="flex flex-col py-4">
         {messages.map((message, index) => (
           <Message

@@ -251,4 +251,160 @@ describe("ConversationStore", () => {
 
     expect(mockStreamChat).toHaveBeenCalled();
   });
+
+  it("should handle error during streaming", async () => {
+    // Mock settings
+    vi.mocked(useSettingsStore.getState).mockReturnValue({
+      settings: {
+        id: "app-settings",
+        apiKeys: { google: "test-api-key" },
+        defaultModel: "gemini-2.5-flash",
+      },
+    } as unknown as SettingsState);
+
+    // Mock stream generator that throws after first chunk
+    const mockStream = async function* () {
+      yield { delta: "Start" };
+      throw new Error("Stream failed");
+    };
+
+    const mockStreamChat = vi.fn().mockReturnValue(mockStream());
+
+    vi.mocked(GoogleAPIClient.createClient).mockResolvedValue({
+      streamChat: mockStreamChat,
+    } as unknown as GoogleAPIClient);
+
+    const store = useConversationStore.getState();
+    const conversationId = await store.createConversation("test-model", {
+      temperature: 0.7,
+      maxTokens: 100,
+      topP: 0.9,
+    });
+    store.setActiveConversation(conversationId);
+
+    await store.sendMessage("Hi");
+
+    const state = useConversationStore.getState();
+    const conversation = state.conversations.find(
+      (c) => c.id === conversationId,
+    );
+
+    // Should have captured the partial content
+    expect(conversation?.messages[1].content).toBe("Start");
+    // Should be in error state
+    expect(state.error).toBe("Stream failed");
+    expect(state.isStreaming).toBe(false);
+    expect(state.isLoading).toBe(false);
+  });
+
+  it("should handle empty stream response", async () => {
+    // Mock settings
+    vi.mocked(useSettingsStore.getState).mockReturnValue({
+      settings: {
+        id: "app-settings",
+        apiKeys: { google: "test-api-key" },
+        defaultModel: "gemini-2.5-flash",
+      },
+    } as unknown as SettingsState);
+
+    // Mock empty stream
+    const mockStream = async function* () {
+      // Yield nothing or just finish
+      yield { delta: "", finishReason: "stop" as const };
+    };
+
+    const mockStreamChat = vi.fn().mockReturnValue(mockStream());
+
+    vi.mocked(GoogleAPIClient.createClient).mockResolvedValue({
+      streamChat: mockStreamChat,
+    } as unknown as GoogleAPIClient);
+
+    const store = useConversationStore.getState();
+    const conversationId = await store.createConversation("test-model", {
+      temperature: 0.7,
+      maxTokens: 100,
+      topP: 0.9,
+    });
+    store.setActiveConversation(conversationId);
+
+    await store.sendMessage("Hi");
+
+    const state = useConversationStore.getState();
+    const conversation = state.conversations.find(
+      (c) => c.id === conversationId,
+    );
+
+    // Message should exist but be empty
+    expect(conversation?.messages[1].content).toBe("");
+    expect(state.isStreaming).toBe(false);
+    expect(state.error).toBeNull();
+  });
+
+  it("should abort generation", async () => {
+    let resolve: () => void = () => {};
+    const result = new Promise<void>((r) => {
+      resolve = r;
+    });
+
+    // Mock settings
+    vi.mocked(useSettingsStore.getState).mockReturnValue({
+      settings: {
+        id: "app-settings",
+        apiKeys: { google: "test-api-key" },
+        defaultModel: "gemini-2.5-flash",
+      },
+    } as unknown as SettingsState);
+
+    const mockStreamChat = vi
+      .fn()
+      .mockImplementation(async function* (_, signal) {
+        if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+        yield { delta: "Start" };
+        if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+        await result; // Wait until resolved (or aborted)
+        if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+        yield { delta: "End" };
+      });
+
+    vi.mocked(GoogleAPIClient.createClient).mockResolvedValue({
+      streamChat: mockStreamChat,
+    } as unknown as GoogleAPIClient);
+
+    const store = useConversationStore.getState();
+    const conversationId = await store.createConversation("test-model", {
+      temperature: 0.7,
+      maxTokens: 100,
+      topP: 0.9,
+    });
+    store.setActiveConversation(conversationId);
+
+    const sendPromise = store.sendMessage("Hello");
+
+    // Wait for streaming to start and client to be called
+    await vi.waitFor(() => {
+      expect(useConversationStore.getState().isStreaming).toBe(true);
+      expect(mockStreamChat).toHaveBeenCalled();
+    });
+
+    // Abort
+    store.abortGeneration();
+    resolve(); // Unblock the stream generator so it can check signal
+
+    await sendPromise;
+
+    const state = useConversationStore.getState();
+    expect(state.isStreaming).toBe(false);
+    expect(state.isLoading).toBe(false);
+
+    // The message should contain partial content "Start"
+    const conversation = state.conversations.find(
+      (c) => c.id === state.activeConversationId,
+    );
+    // Depending on when abort happened vs state update, it might have "Start"
+    // Since we yield "Start" before waiting, it should be there.
+    const lastMessage =
+      conversation?.messages[conversation.messages.length - 1];
+    expect(lastMessage?.content).toContain("Start");
+    expect(state.error).toBeNull();
+  });
 });

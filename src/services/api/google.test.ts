@@ -1,9 +1,9 @@
+import { ApiError } from "@google/genai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_PARAMETERS } from "../../types/conversation";
 import type { ChatRequest } from "../../types/provider";
 import { GoogleAPIClient } from "./google";
 
-// Hoist mocks so they can be referenced inside vi.mock()
 const mocks = vi.hoisted(() => {
   return {
     mockGenerateContent: vi.fn(),
@@ -30,9 +30,11 @@ vi.mock("@google/genai", () => {
   });
 
   const ApiError = class extends Error {
-    constructor(message: string) {
-      super(message);
+    status: number;
+    constructor(options: { message: string; status?: number }) {
+      super(options.message);
       this.name = "ApiError";
+      this.status = options.status || 500;
     }
   };
 
@@ -64,7 +66,9 @@ describe("GoogleAPIClient", () => {
     });
 
     it("should throw error with invalid API key", async () => {
-      mocks.mockListModels.mockRejectedValue(new Error("Invalid key"));
+      mocks.mockListModels.mockRejectedValue(
+        new ApiError({ message: "Invalid key", status: 400 }),
+      );
       await expect(GoogleAPIClient.createClient("invalid-key")).rejects.toThrow(
         "Invalid API key",
       );
@@ -77,7 +81,9 @@ describe("GoogleAPIClient", () => {
     });
 
     it("validateKey should return false for invalid key", async () => {
-      mocks.mockListModels.mockRejectedValue(new Error("Invalid key"));
+      mocks.mockListModels.mockRejectedValue(
+        new ApiError({ message: "Invalid key", status: 400 }),
+      );
       const isValid = await GoogleAPIClient.validateKey("invalid-key");
       expect(isValid).toBe(false);
     });

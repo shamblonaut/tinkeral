@@ -14,6 +14,7 @@ export function ChatInterface() {
     isStreaming,
     error,
     createConversation,
+    abortGeneration,
   } = useConversationStore();
 
   const conversation = conversations.find((c) => c.id === activeConversationId);
@@ -61,7 +62,12 @@ export function ChatInterface() {
           className="h-full px-4"
         />
       </div>
-      <ChatInput onSend={handleSend} disabled={isLoading || isStreaming} />
+      <ChatInput
+        onSend={handleSend}
+        disabled={isLoading && !isStreaming}
+        isStreaming={isStreaming}
+        onStop={abortGeneration}
+      />
       <Toaster />
     </div>
   );

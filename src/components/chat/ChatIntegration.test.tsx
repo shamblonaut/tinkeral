@@ -1,9 +1,19 @@
 import { conversations as conversationsDb } from "@/db/operations";
+import { GoogleAPIClient } from "@/services/api/google";
 import { useConversationStore } from "@/stores/conversation";
 import { useSettingsStore } from "@/stores/settings";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ChatInterface } from "./ChatInterface";
+
+// Mock sonner
+vi.mock("sonner", () => ({
+  toast: {
+    error: vi.fn(),
+  },
+  Toaster: () => null,
+}));
 
 // Mock dependencies
 vi.mock("@/db/operations", () => ({
@@ -128,5 +138,46 @@ describe("ChatInterface Integration", () => {
     await waitFor(() => {
       expect(screen.getByText("Hello world")).toBeInTheDocument();
     });
+  });
+
+  it("should display error toast when streaming fails", async () => {
+    // Setup initial state
+    useConversationStore.setState({
+      conversations: [
+        {
+          id: "test-conversation-id",
+          title: "Test",
+          modelId: "gemini-2.5-flash",
+          parameters: { temperature: 0.7, maxTokens: 1024, topP: 0.9 },
+          messages: [],
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        },
+      ],
+      activeConversationId: "test-conversation-id",
+    });
+
+    // Override mock to throw error
+    vi.mocked(GoogleAPIClient.createClient).mockResolvedValueOnce({
+      streamChat: vi.fn().mockImplementation(async function* () {
+        yield { delta: "Start" };
+        throw new Error("Stream failed");
+      }),
+    } as unknown as GoogleAPIClient);
+
+    render(<ChatInterface />);
+
+    const input = screen.getByPlaceholderText("Type a message...");
+    const sendButton = screen.getByRole("button", { name: /send/i });
+
+    fireEvent.change(input, { target: { value: "Hello Error" } });
+    fireEvent.click(sendButton);
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith("Stream failed");
+    });
+
+    // Partial content should still be there
+    expect(screen.getByText("Start")).toBeInTheDocument();
   });
 });

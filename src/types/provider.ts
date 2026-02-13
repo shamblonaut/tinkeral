@@ -130,13 +130,16 @@ export interface LLMProvider {
    * Send a chat request and get complete response.
    * Use for non-streaming scenarios.
    */
-  chat(request: ChatRequest): Promise<ChatResponse>;
+  chat(request: ChatRequest, signal?: AbortSignal): Promise<ChatResponse>;
 
   /**
    * Send a chat request and stream response.
    * Returns async iterator of chunks.
    */
-  streamChat(request: ChatRequest): AsyncIterableIterator<StreamChunk>;
+  streamChat(
+    request: ChatRequest,
+    signal?: AbortSignal,
+  ): AsyncIterableIterator<StreamChunk>;
 
   /**
    * Estimate token count for the content.

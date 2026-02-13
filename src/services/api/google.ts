@@ -29,9 +29,11 @@ export class GoogleAPIClient implements LLMProvider {
   }
 
   static async createClient(apiKey: string): Promise<GoogleAPIClient> {
-    if (!(await this.validateKey(apiKey))) {
-      throw new Error("Invalid API key");
-    }
+    await this.validateKey(apiKey).then((valid) => {
+      if (!valid) {
+        throw new Error("Invalid API key");
+      }
+    });
 
     return new GoogleAPIClient(apiKey);
   }
@@ -43,7 +45,13 @@ export class GoogleAPIClient implements LLMProvider {
     return await client.models
       .list()
       .then(() => true)
-      .catch(() => false);
+      .catch((error) => {
+        if (!(error instanceof ApiError)) {
+          throw error;
+        }
+
+        return false;
+      });
   }
 
   async getModels(): Promise<ModelInfo[]> {
@@ -74,8 +82,15 @@ export class GoogleAPIClient implements LLMProvider {
       .then((response) => response.totalTokens ?? 0);
   }
 
-  async chat(request: ChatRequest): Promise<ChatResponse> {
+  async chat(
+    request: ChatRequest,
+    signal?: AbortSignal,
+  ): Promise<ChatResponse> {
     try {
+      if (signal?.aborted) {
+        throw new DOMException("Aborted", "AbortError");
+      }
+
       const client = this.getClient();
       const contents = this.mapMessagesToContent(request.messages);
 
@@ -91,11 +106,64 @@ export class GoogleAPIClient implements LLMProvider {
         config.systemInstruction = request.systemPrompt;
       }
 
-      const response = await client.models.generateContent({
+      // Create a race between the API call and the abort signal
+      const responsePromise = client.models.generateContent({
         model: request.model,
         contents: contents,
         config: config,
       });
+
+      if (signal) {
+        let abortHandler: (() => void) | null = null;
+
+        const abortPromise = new Promise<never>((_, reject) => {
+          abortHandler = () =>
+            reject(new DOMException("Aborted", "AbortError"));
+          signal.addEventListener("abort", abortHandler);
+        });
+
+        try {
+          // Use Promise.race to allow abortion
+          const response = await Promise.race([responsePromise, abortPromise]);
+
+          // Handle result as usual
+          if (!response || !response.text) {
+            throw new Error("Empty response from Google API");
+          }
+
+          return {
+            message: {
+              id: crypto.randomUUID(),
+              role: "model",
+              content: response.text || "",
+              timestamp: Date.now(),
+              metadata: {
+                model: request.model,
+                finishReason: this.mapFinishReason(
+                  response.candidates?.[0]?.finishReason,
+                ),
+                tokens: response.usageMetadata?.totalTokenCount || 0,
+              },
+            },
+            usage: {
+              promptTokens: response.usageMetadata?.promptTokenCount || 0,
+              completionTokens:
+                response.usageMetadata?.candidatesTokenCount || 0,
+              totalTokens: response.usageMetadata?.totalTokenCount || 0,
+            },
+            model: request.model,
+            finishReason: this.mapFinishReason(
+              response.candidates?.[0]?.finishReason,
+            ),
+          };
+        } finally {
+          if (abortHandler) {
+            signal.removeEventListener("abort", abortHandler);
+          }
+        }
+      }
+
+      const response = await responsePromise;
 
       if (!response || !response.text) {
         throw new Error("Empty response from Google API");
@@ -130,8 +198,15 @@ export class GoogleAPIClient implements LLMProvider {
     }
   }
 
-  async *streamChat(request: ChatRequest): AsyncIterableIterator<StreamChunk> {
+  async *streamChat(
+    request: ChatRequest,
+    signal?: AbortSignal,
+  ): AsyncIterableIterator<StreamChunk> {
     try {
+      if (signal?.aborted) {
+        throw new DOMException("Aborted", "AbortError");
+      }
+
       const client = this.getClient();
       const contents = this.mapMessagesToContent(request.messages);
 
@@ -154,6 +229,10 @@ export class GoogleAPIClient implements LLMProvider {
       });
 
       for await (const chunk of streamingResp) {
+        if (signal?.aborted) {
+          throw new DOMException("Aborted", "AbortError");
+        }
+
         yield {
           delta: chunk.text || "",
           finishReason: this.mapFinishReason(
@@ -174,23 +253,26 @@ export class GoogleAPIClient implements LLMProvider {
   }
 
   normalizeError(error: unknown): ProviderError {
-    if (!(error instanceof ApiError)) {
+    if (error instanceof DOMException && error.name === "AbortError") {
       return new ProviderError({
         type: "unknown",
         provider: "google",
-        message:
-          error instanceof Error ? error.message : "An unknown error occurred",
+        message: "Request cancelled by user",
+        userMessage: "Request cancelled",
         retriable: false,
         originalError: error,
       });
     }
 
-    const { code, message } = JSON.parse(
-      JSON.parse(error.message).error.message,
-    ).error;
+    let message =
+      error instanceof Error ? error.message : "An unknown error occurred";
+
+    const { message: nestedErrorMessage, code } =
+      this.getNestedErrorMessage(message);
+    message = nestedErrorMessage;
 
     return new ProviderError({
-      type: "unknown",
+      type: "unknown", // You might want to map this based on code
       provider: "google",
       message,
       retriable: false,
@@ -230,8 +312,8 @@ export class GoogleAPIClient implements LLMProvider {
         vision: Boolean(!/imagen|tts|embedding|aqa/.test(model.name ?? "")),
 
         temperatureRange: [0, model.maxTemperature || 2],
-        topPRange: [0, 1], // Standard
-        supportsTopK: true, // Standard for Gemini
+        topPRange: [0, 1],
+        supportsTopK: true,
       },
     };
   }
@@ -258,5 +340,33 @@ export class GoogleAPIClient implements LLMProvider {
       default:
         return "unknown";
     }
+  }
+
+  private getNestedErrorMessage(message: string): {
+    message: string;
+    code?: number;
+  } {
+    try {
+      // 1. Extract potential JSON using Regex (matches everything between the first { and last })
+      const jsonMatch = message.match(/\{.*\}/s);
+
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        const errorData = parsed.error || parsed; // Handle {error: {...}} or flat {...}
+
+        if (errorData.message) {
+          // Check if the extracted message is itself another JSON string
+          const nested = this.getNestedErrorMessage(errorData.message);
+          return {
+            message: nested.message,
+            code: errorData.code || nested.code,
+          };
+        }
+      }
+    } catch {
+      // If parsing fails at any level, we've reached the "leaf" string
+    }
+
+    return { message };
   }
 }
