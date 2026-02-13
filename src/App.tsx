@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 
+import { APIKeyModal } from "@/components/auth";
 import { ChatInterface } from "@/components/chat";
+import { Toaster } from "@/components/ui";
 import { useConversationStore, useSettingsStore } from "@/stores";
 
 function App() {
@@ -8,6 +10,8 @@ function App() {
   const loadConversations = useConversationStore(
     (state) => state.loadConversations,
   );
+  const settings = useSettingsStore((state) => state.settings);
+  const isLoading = useSettingsStore((state) => state.isLoading);
 
   // Expose stores for debugging
   useEffect(() => {
@@ -28,7 +32,23 @@ function App() {
     init();
   }, [loadSettings, loadConversations]);
 
-  return <ChatInterface />;
+  if (isLoading) {
+    return (
+      <div className="flex h-screen w-full items-center justify-center">
+        <div className="border-primary h-32 w-32 animate-spin rounded-full border-b-2" />
+      </div>
+    );
+  }
+
+  // Check if we have a Google API key
+  const hasGoogleKey = !!settings?.apiKeys?.google;
+
+  return (
+    <>
+      {!hasGoogleKey ? <APIKeyModal /> : <ChatInterface />}
+      <Toaster />
+    </>
+  );
 }
 
 export default App;

@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { toast } from "sonner";
 
 import { ChatInput, MessageList } from "@/components/chat";
-import { Toaster } from "@/components/ui";
 import { useConversationStore } from "@/stores";
 
 export function ChatInterface() {
@@ -23,7 +22,7 @@ export function ChatInterface() {
   // Create a default conversation if none exists
   useEffect(() => {
     if (!activeConversationId && !isLoading && conversations.length === 0) {
-      createConversation("gemma-3-27b-it", {
+      createConversation("gemma-3-1b-it", {
         temperature: 0.7,
         maxTokens: 1024,
         topP: 0.9,
@@ -68,7 +67,6 @@ export function ChatInterface() {
         isStreaming={isStreaming}
         onStop={abortGeneration}
       />
-      <Toaster />
     </div>
   );
 }

@@ -18,7 +18,7 @@ export interface SettingsState {
 const DEFAULT_SETTINGS: AppSettings = {
   id: "app-settings",
   apiKeys: {},
-  defaultModel: "gemini-1.5-pro",
+  defaultModel: "gemma-3-1b-it",
   defaultParameters: {
     temperature: 0.7,
     maxTokens: 1024,

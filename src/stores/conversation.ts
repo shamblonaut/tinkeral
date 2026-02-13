@@ -109,12 +109,29 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
   },
 
   sendMessage: async (content: string) => {
-    const state = get();
-    const { activeConversationId, conversations } = state;
+    let { activeConversationId, conversations } = get();
 
+    // 1. Check for active conversation, auto-create if needed
     if (!activeConversationId) {
-      console.error("No active conversation");
-      return;
+      console.log("No active conversation, creating new one...");
+      try {
+        const { settings } = useSettingsStore.getState();
+        const modelId = settings?.defaultModel || "gemma-3-1b-it";
+        const params = settings?.defaultParameters || {
+          temperature: 0.7,
+          maxTokens: 1024,
+          topP: 0.9,
+        };
+
+        const newId = await get().createConversation(modelId, params);
+
+        // Update local variables with new state
+        activeConversationId = newId;
+        conversations = get().conversations;
+      } catch (error) {
+        console.error("Failed to auto-create conversation:", error);
+        return;
+      }
     }
 
     const conversation = conversations.find(
@@ -125,7 +142,7 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
       return;
     }
 
-    // 1. Add user message
+    // 2. Add user message
     const userMessage: Message = {
       id: crypto.randomUUID(),
       role: "user",
