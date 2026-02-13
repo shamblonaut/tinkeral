@@ -47,7 +47,7 @@ export function APIKeyModal() {
   };
 
   return (
-    <div className="bg-background/80 fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm">
+    <div className="bg-background/80 fixed inset-0 z-50 flex h-svh items-center justify-center backdrop-blur-sm">
       <Card className="max-w-80vw md:w-sm">
         <CardHeader>
           <CardTitle className="my-4 space-y-4 text-center">

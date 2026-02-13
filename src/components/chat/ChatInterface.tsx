@@ -50,7 +50,7 @@ export function ChatInterface() {
   };
 
   return (
-    <div className="bg-background flex h-screen flex-col">
+    <div className="bg-background flex h-svh flex-col">
       <header className="flex items-center justify-between border-b px-6 py-4">
         <h1 className="text-xl font-bold">🧩 Tinkeral</h1>
       </header>

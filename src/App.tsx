@@ -34,7 +34,7 @@ function App() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen w-full items-center justify-center">
+      <div className="flex h-svh w-full items-center justify-center">
         <div className="border-primary h-32 w-32 animate-spin rounded-full border-b-2" />
       </div>
     );
