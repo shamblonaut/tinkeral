@@ -1,8 +1,8 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it } from "vitest";
-import { db } from "../../db/db";
-import { settings } from "../../db/operations";
-import { useSettingsStore } from "../settings";
+
+import { db, settings } from "@/db";
+import { useSettingsStore } from "@/stores";
 
 describe("SettingsStore", () => {
   beforeEach(async () => {

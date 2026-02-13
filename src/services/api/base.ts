@@ -1,4 +1,4 @@
-import { type ErrorType } from "../../types/provider";
+import type { ErrorType } from "@/types";
 
 /**
  * Normalize any error to a common format.

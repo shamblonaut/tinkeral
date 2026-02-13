@@ -1,6 +1,9 @@
-import type { Message, ModelParameters } from "../types/conversation";
-import type { JSONSchema } from "../types/functions";
-import type { UIPreferences } from "../types/settings";
+import type {
+  JSONSchema,
+  Message,
+  ModelParameters,
+  UIPreferences,
+} from "@/types";
 
 export interface Conversation {
   readonly id: string;

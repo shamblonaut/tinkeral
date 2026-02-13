@@ -6,15 +6,17 @@ import {
   type GenerateContentConfig,
   type Model,
 } from "@google/genai";
-import type { FinishReason, Message } from "../../types/conversation";
+
+import { ProviderError } from "@/services/api";
 import type {
   ChatRequest,
   ChatResponse,
+  FinishReason,
   LLMProvider,
+  Message,
   ModelInfo,
   StreamChunk,
-} from "../../types/provider";
-import { ProviderError } from "./base";
+} from "@/types";
 
 export class GoogleAPIClient implements LLMProvider {
   readonly id = "google";

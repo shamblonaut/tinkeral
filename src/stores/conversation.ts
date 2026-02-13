@@ -1,9 +1,9 @@
 import { create } from "zustand";
-import { conversations as conversationsDb } from "../db/operations";
-import type { Conversation } from "../db/schema";
-import { GoogleAPIClient } from "../services/api/google";
-import type { Message, ModelParameters } from "../types/conversation";
-import { useSettingsStore } from "./settings";
+
+import { conversations as conversationsDb, type Conversation } from "@/db";
+import { GoogleAPIClient } from "@/services/api";
+import { useSettingsStore } from "@/stores";
+import type { Message, ModelParameters } from "@/types";
 
 interface ConversationState {
   conversations: Conversation[];

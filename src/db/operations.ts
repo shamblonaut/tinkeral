@@ -1,5 +1,5 @@
-import { db } from "./db";
-import type { AppSettings, Conversation, FunctionDefinition } from "./schema";
+import type { AppSettings, Conversation, FunctionDefinition } from "@/db";
+import { db } from "@/db";
 
 // Conversations
 export const conversations = {

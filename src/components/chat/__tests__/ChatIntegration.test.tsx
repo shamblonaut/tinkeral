@@ -1,11 +1,11 @@
-import { conversations as conversationsDb } from "@/db/operations";
-import { GoogleAPIClient } from "@/services/api/google";
-import { useConversationStore } from "@/stores/conversation";
-import { useSettingsStore } from "@/stores/settings";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ChatInterface } from "../ChatInterface";
+
+import { ChatInterface } from "@/components/chat";
+import { conversations as conversationsDb } from "@/db";
+import { GoogleAPIClient } from "@/services/api";
+import { useConversationStore, useSettingsStore } from "@/stores";
 
 // Mock sonner
 vi.mock("sonner", () => ({

@@ -1,6 +1,11 @@
-import type { FunctionDefinition } from "@/db/schema";
-import type { ProviderError } from "@/services/api/base";
-import type { FinishReason, Message } from "./conversation";
+import type { FunctionDefinition } from "@/db";
+import type { ProviderError } from "@/services/api";
+import type {
+  FinishReason,
+  FunctionCall,
+  Message,
+  ModelParameters,
+} from "@/types";
 
 /**
  * Information about a specific model
@@ -33,20 +38,6 @@ export interface ModelCapabilities {
 }
 
 /**
- * Parameters that control model behavior.
- * Provider-specific parameters use optional fields.
- */
-export interface ModelParameters {
-  temperature: number; // 0.0 - 2.0 (provider dependent)
-  maxTokens: number; // Max completion tokens
-  topP: number; // 0.0 - 1.0
-  topK?: number; // Google-specific
-  frequencyPenalty?: number; // OpenAI-specific
-  presencePenalty?: number; // OpenAI-specific
-  stopSequences?: string[];
-}
-
-/**
  * Request to send to LLM provider
  */
 export interface ChatRequest {
@@ -66,14 +57,6 @@ export interface ChatResponse {
   usage: TokenUsage;
   model: string;
   finishReason: FinishReason;
-}
-
-/**
- * Function call requested by the model
- */
-export interface FunctionCall {
-  name: string;
-  arguments: Record<string, unknown>;
 }
 
 /**

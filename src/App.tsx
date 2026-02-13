@@ -1,7 +1,7 @@
-import { ChatInterface } from "@/components/chat/ChatInterface";
-import { useConversationStore } from "@/stores/conversation";
-import { useSettingsStore } from "@/stores/settings";
 import { useEffect } from "react";
+
+import { ChatInterface } from "@/components/chat";
+import { useConversationStore, useSettingsStore } from "@/stores";
 
 function App() {
   const loadSettings = useSettingsStore((state) => state.loadSettings);

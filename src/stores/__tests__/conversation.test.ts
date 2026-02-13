@@ -1,10 +1,13 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { db } from "../../db/db";
-import { conversations } from "../../db/operations";
-import { GoogleAPIClient } from "../../services/api/google";
-import { useConversationStore } from "../conversation";
-import { type SettingsState, useSettingsStore } from "../settings";
+
+import { conversations, db } from "@/db";
+import { GoogleAPIClient } from "@/services/api";
+import {
+  useConversationStore,
+  useSettingsStore,
+  type SettingsState,
+} from "@/stores";
 
 // Mock dependencies
 vi.mock("../../services/api/google", () => ({

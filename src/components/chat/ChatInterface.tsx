@@ -1,9 +1,9 @@
-import { Toaster } from "@/components/ui/sonner";
-import { useConversationStore } from "@/stores/conversation";
 import { useEffect } from "react";
 import { toast } from "sonner";
-import { ChatInput } from "./ChatInput";
-import { MessageList } from "./MessageList";
+
+import { ChatInput, MessageList } from "@/components/chat";
+import { Toaster } from "@/components/ui";
+import { useConversationStore } from "@/stores";
 
 export function ChatInterface() {
   const {

@@ -1,7 +1,8 @@
-import { ScrollArea } from "@/components/ui/scroll-area";
-import type { Message as MessageType } from "@/types/conversation";
 import { useEffect, useRef, useState } from "react";
 import { Message } from "./Message";
+
+import { ScrollArea } from "@/components/ui";
+import type { Message as MessageType } from "@/types";
 
 interface MessageListProps {
   messages: MessageType[];

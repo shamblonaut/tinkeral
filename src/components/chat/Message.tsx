@@ -1,10 +1,11 @@
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { cn } from "@/lib/utils";
-import type { Message as MessageType } from "@/types/conversation";
 import { Bot, User } from "lucide-react";
 import { memo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui";
+import { cn } from "@/lib/utils";
+import type { Message as MessageType } from "@/types";
 
 interface MessageProps {
   message: MessageType;

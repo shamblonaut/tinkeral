@@ -1,10 +1,6 @@
 import Dexie, { type Table } from "dexie";
 
-import {
-  type AppSettings,
-  type Conversation,
-  type FunctionDefinition,
-} from "./schema";
+import type { AppSettings, Conversation, FunctionDefinition } from "@/db";
 
 export class TinkeralDatabase extends Dexie {
   conversations!: Table<Conversation>;
