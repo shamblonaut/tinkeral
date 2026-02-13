@@ -1,19 +1,19 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { db } from "../db/db";
-import { conversations } from "../db/operations";
-import { GoogleAPIClient } from "../services/api/google";
-import { useConversationStore } from "./conversation";
-import { type SettingsState, useSettingsStore } from "./settings";
+import { db } from "../../db/db";
+import { conversations } from "../../db/operations";
+import { GoogleAPIClient } from "../../services/api/google";
+import { useConversationStore } from "../conversation";
+import { type SettingsState, useSettingsStore } from "../settings";
 
 // Mock dependencies
-vi.mock("../services/api/google", () => ({
+vi.mock("../../services/api/google", () => ({
   GoogleAPIClient: {
     createClient: vi.fn(),
   },
 }));
 
-vi.mock("./settings", () => ({
+vi.mock("../settings", () => ({
   useSettingsStore: {
     getState: vi.fn(),
     setState: vi.fn(),

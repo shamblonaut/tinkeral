@@ -5,7 +5,7 @@ import { useSettingsStore } from "@/stores/settings";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ChatInterface } from "./ChatInterface";
+import { ChatInterface } from "../ChatInterface";
 
 // Mock sonner
 vi.mock("sonner", () => ({
