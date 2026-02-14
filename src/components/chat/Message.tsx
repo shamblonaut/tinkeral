@@ -32,8 +32,8 @@ export const Message = memo(function Message({
   return (
     <div
       className={cn(
-        "flex w-full gap-4 p-4",
-        isUser ? "bg-muted/30 flex-row-reverse" : "bg-background flex-row",
+        "bg-background flex w-full gap-4 p-4",
+        isUser ? "flex-row-reverse" : "flex-row",
       )}
     >
       <Avatar className="h-8 w-8 shrink-0">
@@ -74,7 +74,7 @@ export const Message = memo(function Message({
 
         <div
           className={cn(
-            "prose prose-neutral dark:prose-invert max-w-none text-sm leading-relaxed break-words",
+            "prose prose-neutral dark:prose-invert max-w-none text-sm leading-relaxed wrap-break-word",
             isUser
               ? "bg-primary text-primary-foreground rounded-2xl rounded-tr-sm px-4 py-2"
               : "bg-muted rounded-2xl rounded-tl-sm px-4 py-2",

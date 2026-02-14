@@ -3,11 +3,12 @@ import { create } from "zustand";
 import { conversations as conversationsDb, type Conversation } from "@/db";
 import { GoogleAPIClient } from "@/services/api";
 import { useSettingsStore } from "@/stores";
-import type { Message, ModelParameters } from "@/types";
+import type { Message, ModelInfo, ModelParameters } from "@/types";
 
 interface ConversationState {
   conversations: Conversation[];
   activeConversationId: string | null;
+  availableModels: ModelInfo[];
   isLoading: boolean;
   isStreaming: boolean;
   error: string | null;
@@ -15,6 +16,7 @@ interface ConversationState {
 
   // Actions
   loadConversations: () => Promise<void>;
+  loadModels: () => Promise<void>;
   setActiveConversation: (id: string) => void;
   createConversation: (
     modelId: string,
@@ -34,6 +36,7 @@ interface ConversationState {
 export const useConversationStore = create<ConversationState>((set, get) => ({
   conversations: [],
   activeConversationId: null,
+  availableModels: [],
   isLoading: false,
   isStreaming: false,
   error: null,
@@ -49,6 +52,21 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
     } catch (error) {
       console.error("Failed to load conversations:", error);
       set({ error: "Failed to load conversations", isLoading: false });
+    }
+  },
+
+  loadModels: async () => {
+    try {
+      const { settings } = useSettingsStore.getState();
+      const apiKey = settings?.apiKeys["google"];
+      if (!apiKey) return;
+
+      // Create a temporary client just to fetch models
+      const client = await GoogleAPIClient.createClient(apiKey);
+      const models = await client.getModels();
+      set({ availableModels: models });
+    } catch (error) {
+      console.error("Failed to load models:", error);
     }
   },
 

@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { toast } from "sonner";
 
-import { ChatInput, MessageList } from "@/components/chat";
+import { ChatInput, MessageList, ModelSelector } from "@/components/chat";
 import { useConversationStore } from "@/stores";
 
 export function ChatInterface() {
@@ -53,6 +53,7 @@ export function ChatInterface() {
     <div className="bg-background flex h-svh flex-col">
       <header className="flex items-center justify-between border-b px-6 py-4">
         <h1 className="text-xl font-bold">🧩 Tinkeral</h1>
+        <ModelSelector />
       </header>
       <div className="flex-1 overflow-hidden">
         <MessageList

@@ -239,12 +239,12 @@ src/components/chat/ChatInterface.tsx
 
 **Tasks**:
 
-- [ ] Create ModelSelector component
-- [ ] Fetch available models from provider
-- [ ] Display model metadata (context window, etc.)
-- [ ] Connect to ConversationStore
-- [ ] Validate API key on model selection
-- [ ] Handle API key errors gracefully
+- [x] Create ModelSelector component
+- [x] Fetch available models from provider
+- [x] Display model metadata (context window, etc.)
+- [x] Connect to ConversationStore
+- [x] Validate API key on model selection
+- [x] Handle API key errors gracefully
 
 **Acceptance Criteria**:
 

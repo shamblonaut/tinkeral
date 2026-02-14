@@ -1,3 +1,4 @@
+import { TooltipProvider } from "@/components/ui";
 import "./styles/globals.css";
 
 import { StrictMode } from "react";
@@ -7,6 +8,8 @@ import App from "./App";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <App />
+    <TooltipProvider>
+      <App />
+    </TooltipProvider>
   </StrictMode>,
 );
