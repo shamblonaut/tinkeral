@@ -20,12 +20,12 @@ describe("SettingsStore", () => {
 
     const state = useSettingsStore.getState();
     expect(state.settings).toBeDefined();
-    expect(state.settings?.defaultModel).toBe("gemma-3-1b-it");
+    expect(state.settings?.defaultModel).toBe("gemini-2.5-flash-lite");
 
     // Verify persistence
     const persisted = await settings.get();
     expect(persisted).toBeDefined();
-    expect(persisted?.defaultModel).toBe("gemma-3-1b-it");
+    expect(persisted?.defaultModel).toBe("gemini-2.5-flash-lite");
   });
 
   it("should update settings", async () => {

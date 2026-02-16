@@ -68,7 +68,7 @@ function ModelSelectorDesktop() {
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="hidden w-3xs justify-between truncate md:flex"
+          className="hidden w-full justify-between truncate md:flex"
         >
           <p className="overflow-hidden text-ellipsis">
             {selectedModel ? selectedModel.name : currentModelId}
@@ -130,7 +130,7 @@ function ModelSelectorMobile() {
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="flex w-[32vw] min-w-40 justify-between"
+          className="flex w-full justify-between"
         >
           <p className="overflow-hidden text-ellipsis">
             {selectedModel ? selectedModel.name : currentModelId}

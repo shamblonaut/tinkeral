@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ChatInterface } from "@/components/chat";
 import { conversations as conversationsDb } from "@/db";
-import { useMediaQuery } from "@/hooks";
 import { GoogleAPIClient } from "@/services/api";
 import { useConversationStore, useSettingsStore } from "@/stores";
 
@@ -13,7 +12,7 @@ vi.mock("@/hooks", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/hooks")>();
   return {
     ...actual,
-    useMediaQuery: vi.fn(),
+    useMediaQuery: vi.fn().mockReturnValue(true),
   };
 });
 
@@ -269,9 +268,6 @@ describe("ChatInterface Integration", () => {
       chat: vi.fn(),
       streamChat: vi.fn(),
     } as unknown as GoogleAPIClient);
-
-    // Mock useMediaQuery to force desktop view
-    vi.mocked(useMediaQuery).mockReturnValue(true);
 
     render(<ChatInterface />);
 

@@ -1,4 +1,5 @@
 import { useConversationStore, useSettingsStore } from "@/stores";
+import { DEFAULT_PARAMETERS } from "@/types";
 import { useEffect, useMemo } from "react";
 
 export function useModelSelection(onSelect?: () => void) {
@@ -17,7 +18,9 @@ export function useModelSelection(onSelect?: () => void) {
   );
 
   const currentModelId =
-    activeConversation?.modelId || settings?.defaultModel || "gemma-3-1b-it";
+    activeConversation?.modelId ||
+    settings?.defaultModel ||
+    "gemini-2.5-flash-lite";
 
   useEffect(() => {
     loadModels();
@@ -35,11 +38,7 @@ export function useModelSelection(onSelect?: () => void) {
 
   const handleSelect = async (modelId: string) => {
     onSelect?.();
-    const defaultParams = settings?.defaultParameters || {
-      temperature: 0.7,
-      maxTokens: 1024,
-      topP: 0.9,
-    };
+    const defaultParams = settings?.defaultParameters || DEFAULT_PARAMETERS;
     await createConversation(modelId, defaultParams);
   };
 

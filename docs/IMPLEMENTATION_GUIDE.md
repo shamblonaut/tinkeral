@@ -258,30 +258,30 @@ src/components/chat/ChatInterface.tsx
 **Files to Create**:
 
 ```
-src/components/model/ModelSelector.tsx
+src/components/chat/ModelSelector.tsx
 ```
 
 ---
 
-#### Milestone 3.2: Parameters Panel
+#### Milestone 3.2: Chat Settings Panel
 
 **Tasks**:
 
-- [ ] Create ParametersPanel component
-- [ ] Add parameter controls (sliders, inputs):
+- [x] Create ChatSettings component
+- [x] Add parameter controls (sliders, inputs):
   - Temperature
   - Max tokens
   - Top-P
   - Top-K
-- [ ] Implement responsive layout (side panel / modal)
-- [ ] Add tooltips with parameter explanations
-- [ ] Connect to SettingsStore
-- [ ] Persist parameter changes
+- [x] Implement responsive layout (side panel / drawer)
+- [x] Add tooltips with parameter explanations
+- [x] Connect to ConversationStore & UIStore
+- [x] Persist parameter changes
 
 **Acceptance Criteria**:
 
-- Desktop: side panel visible
-- Mobile: modal overlay triggered by button
+- Desktop: side panel visible (defaults to open)
+- Mobile: drawer overlay triggered by button
 - Parameter changes update in real-time
 - Tooltips explain each parameter
 - Parameters persist per conversation
@@ -291,8 +291,8 @@ src/components/model/ModelSelector.tsx
 **Files to Create**:
 
 ```
-src/components/parameters/ParametersPanel.tsx
-src/components/parameters/ParameterControl.tsx
+src/components/chat/ChatSettings.tsx
+src/components/chat/ParameterControl.tsx
 ```
 
 ---

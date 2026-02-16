@@ -76,4 +76,25 @@ describe("UIStore", () => {
 
     expect(useUIStore.getState().toasts.length).toBe(0);
   });
+
+  it("should toggle chat settings", () => {
+    const store = useUIStore.getState();
+
+    // Reset to known state (might default to true/false depending on environment)
+    store.setChatSettingsOpen(false);
+    expect(useUIStore.getState().isChatSettingsOpen).toBe(false);
+
+    store.toggleChatSettings();
+    expect(useUIStore.getState().isChatSettingsOpen).toBe(true);
+
+    store.toggleChatSettings();
+    expect(useUIStore.getState().isChatSettingsOpen).toBe(false);
+  });
+
+  it("should set chat settings open state", () => {
+    const store = useUIStore.getState();
+
+    store.setChatSettingsOpen(true);
+    expect(useUIStore.getState().isChatSettingsOpen).toBe(true);
+  });
 });

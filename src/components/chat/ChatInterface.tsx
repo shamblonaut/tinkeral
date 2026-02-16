@@ -1,8 +1,12 @@
+import { Settings2 } from "lucide-react";
 import { useEffect } from "react";
 import { toast } from "sonner";
 
-import { ChatInput, MessageList, ModelSelector } from "@/components/chat";
-import { useConversationStore } from "@/stores";
+import { ChatInput, ChatSettings, MessageList } from "@/components/chat";
+import { Button } from "@/components/ui";
+import { cn } from "@/lib/utils";
+import { useConversationStore, useUIStore } from "@/stores";
+import { DEFAULT_PARAMETERS } from "@/types";
 
 export function ChatInterface() {
   const {
@@ -16,17 +20,17 @@ export function ChatInterface() {
     abortGeneration,
   } = useConversationStore();
 
+  const { toggleChatSettings, isChatSettingsOpen } = useUIStore();
+
   const conversation = conversations.find((c) => c.id === activeConversationId);
   const messages = conversation?.messages || [];
 
   // Create a default conversation if none exists
   useEffect(() => {
     if (!activeConversationId && !isLoading && conversations.length === 0) {
-      createConversation("gemma-3-1b-it", {
-        temperature: 0.7,
-        maxTokens: 1024,
-        topP: 0.9,
-      }).catch(console.error);
+      createConversation("gemini-2.5-flash-lite", DEFAULT_PARAMETERS).catch(
+        console.error,
+      );
     }
   }, [
     activeConversationId,
@@ -51,23 +55,41 @@ export function ChatInterface() {
 
   return (
     <div className="bg-background flex h-svh flex-col">
-      <header className="flex items-center justify-between border-b px-6 py-4">
+      <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b px-4">
         <h1 className="text-xl font-bold">🧩 Tinkeral</h1>
-        <ModelSelector />
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleChatSettings}
+            className={cn(
+              "h-8 w-8",
+              isChatSettingsOpen && "bg-accent text-accent-foreground",
+            )}
+          >
+            <Settings2 className="h-4 w-4" />
+            <span className="sr-only">Toggle chat settings</span>
+          </Button>
+        </div>
       </header>
-      <div className="flex-1 overflow-hidden">
-        <MessageList
-          messages={messages}
-          isStreaming={isStreaming}
-          className="h-full px-4"
-        />
+      <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1 flex-col overflow-hidden">
+          <div className="flex-1 overflow-hidden">
+            <MessageList
+              messages={messages}
+              isStreaming={isStreaming}
+              className="h-full px-4"
+            />
+          </div>
+          <ChatInput
+            onSend={handleSend}
+            disabled={isLoading && !isStreaming}
+            isStreaming={isStreaming}
+            onStop={abortGeneration}
+          />
+        </div>
+        <ChatSettings />
       </div>
-      <ChatInput
-        onSend={handleSend}
-        disabled={isLoading && !isStreaming}
-        isStreaming={isStreaming}
-        onStop={abortGeneration}
-      />
     </div>
   );
 }

@@ -3,7 +3,12 @@ import { create } from "zustand";
 import { conversations as conversationsDb, type Conversation } from "@/db";
 import { GoogleAPIClient } from "@/services/api";
 import { useSettingsStore } from "@/stores";
-import type { Message, ModelInfo, ModelParameters } from "@/types";
+import {
+  DEFAULT_PARAMETERS,
+  type Message,
+  type ModelInfo,
+  type ModelParameters,
+} from "@/types";
 
 interface ConversationState {
   conversations: Conversation[];
@@ -30,6 +35,10 @@ interface ConversationState {
     conversationId: string,
     messageId: string,
     content: string,
+  ) => Promise<void>;
+  setParameters: (
+    params: Partial<ModelParameters>,
+    mode?: "merge" | "replace",
   ) => Promise<void>;
 }
 
@@ -134,12 +143,8 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
       console.log("No active conversation, creating new one...");
       try {
         const { settings } = useSettingsStore.getState();
-        const modelId = settings?.defaultModel || "gemma-3-1b-it";
-        const params = settings?.defaultParameters || {
-          temperature: 0.7,
-          maxTokens: 1024,
-          topP: 0.9,
-        };
+        const modelId = settings?.defaultModel || "gemini-2.5-flash-lite";
+        const params = settings?.defaultParameters || DEFAULT_PARAMETERS;
 
         const newId = await get().createConversation(modelId, params);
 
@@ -447,6 +452,46 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
     } catch (error) {
       console.error("Failed to update message:", error);
       set({ error: "Failed to update message" });
+    }
+  },
+
+  setParameters: async (
+    params: Partial<ModelParameters>,
+    mode: "merge" | "replace" = "merge",
+  ) => {
+    const { activeConversationId, conversations } = get();
+    if (!activeConversationId) return;
+
+    const conversation = conversations.find(
+      (c) => c.id === activeConversationId,
+    );
+    if (!conversation) return;
+
+    const updatedParameters =
+      mode === "replace"
+        ? (params as ModelParameters)
+        : { ...conversation.parameters, ...params };
+
+    const updatedConversation = {
+      ...conversation,
+      parameters: updatedParameters,
+      updatedAt: Date.now(),
+    };
+
+    try {
+      await conversationsDb.update(activeConversationId, {
+        parameters: updatedParameters,
+        updatedAt: updatedConversation.updatedAt,
+      });
+
+      set((state) => ({
+        conversations: state.conversations
+          .map((c) => (c.id === activeConversationId ? updatedConversation : c))
+          .sort((a, b) => b.updatedAt - a.updatedAt),
+      }));
+    } catch (error) {
+      console.error("Failed to update parameters:", error);
+      set({ error: "Failed to update parameters" });
     }
   },
 }));
