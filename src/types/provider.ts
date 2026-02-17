@@ -11,19 +11,49 @@ import type {
  * Information about a specific model
  */
 export interface ModelInfo {
-  readonly id: string; // e.g., 'gemini-pro'
-  readonly name: string; // Display name
-  readonly provider: string; // Provider id
-  description?: string; // Brief description
+  readonly id: string;
+  readonly name: string;
+  readonly provider: string; // 'google'
+  readonly family: "gemini" | "gemma" | "imagen" | "veo" | "other";
+  readonly tier?: "flash" | "pro" | "ultra" | "nano" | "fast" | "lite";
+  readonly stage: "stable" | "preview" | "experimental" | "legacy";
 
-  readonly contextWindow: number;
-  readonly maxOutputTokens: number;
-  capabilities: ModelCapabilities;
-  isRecommended?: boolean; // Show in "popular" list
+  readonly description: string;
+
+  // Technical Limits
+  readonly contextWindow: {
+    readonly input: number;
+    readonly output: number;
+  };
+
+  // Features (Boolean Map)
+  readonly capabilities: {
+    // Input Modalities
+    readonly imageInput: boolean;
+    readonly videoInput: boolean;
+    readonly audioInput: boolean;
+
+    // Output Modalities
+    readonly textGeneration: boolean;
+    readonly imageGeneration: boolean;
+    readonly videoGeneration: boolean;
+    readonly speechGeneration: boolean; // TTS
+
+    // Tools & Features
+    readonly functionCalling: boolean;
+    readonly codeExecution: boolean;
+    readonly systemInstruction: boolean;
+    readonly thinking?: boolean; // specialized thinking/reasoning
+    readonly embedding?: boolean; // Can create embeddings
+  };
+
+  readonly defaultParameters?: Partial<ModelParameters>;
+  readonly isRecommended?: boolean;
 }
 
 /**
  * Model capabilities - what features it supports
+ * @deprecated Use ModelInfo.capabilities instead
  */
 export interface ModelCapabilities {
   streaming: boolean;

@@ -4,9 +4,9 @@ import { toast } from "sonner";
 
 import { ChatInput, ChatSettings, MessageList } from "@/components/chat";
 import { Button } from "@/components/ui";
+import { getModelDefaultParameters } from "@/lib/models";
 import { cn } from "@/lib/utils";
 import { useConversationStore, useUIStore } from "@/stores";
-import { DEFAULT_PARAMETERS } from "@/types";
 
 export function ChatInterface() {
   const {
@@ -28,7 +28,8 @@ export function ChatInterface() {
   // Create a default conversation if none exists
   useEffect(() => {
     if (!activeConversationId && !isLoading && conversations.length === 0) {
-      createConversation("gemini-2.5-flash-lite", DEFAULT_PARAMETERS).catch(
+      const modelId = "gemini-2.5-flash-lite";
+      createConversation(modelId, getModelDefaultParameters(modelId)).catch(
         console.error,
       );
     }

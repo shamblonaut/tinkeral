@@ -1,14 +1,10 @@
 import { create } from "zustand";
 
 import { conversations as conversationsDb, type Conversation } from "@/db";
+import { getModelDefaultParameters } from "@/lib/models";
 import { GoogleAPIClient } from "@/services/api";
 import { useSettingsStore } from "@/stores";
-import {
-  DEFAULT_PARAMETERS,
-  type Message,
-  type ModelInfo,
-  type ModelParameters,
-} from "@/types";
+import { type Message, type ModelInfo, type ModelParameters } from "@/types";
 
 interface ConversationState {
   conversations: Conversation[];
@@ -144,7 +140,7 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
       try {
         const { settings } = useSettingsStore.getState();
         const modelId = settings?.defaultModel || "gemini-2.5-flash-lite";
-        const params = settings?.defaultParameters || DEFAULT_PARAMETERS;
+        const params = getModelDefaultParameters(modelId);
 
         const newId = await get().createConversation(modelId, params);
 

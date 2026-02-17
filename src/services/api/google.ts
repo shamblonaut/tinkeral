@@ -4,9 +4,9 @@ import {
   GoogleGenAI,
   type Content,
   type GenerateContentConfig,
-  type Model,
 } from "@google/genai";
 
+import { getModelById, getUnknownModel, KNOWN_MODELS } from "@/lib/models";
 import { ProviderError } from "@/services/api";
 import type {
   ChatRequest,
@@ -57,24 +57,15 @@ export class GoogleAPIClient implements LLMProvider {
   }
 
   async getModels(): Promise<ModelInfo[]> {
-    try {
-      const client = this.getClient();
-      const response = await client.models.list();
-
-      const models: ModelInfo[] = [];
-      for await (const model of response) {
-        models.push(this.getModelInfo(model));
-      }
-
-      return models;
-    } catch (error) {
-      throw new Error("Failed to list models: " + error);
-    }
+    return KNOWN_MODELS;
   }
 
   async getModel(id: string): Promise<ModelInfo> {
-    const client = this.getClient();
-    return this.getModelInfo(await client.models.get({ model: id }));
+    const model = getModelById(id);
+    if (model) {
+      return model;
+    }
+    return getUnknownModel(id);
   }
 
   async countTokens(contents: string, modelId: string): Promise<number> {
@@ -289,35 +280,6 @@ export class GoogleAPIClient implements LLMProvider {
     }
 
     return this.client;
-  }
-
-  private getModelInfo(model: Model): ModelInfo {
-    return {
-      id: model.name?.replace(/^models\//, "") || model.name || "unknown",
-      name: model.displayName || model.name || "Unknown Model",
-      provider: "google",
-      description: model.description || "",
-      contextWindow: model.inputTokenLimit || 0,
-      maxOutputTokens: model.outputTokenLimit || 0,
-      capabilities: {
-        streaming: Boolean(model.supportedActions?.includes("generateContent")),
-        functionCalling: Boolean(
-          model.supportedActions?.includes("generateContent") &&
-          /gemini/.test(model.name ?? "") &&
-          !/tts|image/.test(model.name ?? ""),
-        ),
-        systemPrompt: Boolean(
-          model.supportedActions?.includes("generateContent") &&
-          /gemini/.test(model.name ?? "") &&
-          !/tts|image/.test(model.name ?? ""),
-        ),
-        vision: Boolean(!/imagen|tts|embedding|aqa/.test(model.name ?? "")),
-
-        temperatureRange: [0, model.maxTemperature || 2],
-        topPRange: [0, 1],
-        supportsTopK: true,
-      },
-    };
   }
 
   private mapMessagesToContent(messages: Message[]): Content[] {

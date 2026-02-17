@@ -9,6 +9,7 @@ import {
   ScrollArea,
 } from "@/components/ui";
 import { useMediaQuery } from "@/hooks";
+import { getModelDefaultParameters } from "@/lib/models";
 import { useConversationStore, useUIStore } from "@/stores";
 import { DEFAULT_PARAMETERS } from "@/types";
 import { RotateCcw, X } from "lucide-react";
@@ -30,6 +31,15 @@ export function ChatSettings() {
   // Use conversation parameters or defaults
   const parameters = conversation?.parameters || DEFAULT_PARAMETERS;
   const isDisabled = !conversation;
+  const availableModels = useConversationStore(
+    (state) => state.availableModels,
+  );
+  const activeModel = availableModels.find(
+    (m) => m.id === conversation?.modelId,
+  );
+
+  const maxOutputTokens = activeModel?.contextWindow.output || 8192;
+
   const handleParamChange = (key: string, value: number) => {
     setParameters({ [key]: value });
   };
@@ -54,7 +64,14 @@ export function ChatSettings() {
             variant="ghost"
             size="icon"
             className="text-muted-foreground hover:text-foreground h-6 w-6 p-4"
-            onClick={() => setParameters(DEFAULT_PARAMETERS, "replace")}
+            onClick={() => {
+              if (conversation) {
+                setParameters(
+                  getModelDefaultParameters(conversation.modelId),
+                  "replace",
+                );
+              }
+            }}
             disabled={isDisabled}
           >
             <RotateCcw className="h-3 w-3" />
@@ -101,7 +118,7 @@ export function ChatSettings() {
           label="Max Output Tokens"
           value={parameters.maxTokens}
           min={1}
-          max={8192} // Adjust based on model capabilities later
+          max={maxOutputTokens}
           step={1}
           onChange={(val) => handleParamChange("maxTokens", val)}
           description="The maximum number of tokens to generate in the response."

@@ -53,13 +53,14 @@ function ModelItem({
 
 function ModelSelectorDesktop() {
   const [open, setOpen] = useState(false);
-  const [focusedModelId, setFocusedModelId] = useState<string>("");
 
-  const { sortedModels, selectedModel, currentModelId, handleSelect } =
+  const { models, selectedModel, currentModelId, handleSelect } =
     useModelSelection(() => setOpen(false));
 
+  const [focusedModelId, setFocusedModelId] = useState<string>(currentModelId);
+
   const activeModelId = focusedModelId || currentModelId;
-  const activeModel = sortedModels.find((m) => m.id === activeModelId);
+  const activeModel = models.find((m) => m.id === activeModelId);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -76,10 +77,19 @@ function ModelSelectorDesktop() {
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-xl p-0" align="end">
+      <PopoverContent className="w-2xl p-0" align="end">
         <div className="flex h-[300px]">
+          <div className="bg-muted/30 flex-1 overflow-y-auto p-4">
+            {activeModel ? (
+              <ModelDetails model={activeModel} />
+            ) : (
+              <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
+                No model selected
+              </div>
+            )}
+          </div>
           <Command
-            className="w-3xs rounded-r-none border-r"
+            className="w-sm rounded-l-none border-l"
             value={focusedModelId}
             onValueChange={setFocusedModelId}
           >
@@ -87,7 +97,7 @@ function ModelSelectorDesktop() {
             <CommandList>
               <CommandEmpty>No model found.</CommandEmpty>
               <CommandGroup>
-                {sortedModels.map((model) => (
+                {models.map((model) => (
                   <ModelItem
                     key={model.id}
                     model={model}
@@ -98,15 +108,6 @@ function ModelSelectorDesktop() {
               </CommandGroup>
             </CommandList>
           </Command>
-          <div className="bg-muted/30 flex-1 p-4">
-            {activeModel ? (
-              <ModelDetails model={activeModel} />
-            ) : (
-              <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
-                No model selected
-              </div>
-            )}
-          </div>
         </div>
       </PopoverContent>
     </Popover>
@@ -117,7 +118,7 @@ function ModelSelectorMobile() {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { sortedModels, selectedModel, currentModelId, handleSelect } =
+  const { models, selectedModel, currentModelId, handleSelect } =
     useModelSelection(() => {
       setOpen(false);
       setSearchQuery("");
@@ -162,7 +163,7 @@ function ModelSelectorMobile() {
                   </div>
                 )}
                 <CommandGroup>
-                  {sortedModels
+                  {models
                     .filter((model) => {
                       // If we are searching, show all models (so the selected one can be found)
                       // If we are NOT searching, hide the selected model (it's shown in the details card above)

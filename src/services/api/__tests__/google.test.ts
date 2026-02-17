@@ -1,6 +1,7 @@
 import { ApiError } from "@google/genai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { KNOWN_MODELS } from "@/lib/models";
 import { GoogleAPIClient } from "@/services/api";
 import { DEFAULT_PARAMETERS, type ChatRequest } from "@/types";
 
@@ -90,47 +91,23 @@ describe("GoogleAPIClient", () => {
   });
 
   describe("Model Management", () => {
-    it("getModels should return mapped model info", async () => {
-      const mockModels = [
-        {
-          name: "models/gemini-pro",
-          displayName: "Gemini Pro",
-          description: "A great model",
-          inputTokenLimit: 30000,
-          outputTokenLimit: 2048,
-          supportedActions: ["generateContent"],
-        },
-      ];
-      mocks.mockListModels.mockResolvedValue(mockModels);
-
+    it("getModels should return known models from registry", async () => {
       const models = await client.getModels();
-
-      expect(models).toHaveLength(1);
-      expect(models[0]).toMatchObject({
-        id: "gemini-pro",
-        name: "Gemini Pro",
-        provider: "google",
-        contextWindow: 30000,
-        maxOutputTokens: 2048,
-      });
-      // Verify capabilities mapping
-      expect(models[0].capabilities.streaming).toBe(true);
-      expect(models[0].capabilities.systemPrompt).toBe(true);
+      expect(models).toBe(KNOWN_MODELS);
     });
 
-    it("getModel should return single mapped model", async () => {
-      const mockModel = {
-        name: "models/gemini-pro",
-        displayName: "Gemini Pro",
-        inputTokenLimit: 30000,
-      };
-      mocks.mockGetModel.mockResolvedValue(mockModel);
+    it("getModel should return model from registry", async () => {
+      const model = await client.getModel("gemini-2.5-pro");
+      expect(model).toBeDefined();
+      expect(model.id).toBe("gemini-2.5-pro");
+      expect(model.name).toBe("Gemini 2.5 Pro");
+    });
 
-      const model = await client.getModel("gemini-pro");
-
-      expect(mocks.mockGetModel).toHaveBeenCalledWith({ model: "gemini-pro" });
-      expect(model.id).toBe("gemini-pro");
-      expect(model.name).toBe("Gemini Pro");
+    it("getModel should return unknown model for missing id", async () => {
+      const model = await client.getModel("unknown-model-id");
+      expect(model).toBeDefined();
+      expect(model.id).toBe("unknown-model-id");
+      expect(model.stage).toBe("experimental");
     });
   });
 

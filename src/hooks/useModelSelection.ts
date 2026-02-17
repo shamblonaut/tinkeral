@@ -1,6 +1,6 @@
+import { getModelDefaultParameters } from "@/lib/models";
 import { useConversationStore, useSettingsStore } from "@/stores";
-import { DEFAULT_PARAMETERS } from "@/types";
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 
 export function useModelSelection(onSelect?: () => void) {
   const {
@@ -28,22 +28,22 @@ export function useModelSelection(onSelect?: () => void) {
 
   const selectedModel = availableModels.find((m) => m.id === currentModelId);
 
-  const sortedModels = useMemo(() => {
-    return [...availableModels].sort((a, b) => {
-      if (a.id === currentModelId) return -1;
-      if (b.id === currentModelId) return 1;
-      return a.name.localeCompare(b.name);
-    });
-  }, [availableModels, currentModelId]);
+  // const models = useMemo(() => {
+  //   return [...availableModels].sort((a, b) => {
+  //     if (a.id === currentModelId) return -1;
+  //     if (b.id === currentModelId) return 1;
+  //     return 0; // Maintain original order for others
+  //   });
+  // }, [availableModels, currentModelId]);
 
   const handleSelect = async (modelId: string) => {
     onSelect?.();
-    const defaultParams = settings?.defaultParameters || DEFAULT_PARAMETERS;
+    const defaultParams = getModelDefaultParameters(modelId);
     await createConversation(modelId, defaultParams);
   };
 
   return {
-    sortedModels,
+    models: availableModels,
     selectedModel,
     currentModelId,
     handleSelect,

@@ -121,7 +121,7 @@ export function ParameterControl({
             </Popover>
           )}
         </div>
-        <div className="w-12">
+        <div className="w-max">
           <Input
             id={`${id}-input`}
             type="number"
