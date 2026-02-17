@@ -24,6 +24,17 @@ vi.mock("sonner", () => ({
   Toaster: () => null,
 }));
 
+// Mock ReactMarkdown to avoid expensive parsing during tests
+vi.mock("react-markdown", () => ({
+  default: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+}));
+
+vi.mock("remark-gfm", () => ({
+  default: () => {},
+}));
+
 // Mock dependencies
 vi.mock("@/db/operations", () => ({
   conversations: {
