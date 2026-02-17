@@ -51,16 +51,89 @@ function ModelItem({
   );
 }
 
+interface ModelListProps {
+  models: ModelInfo[];
+  currentModelId: string;
+  onSelect: (id: string) => void;
+  focusedModelId: string;
+  setFocusedModelId: (id: string) => void;
+  selectedModel?: ModelInfo | null;
+  hideSelected?: boolean;
+  className?: string;
+}
+
+function ModelList({
+  models,
+  currentModelId,
+  onSelect,
+  focusedModelId,
+  setFocusedModelId,
+  selectedModel,
+  hideSelected = false,
+  className,
+}: ModelListProps) {
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const visibleModels = models.filter((m) => {
+    if (hideSelected && !searchQuery && m.id === currentModelId) return false;
+    return true;
+  });
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+
+    if (!query) {
+      const firstId = hideSelected
+        ? models.find((m) => m.id !== currentModelId)?.id
+        : models[0]?.id;
+      setFocusedModelId(firstId || "");
+    }
+  };
+
+  return (
+    <Command
+      className={cn("w-full", className)}
+      value={focusedModelId}
+      onValueChange={setFocusedModelId}
+      shouldFilter={true}
+    >
+      <CommandInput
+        placeholder="Search model..."
+        value={searchQuery}
+        onValueChange={handleSearch}
+      />
+      <CommandList key={searchQuery}>
+        <CommandEmpty>No model found.</CommandEmpty>
+        {!searchQuery && selectedModel && (
+          <div className="bg-muted/30 mx-1 mt-2 mb-1 flex rounded-md border p-2">
+            <Check className="m-2 h-4 w-4 shrink-0" />
+            <ModelDetails model={selectedModel} />
+          </div>
+        )}
+        <CommandGroup>
+          {visibleModels.map((model) => (
+            <ModelItem
+              key={model.id}
+              model={model}
+              isSelected={currentModelId === model.id}
+              onSelect={() => onSelect(model.id)}
+            />
+          ))}
+        </CommandGroup>
+      </CommandList>
+    </Command>
+  );
+}
+
 function ModelSelectorDesktop() {
   const [open, setOpen] = useState(false);
-
   const { models, selectedModel, currentModelId, handleSelect } =
     useModelSelection(() => setOpen(false));
 
-  const [focusedModelId, setFocusedModelId] = useState<string>(currentModelId);
-
-  const activeModelId = focusedModelId || currentModelId;
-  const activeModel = models.find((m) => m.id === activeModelId);
+  const [focusedId, setFocusedId] = useState(currentModelId);
+  const activeModel = models.find(
+    (m) => m.id === (focusedId || currentModelId),
+  );
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -68,12 +141,11 @@ function ModelSelectorDesktop() {
         <Button
           variant="outline"
           role="combobox"
-          aria-expanded={open}
           className="hidden w-full justify-between truncate md:flex"
         >
-          <p className="overflow-hidden text-ellipsis">
-            {selectedModel ? selectedModel.name : currentModelId}
-          </p>
+          <span className="truncate">
+            {selectedModel?.name || currentModelId}
+          </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -88,26 +160,16 @@ function ModelSelectorDesktop() {
               </div>
             )}
           </div>
-          <Command
-            className="w-sm rounded-l-none border-l"
-            value={focusedModelId}
-            onValueChange={setFocusedModelId}
-          >
-            <CommandInput placeholder="Search model..." />
-            <CommandList>
-              <CommandEmpty>No model found.</CommandEmpty>
-              <CommandGroup>
-                {models.map((model) => (
-                  <ModelItem
-                    key={model.id}
-                    model={model}
-                    isSelected={currentModelId === model.id}
-                    onSelect={() => handleSelect(model.id)}
-                  />
-                ))}
-              </CommandGroup>
-            </CommandList>
-          </Command>
+          <div className="w-sm">
+            <ModelList
+              className="rounded-l-none border-l"
+              models={models}
+              currentModelId={currentModelId}
+              onSelect={handleSelect}
+              focusedModelId={focusedId}
+              setFocusedModelId={setFocusedId}
+            />
+          </div>
         </div>
       </PopoverContent>
     </Popover>
@@ -116,13 +178,10 @@ function ModelSelectorDesktop() {
 
 function ModelSelectorMobile() {
   const [open, setOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-
   const { models, selectedModel, currentModelId, handleSelect } =
-    useModelSelection(() => {
-      setOpen(false);
-      setSearchQuery("");
-    });
+    useModelSelection(() => setOpen(false));
+
+  const [focusedId, setFocusedId] = useState(currentModelId);
 
   return (
     <Drawer open={open} onOpenChange={setOpen}>
@@ -130,58 +189,31 @@ function ModelSelectorMobile() {
         <Button
           variant="outline"
           role="combobox"
-          aria-expanded={open}
           className="flex w-full justify-between"
         >
-          <p className="overflow-hidden text-ellipsis">
-            {selectedModel ? selectedModel.name : currentModelId}
-          </p>
+          <span className="truncate">
+            {selectedModel?.name || currentModelId}
+          </span>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </DrawerTrigger>
       <DrawerContent>
-        <div className="mx-auto w-full max-w-sm">
-          <DrawerHeader className="text-left">
+        <div className="mx-auto w-full max-w-sm px-4">
+          <DrawerHeader className="px-0 text-left">
             <DrawerTitle>Select Model</DrawerTitle>
             <DrawerDescription>
               Choose an AI model for your conversation.
             </DrawerDescription>
           </DrawerHeader>
-          <div className="px-4 pb-4">
-            <Command>
-              <CommandInput
-                placeholder="Search model..."
-                value={searchQuery}
-                onValueChange={setSearchQuery}
-              />
-              <CommandList>
-                <CommandEmpty>No model found.</CommandEmpty>
-                {!searchQuery && selectedModel && (
-                  <div className="bg-muted/30 mx-1 my-2 flex rounded-md border p-2">
-                    <Check className="m-2 h-4 w-4 shrink-0" />
-                    <ModelDetails model={selectedModel} />
-                  </div>
-                )}
-                <CommandGroup>
-                  {models
-                    .filter((model) => {
-                      // If we are searching, show all models (so the selected one can be found)
-                      // If we are NOT searching, hide the selected model (it's shown in the details card above)
-                      if (searchQuery) return true;
-                      return model.id !== currentModelId;
-                    })
-                    .map((model) => (
-                      <ModelItem
-                        key={model.id}
-                        model={model}
-                        isSelected={currentModelId === model.id}
-                        onSelect={() => handleSelect(model.id)}
-                      />
-                    ))}
-                </CommandGroup>
-              </CommandList>
-            </Command>
-          </div>
+          <ModelList
+            models={models}
+            currentModelId={currentModelId}
+            onSelect={handleSelect}
+            focusedModelId={focusedId}
+            setFocusedModelId={setFocusedId}
+            selectedModel={selectedModel}
+            hideSelected
+          />
         </div>
       </DrawerContent>
     </Drawer>
@@ -190,10 +222,5 @@ function ModelSelectorMobile() {
 
 export function ModelSelector() {
   const isDesktop = useMediaQuery("(min-width: 768px)");
-
-  if (isDesktop) {
-    return <ModelSelectorDesktop />;
-  }
-
-  return <ModelSelectorMobile />;
+  return isDesktop ? <ModelSelectorDesktop /> : <ModelSelectorMobile />;
 }
