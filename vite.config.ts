@@ -11,4 +11,15 @@ export default defineConfig({
       "@": path.resolve(import.meta.dirname, "src"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ["react", "react-dom", "zustand", "dexie"],
+          deps: ["lucide-react", "radix-ui", "react-markdown", "remark-gfm"],
+          ai: ["@google/genai"],
+        },
+      },
+    },
+  },
 });
