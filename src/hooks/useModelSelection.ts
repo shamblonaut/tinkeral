@@ -11,7 +11,7 @@ export function useModelSelection(onSelect?: () => void) {
     createConversation,
   } = useConversationStore();
 
-  const { settings } = useSettingsStore();
+  const { settings, updateSettings } = useSettingsStore();
 
   const activeConversation = conversations.find(
     (c) => c.id === activeConversationId,
@@ -39,6 +39,10 @@ export function useModelSelection(onSelect?: () => void) {
   const handleSelect = async (modelId: string) => {
     onSelect?.();
     const defaultParams = getModelDefaultParameters(modelId);
+
+    // Persist as default model
+    updateSettings({ defaultModel: modelId });
+
     await createConversation(modelId, defaultParams);
   };
 

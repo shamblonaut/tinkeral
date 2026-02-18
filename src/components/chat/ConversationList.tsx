@@ -14,7 +14,7 @@ import {
 } from "@/components/ui";
 import { getModelDefaultParameters } from "@/lib/models";
 import { cn } from "@/lib/utils";
-import { useConversationStore } from "@/stores";
+import { useConversationStore, useSettingsStore } from "@/stores";
 
 interface ConversationListProps {
   className?: string;
@@ -38,8 +38,10 @@ export function ConversationList({
     string | null
   >(null);
 
+  const { settings } = useSettingsStore();
+
   const handleCreate = async () => {
-    const defaultModel = "gemini-2.5-flash-lite";
+    const defaultModel = settings?.defaultModel || "gemini-2.5-flash-lite";
     const params = getModelDefaultParameters(defaultModel);
     await createConversation(defaultModel, params);
     onSelect?.();

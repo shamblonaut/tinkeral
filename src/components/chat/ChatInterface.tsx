@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui";
 import { getModelDefaultParameters } from "@/lib/models";
 import { cn } from "@/lib/utils";
-import { useConversationStore, useUIStore } from "@/stores";
+import { useConversationStore, useSettingsStore, useUIStore } from "@/stores";
 
 export function ChatInterface() {
   const {
@@ -38,7 +38,8 @@ export function ChatInterface() {
   // Create a default conversation if none exists
   useEffect(() => {
     if (!activeConversationId && !isLoading && conversations.length === 0) {
-      const modelId = "gemini-2.5-flash-lite";
+      const { settings } = useSettingsStore.getState();
+      const modelId = settings?.defaultModel || "gemini-2.5-flash-lite";
       createConversation(modelId, getModelDefaultParameters(modelId)).catch(
         console.error,
       );
