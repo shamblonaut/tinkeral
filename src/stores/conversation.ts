@@ -14,10 +14,14 @@ interface ConversationState {
   isStreaming: boolean;
   error: string | null;
   abortController: AbortController | null;
+  searchQuery: string;
+  isSearching: boolean;
 
   // Actions
   loadConversations: () => Promise<void>;
   loadModels: () => Promise<void>;
+  setSearchQuery: (query: string) => void;
+  setIsSearching: (isSearching: boolean) => void;
   setActiveConversation: (id: string) => void;
   createConversation: (
     modelId: string,
@@ -48,6 +52,8 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
   isStreaming: false,
   error: null,
   abortController: null,
+  searchQuery: "",
+  isSearching: false,
 
   loadConversations: async () => {
     set({ isLoading: true, error: null });
@@ -75,6 +81,14 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
     } catch (error) {
       console.error("Failed to load models:", error);
     }
+  },
+
+  setSearchQuery: (query: string) => {
+    set({ searchQuery: query });
+  },
+
+  setIsSearching: (isSearching: boolean) => {
+    set({ isSearching });
   },
 
   setActiveConversation: (id: string) => {

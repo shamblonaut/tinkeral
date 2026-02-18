@@ -33,6 +33,7 @@ describe("ConversationStore", () => {
       activeConversationId: null,
       isLoading: false,
       error: null,
+      searchQuery: "",
     });
   });
 
@@ -508,5 +509,84 @@ describe("ConversationStore", () => {
     // Verify persistence
     const persisted = await conversations.get(id);
     expect(persisted?.title).toBe("This is a very long first message tha...");
+  });
+
+  describe("Search", () => {
+    it("should update search query", () => {
+      const store = useConversationStore.getState();
+      store.setSearchQuery("test query");
+
+      const state = useConversationStore.getState();
+      expect(state.searchQuery).toBe("test query");
+    });
+
+    it("should filter conversations by title (case-insensitive)", async () => {
+      const store = useConversationStore.getState();
+
+      // Create test conversations
+      await store.createConversation("model-1", {
+        temperature: 0.7,
+        maxTokens: 100,
+        topP: 0.9,
+      });
+      await store.renameConversation(
+        useConversationStore.getState().conversations[0].id,
+        "React Hooks",
+      );
+
+      await store.createConversation("model-1", {
+        temperature: 0.7,
+        maxTokens: 100,
+        topP: 0.9,
+      });
+      await store.renameConversation(
+        useConversationStore.getState().conversations[0].id,
+        "TypeScript Guide",
+      );
+
+      await store.createConversation("model-1", {
+        temperature: 0.7,
+        maxTokens: 100,
+        topP: 0.9,
+      });
+      await store.renameConversation(
+        useConversationStore.getState().conversations[0].id,
+        "Refactoring",
+      );
+
+      // Search for "react"
+      store.setSearchQuery("react");
+      let state = useConversationStore.getState();
+      let filtered = state.conversations.filter((c) =>
+        c.title.toLowerCase().includes(state.searchQuery.toLowerCase()),
+      );
+      expect(filtered.length).toBe(1);
+      expect(filtered[0].title).toBe("React Hooks");
+
+      // Search for "TYPE"
+      store.setSearchQuery("TYPE");
+      state = useConversationStore.getState();
+      filtered = state.conversations.filter((c) =>
+        c.title.toLowerCase().includes(state.searchQuery.toLowerCase()),
+      );
+      expect(filtered.length).toBe(1);
+      expect(filtered[0].title).toBe("TypeScript Guide");
+
+      // Search for "r" (matches all 3 titles as they all contain 'r' or 'R')
+      store.setSearchQuery("r");
+      state = useConversationStore.getState();
+      filtered = state.conversations.filter((c) =>
+        c.title.toLowerCase().includes(state.searchQuery.toLowerCase()),
+      );
+      expect(filtered.length).toBe(3);
+
+      // Empty search matches all
+      store.setSearchQuery("");
+      state = useConversationStore.getState();
+      filtered = state.conversations.filter((c) =>
+        c.title.toLowerCase().includes(state.searchQuery.toLowerCase()),
+      );
+      expect(filtered.length).toBe(3);
+    });
   });
 });

@@ -1,5 +1,5 @@
 import { Copy, Edit2, MessageSquare, MoreVertical, Trash2 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 
 import {
   Button,
@@ -21,7 +21,7 @@ interface ConversationItemProps {
   onDelete: (id: string, e: React.MouseEvent) => void;
 }
 
-export function ConversationItem({
+export const ConversationItem = memo(function ConversationItem({
   conversation,
   isActive,
   onSelect,
@@ -32,7 +32,12 @@ export function ConversationItem({
   const [isExpanded, setIsExpanded] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const { renameConversation, duplicateConversation } = useConversationStore();
+  const renameConversation = useConversationStore(
+    (state) => state.renameConversation,
+  );
+  const duplicateConversation = useConversationStore(
+    (state) => state.duplicateConversation,
+  );
   const isDesktop = useMediaQuery("(min-width: 768px)");
 
   const model = KNOWN_MODELS.find((m) => m.id === conversation.modelId);
@@ -226,4 +231,4 @@ export function ConversationItem({
       </div>
     </div>
   );
-}
+});
