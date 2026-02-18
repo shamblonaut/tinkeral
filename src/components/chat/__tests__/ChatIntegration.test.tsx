@@ -72,38 +72,40 @@ vi.mock("@/services/api/google", () => {
 
   return {
     GoogleAPIClient: {
-      createClient: vi.fn().mockResolvedValue({
-        chat: vi.fn().mockResolvedValue({
-          message: {
-            content: "Hello world",
-            metadata: {
-              finishReason: "stop",
-              tokens: 2,
+      createClient: vi.fn().mockImplementation(() => {
+        return Promise.resolve({
+          chat: vi.fn().mockResolvedValue({
+            message: {
+              content: "Hello world",
+              metadata: {
+                finishReason: "stop",
+                tokens: 2,
+              },
             },
-          },
-        }),
-        streamChat: vi.fn().mockReturnValue(mockStream()),
-        getModels: vi.fn().mockResolvedValue([
-          {
-            id: "gemini-pro",
-            name: "Gemini Pro",
-            description: "Test model",
-            contextWindow: { input: 32000, output: 2048 },
-            capabilities: {
-              imageInput: false,
-              videoInput: false,
-              audioInput: false,
-              textGeneration: true,
-              imageGeneration: false,
-              videoGeneration: false,
-              speechGeneration: false,
-              functionCalling: true,
-              codeExecution: true,
-              systemInstruction: true,
-              thinking: false,
+          }),
+          streamChat: vi.fn().mockImplementation(() => mockStream()),
+          getModels: vi.fn().mockResolvedValue([
+            {
+              id: "gemini-pro",
+              name: "Gemini Pro",
+              description: "Test model",
+              contextWindow: { input: 32000, output: 2048 },
+              capabilities: {
+                imageInput: false,
+                videoInput: false,
+                audioInput: false,
+                textGeneration: true,
+                imageGeneration: false,
+                videoGeneration: false,
+                speechGeneration: false,
+                functionCalling: true,
+                codeExecution: true,
+                systemInstruction: true,
+                thinking: false,
+              },
             },
-          },
-        ]),
+          ]),
+        });
       }),
     },
   };
@@ -144,12 +146,18 @@ describe("ChatInterface Integration", () => {
     });
   });
 
-  it("should initialize a new conversation if none exists", async () => {
+  it("should create a new conversation when sending the first message", async () => {
     render(
       <TooltipProvider>
         <ChatInterface />
       </TooltipProvider>,
     );
+
+    const input = screen.getByPlaceholderText("Type a message...");
+    const sendButton = screen.getByRole("button", { name: /send/i });
+
+    fireEvent.change(input, { target: { value: "Hello New Conversation" } });
+    fireEvent.click(sendButton);
 
     await waitFor(() => {
       expect(conversationsDb.create).toHaveBeenCalled();

@@ -9,9 +9,8 @@ import {
   MessageList,
 } from "@/components/chat";
 import { Button } from "@/components/ui";
-import { getModelDefaultParameters } from "@/lib/models";
 import { cn } from "@/lib/utils";
-import { useConversationStore, useSettingsStore, useUIStore } from "@/stores";
+import { useConversationStore, useUIStore } from "@/stores";
 
 export function ChatInterface() {
   const {
@@ -21,7 +20,6 @@ export function ChatInterface() {
     isLoading,
     isStreaming,
     error,
-    createConversation,
     abortGeneration,
   } = useConversationStore();
 
@@ -34,22 +32,6 @@ export function ChatInterface() {
 
   const conversation = conversations.find((c) => c.id === activeConversationId);
   const messages = conversation?.messages || [];
-
-  // Create a default conversation if none exists
-  useEffect(() => {
-    if (!activeConversationId && !isLoading && conversations.length === 0) {
-      const { settings } = useSettingsStore.getState();
-      const modelId = settings?.defaultModel || "gemini-2.5-flash-lite";
-      createConversation(modelId, getModelDefaultParameters(modelId)).catch(
-        console.error,
-      );
-    }
-  }, [
-    activeConversationId,
-    isLoading,
-    conversations.length,
-    createConversation,
-  ]);
 
   // Handle errors
   useEffect(() => {
