@@ -2,7 +2,7 @@ import { useEffect } from "react";
 
 import { APIKeyModal } from "@/components/auth";
 import { ChatInterface } from "@/components/chat";
-import { Toaster } from "@/components/ui";
+import { Toaster, TooltipProvider } from "@/components/ui";
 import { useConversationStore, useSettingsStore } from "@/stores";
 
 function App() {
@@ -44,10 +44,10 @@ function App() {
   const hasGoogleKey = !!settings?.apiKeys?.google;
 
   return (
-    <>
+    <TooltipProvider>
       {!hasGoogleKey ? <APIKeyModal /> : <ChatInterface />}
       <Toaster />
-    </>
+    </TooltipProvider>
   );
 }
 

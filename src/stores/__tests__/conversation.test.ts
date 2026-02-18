@@ -410,4 +410,103 @@ describe("ConversationStore", () => {
     expect(lastMessage?.content).toContain("Start");
     expect(state.error).toBeNull();
   });
+
+  it("should rename a conversation", async () => {
+    const store = useConversationStore.getState();
+    const id = await store.createConversation("test-model", {
+      temperature: 0.7,
+      maxTokens: 100,
+      topP: 0.9,
+    });
+
+    await store.renameConversation(id, "New Title");
+
+    const state = useConversationStore.getState();
+    const conversation = state.conversations.find((c) => c.id === id);
+    expect(conversation?.title).toBe("New Title");
+
+    // Verify persistence
+    const persisted = await conversations.get(id);
+    expect(persisted?.title).toBe("New Title");
+  });
+
+  it("should duplicate a conversation", async () => {
+    const store = useConversationStore.getState();
+    const originalId = await store.createConversation("test-model", {
+      temperature: 0.5,
+      maxTokens: 100,
+      topP: 0.9,
+    });
+
+    // Add a message
+    const message = {
+      id: "msg-1",
+      role: "user" as const,
+      content: "Deep content",
+      timestamp: Date.now(),
+    };
+    await conversations.update(originalId, { messages: [message] });
+    await store.loadConversations(); // Sync store
+
+    await store.duplicateConversation(originalId);
+
+    const state = useConversationStore.getState();
+    expect(state.conversations.length).toBe(2);
+
+    const duplicate = state.conversations[0]; // Newest usually first
+    expect(duplicate.id).not.toBe(originalId);
+    expect(duplicate.title).toBe("New Conversation (Copy)");
+    expect(duplicate.modelId).toBe("test-model");
+    expect(duplicate.parameters.temperature).toBe(0.5);
+    expect(duplicate.messages.length).toBe(1);
+    expect(duplicate.messages[0].content).toBe("Deep content");
+
+    // Verify persistence
+    const persisted = await conversations.get(duplicate.id);
+    expect(persisted).toBeDefined();
+    expect(persisted?.title).toBe("New Conversation (Copy)");
+  });
+
+  it("should generate title automatically after first user message", async () => {
+    // Mock settings and API as in other sendMessage tests
+    vi.mocked(useSettingsStore.getState).mockReturnValue({
+      settings: {
+        id: "app-settings",
+        apiKeys: { google: "test-api-key" },
+        defaultModel: "gemini-pro",
+      },
+    } as unknown as SettingsState);
+
+    const mockStream = async function* () {
+      yield { delta: "Response" };
+      yield { delta: "", finishReason: "stop" };
+    };
+    vi.mocked(GoogleAPIClient.createClient).mockResolvedValue({
+      streamChat: vi.fn().mockReturnValue(mockStream()),
+    } as unknown as GoogleAPIClient);
+
+    const store = useConversationStore.getState();
+    const id = await store.createConversation("test-model", {
+      temperature: 0.7,
+      maxTokens: 100,
+      topP: 0.9,
+    });
+    store.setActiveConversation(id);
+
+    await store.sendMessage(
+      "This is a very long first message that should be truncated",
+    );
+
+    const state = useConversationStore.getState();
+    const conversation = state.conversations.find((c) => c.id === id);
+
+    // Should be truncated to ~40 chars total (37 + 3)
+    expect(conversation?.title).toBe(
+      "This is a very long first message tha...",
+    );
+
+    // Verify persistence
+    const persisted = await conversations.get(id);
+    expect(persisted?.title).toBe("This is a very long first message tha...");
+  });
 });

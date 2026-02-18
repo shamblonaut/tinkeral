@@ -1,7 +1,17 @@
 import { Plus } from "lucide-react";
+import { useState } from "react";
 
 import { ConversationItem } from "@/components/chat";
-import { Button, ScrollArea } from "@/components/ui";
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  ScrollArea,
+} from "@/components/ui";
 import { getModelDefaultParameters } from "@/lib/models";
 import { cn } from "@/lib/utils";
 import { useConversationStore } from "@/stores";
@@ -24,6 +34,10 @@ export function ConversationList({
     isLoading,
   } = useConversationStore();
 
+  const [conversationToDelete, setConversationToDelete] = useState<
+    string | null
+  >(null);
+
   const handleCreate = async () => {
     const defaultModel = "gemini-2.5-flash-lite";
     const params = getModelDefaultParameters(defaultModel);
@@ -36,10 +50,15 @@ export function ConversationList({
     onSelect?.();
   };
 
-  const handleDelete = async (id: string, e: React.MouseEvent) => {
+  const handleDelete = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (window.confirm("Are you sure you want to delete this conversation?")) {
-      await deleteConversation(id);
+    setConversationToDelete(id);
+  };
+
+  const confirmDelete = async () => {
+    if (conversationToDelete) {
+      await deleteConversation(conversationToDelete);
+      setConversationToDelete(null);
     }
   };
 
@@ -75,6 +94,31 @@ export function ConversationList({
           ))}
         </div>
       </ScrollArea>
+      <Dialog
+        open={conversationToDelete !== null}
+        onOpenChange={(open: boolean) => !open && setConversationToDelete(null)}
+      >
+        <DialogContent className="max-w-[75vw]">
+          <DialogHeader>
+            <DialogTitle>Delete Conversation</DialogTitle>
+            <DialogDescription className="text-left">
+              Are you sure you want to delete this conversation? This action
+              cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setConversationToDelete(null)}
+            >
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDelete}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

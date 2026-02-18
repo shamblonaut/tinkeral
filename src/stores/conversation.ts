@@ -32,6 +32,8 @@ interface ConversationState {
     messageId: string,
     content: string,
   ) => Promise<void>;
+  renameConversation: (id: string, title: string) => Promise<void>;
+  duplicateConversation: (id: string) => Promise<string>;
   setParameters: (
     params: Partial<ModelParameters>,
     mode?: "merge" | "replace",
@@ -175,6 +177,18 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
       updatedAt: Date.now(),
     };
 
+    // 2.1 Auto-generate title if it's a new conversation
+    let titleUpdate: string | undefined;
+    if (
+      conversation.title === "New Conversation" &&
+      conversation.messages.length === 0
+    ) {
+      // Use first 40 chars of message as title
+      titleUpdate =
+        content.length > 40 ? content.substring(0, 37) + "..." : content;
+      conversationWithUserMsg.title = titleUpdate;
+    }
+
     const abortController = new AbortController();
 
     // Optimistic update
@@ -190,10 +204,12 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
       abortController,
     }));
 
-    // Persist user message
+    // Persist user message and potentially title
     try {
       await conversationsDb.update(activeConversationId, {
         messages: conversationWithUserMsg.messages,
+        title: titleUpdate || conversation.title,
+        updatedAt: conversationWithUserMsg.updatedAt,
       });
     } catch (err) {
       console.error("Failed to persist user message:", err);
@@ -407,6 +423,50 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
         isStreaming: false,
         abortController: null,
       });
+    }
+  },
+
+  renameConversation: async (id: string, title: string) => {
+    try {
+      await conversationsDb.update(id, { title, updatedAt: Date.now() });
+      set((state) => ({
+        conversations: state.conversations
+          .map((c) =>
+            c.id === id ? { ...c, title, updatedAt: Date.now() } : c,
+          )
+          .sort((a, b) => b.updatedAt - a.updatedAt),
+      }));
+    } catch (error) {
+      console.error("Failed to rename conversation:", error);
+      set({ error: "Failed to rename conversation" });
+    }
+  },
+
+  duplicateConversation: async (id: string) => {
+    const state = get();
+    const conversation = state.conversations.find((c) => c.id === id);
+    if (!conversation) throw new Error("Conversation not found");
+
+    try {
+      const newConversation: Omit<Conversation, "id"> = {
+        ...conversation,
+        title: `${conversation.title} (Copy)`,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+      const newId = await conversationsDb.create(newConversation);
+      const createdConversation = { ...newConversation, id: newId };
+
+      set((state) => ({
+        conversations: [createdConversation, ...state.conversations],
+        activeConversationId: newId,
+      }));
+
+      return newId;
+    } catch (error) {
+      console.error("Failed to duplicate conversation:", error);
+      set({ error: "Failed to duplicate conversation" });
+      throw error;
     }
   },
 

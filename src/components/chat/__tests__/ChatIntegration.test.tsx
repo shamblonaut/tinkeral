@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ChatInterface } from "@/components/chat";
+import { TooltipProvider } from "@/components/ui";
 import { conversations as conversationsDb } from "@/db";
 import { GoogleAPIClient } from "@/services/api";
 import { useConversationStore, useSettingsStore } from "@/stores";
@@ -144,7 +145,11 @@ describe("ChatInterface Integration", () => {
   });
 
   it("should initialize a new conversation if none exists", async () => {
-    render(<ChatInterface />);
+    render(
+      <TooltipProvider>
+        <ChatInterface />
+      </TooltipProvider>,
+    );
 
     await waitFor(() => {
       expect(conversationsDb.create).toHaveBeenCalled();
@@ -168,7 +173,11 @@ describe("ChatInterface Integration", () => {
       activeConversationId: "test-conversation-id",
     });
 
-    render(<ChatInterface />);
+    render(
+      <TooltipProvider>
+        <ChatInterface />
+      </TooltipProvider>,
+    );
 
     const input = screen.getByPlaceholderText("Type a message...");
     const sendButton = screen.getByRole("button", { name: /send/i });
@@ -222,7 +231,11 @@ describe("ChatInterface Integration", () => {
         }),
       } as unknown as GoogleAPIClient);
 
-    render(<ChatInterface />);
+    render(
+      <TooltipProvider>
+        <ChatInterface />
+      </TooltipProvider>,
+    );
 
     const input = screen.getByPlaceholderText("Type a message...");
     const sendButton = screen.getByRole("button", { name: /send/i });
@@ -301,7 +314,11 @@ describe("ChatInterface Integration", () => {
       streamChat: vi.fn(),
     } as unknown as GoogleAPIClient);
 
-    render(<ChatInterface />);
+    render(
+      <TooltipProvider>
+        <ChatInterface />
+      </TooltipProvider>,
+    );
 
     // Open model selector
     // The select trigger displays the current model name
@@ -320,5 +337,148 @@ describe("ChatInterface Integration", () => {
         }),
       );
     });
+  });
+
+  it("should delete a conversation", async () => {
+    // Setup initial state
+    const conversationId = "test-delete-id";
+    useConversationStore.setState({
+      conversations: [
+        {
+          id: conversationId,
+          title: "Delete Me",
+          modelId: "gemini-pro",
+          parameters: { temperature: 0.7, maxTokens: 1024, topP: 0.9 },
+          messages: [],
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        },
+      ],
+      activeConversationId: conversationId,
+    });
+
+    render(
+      <TooltipProvider>
+        <ChatInterface />
+      </TooltipProvider>,
+    );
+
+    // 1. Expand the conversation item to see the Delete button
+    // The "More" button has the MoreVertical icon and sr-only "Toggle details"
+    const moreButton = screen.getByRole("button", { name: /toggle details/i });
+    fireEvent.click(moreButton);
+
+    // 2. Click the Delete button in the expanded section
+    const deleteButton = await screen.findByRole("button", { name: /delete/i });
+    fireEvent.click(deleteButton);
+
+    // 3. Confirm deletion in the Dialog
+    // Radix Dialog might render in a portal, but screen.findByRole should find it if it's in the DOM
+    const confirmDeleteButton = await screen.findByRole("button", {
+      name: /^delete$/i, // Match the "Delete" button in the dialog specifically
+    });
+    fireEvent.click(confirmDeleteButton);
+
+    // 4. Verify deletion
+    await waitFor(() => {
+      expect(conversationsDb.delete).toHaveBeenCalledWith(conversationId);
+    });
+
+    // Verify UI updates (no longer in list)
+    expect(screen.queryByText("Delete Me")).not.toBeInTheDocument();
+  });
+
+  it("should cancel deletion", async () => {
+    // Setup initial state
+    const conversationId = "test-cancel-delete-id";
+    useConversationStore.setState({
+      conversations: [
+        {
+          id: conversationId,
+          title: "Keep Me",
+          modelId: "gemini-pro",
+          parameters: { temperature: 0.7, maxTokens: 1024, topP: 0.9 },
+          messages: [],
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        },
+      ],
+      activeConversationId: conversationId,
+    });
+
+    render(
+      <TooltipProvider>
+        <ChatInterface />
+      </TooltipProvider>,
+    );
+
+    // 1. Expand item
+    const moreButton = screen.getByRole("button", { name: /toggle details/i });
+    fireEvent.click(moreButton);
+
+    // 2. Click Delete
+    const deleteButton = await screen.findByRole("button", { name: /delete/i });
+    fireEvent.click(deleteButton);
+
+    // 3. Click Cancel in Dialog
+    const cancelButton = await screen.findByRole("button", { name: /cancel/i });
+    fireEvent.click(cancelButton);
+
+    // 4. Verify NOT deleted
+    await waitFor(() => {
+      expect(conversationsDb.delete).not.toHaveBeenCalled();
+    });
+
+    // Verify still in document
+    expect(screen.getByText("Keep Me")).toBeInTheDocument();
+  });
+
+  it("should rename a conversation via UI", async () => {
+    // Setup initial state
+    const conversationId = "test-rename-id";
+    useConversationStore.setState({
+      conversations: [
+        {
+          id: conversationId,
+          title: "Old Title",
+          modelId: "gemini-pro",
+          parameters: { temperature: 0.7, maxTokens: 1024, topP: 0.9 },
+          messages: [],
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        },
+      ],
+      activeConversationId: conversationId,
+    });
+
+    render(
+      <TooltipProvider>
+        <ChatInterface />
+      </TooltipProvider>,
+    );
+
+    // 1. Expand item
+    const moreButton = screen.getByRole("button", { name: /toggle details/i });
+    fireEvent.click(moreButton);
+
+    // 2. Click Rename button
+    const renameButton = await screen.findByRole("button", { name: /rename/i });
+    fireEvent.click(renameButton);
+
+    // 3. Find input, change value, hit Enter
+    const input = await screen.findByDisplayValue("Old Title");
+    fireEvent.change(input, { target: { value: "New Title" } });
+    fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
+
+    // 4. Verify store update (and persistence implied by store logic)
+    await waitFor(() => {
+      expect(conversationsDb.update).toHaveBeenCalledWith(
+        conversationId,
+        expect.objectContaining({ title: "New Title" }),
+      );
+    });
+
+    // Verify UI update
+    expect(screen.getByText("New Title")).toBeInTheDocument();
   });
 });
