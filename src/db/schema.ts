@@ -18,6 +18,8 @@ export interface Conversation {
     totalTokens?: number;
     estimatedCost?: number;
   };
+  persisted?: boolean;
+  isTemporary?: boolean;
 }
 
 export interface AppSettings {

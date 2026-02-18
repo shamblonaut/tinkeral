@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { APIKeyModal } from "@/components/auth";
 import { ChatInterface } from "@/components/chat";
 import { Toaster, TooltipProvider } from "@/components/ui";
+import { getModelDefaultParameters } from "@/lib/models";
 import { useConversationStore, useSettingsStore } from "@/stores";
 
 function App() {
@@ -24,6 +25,23 @@ function App() {
       try {
         await loadSettings();
         await loadConversations();
+
+        // If no active conversation, create a new ephemeral one
+        const conversationStore = useConversationStore.getState();
+        if (!conversationStore.activeConversationId) {
+          const settingsState = useSettingsStore.getState();
+          if (settingsState.settings) {
+            const defaultModel = settingsState.settings.defaultModel;
+            const defaultParams =
+              settingsState.settings.defaultParameters ||
+              getModelDefaultParameters(defaultModel);
+
+            await conversationStore.createConversation(
+              defaultModel,
+              defaultParams,
+            );
+          }
+        }
       } catch (error) {
         console.error("Initialization failed:", error);
       }

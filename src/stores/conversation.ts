@@ -34,6 +34,7 @@ interface ConversationState {
     modelId: string,
     params: ModelParameters,
     systemPrompt?: string,
+    options?: { isTemporary?: boolean },
   ) => Promise<string>;
   deleteConversation: (id: string) => Promise<void>;
   sendMessage: (content: string) => Promise<void>;
@@ -68,9 +69,23 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const allConversations = await conversationsDb.getAll();
+
+      // Preserve ephemeral conversations from current state
+      const currentConversations = get().conversations;
+      const ephemeralConversations = currentConversations.filter(
+        (c) => c.persisted === false,
+      );
+
+      // Combine DB conversations with ephemeral ones
+      const combinedConversations = [
+        ...allConversations,
+        ...ephemeralConversations,
+      ];
+
       // Sort by updatedAt descending
-      allConversations.sort((a, b) => b.updatedAt - a.updatedAt);
-      set({ conversations: allConversations, isLoading: false });
+      combinedConversations.sort((a, b) => b.updatedAt - a.updatedAt);
+
+      set({ conversations: combinedConversations, isLoading: false });
     } catch (error) {
       console.error("Failed to load conversations:", error);
       set({ error: "Failed to load conversations", isLoading: false });
@@ -117,9 +132,16 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
   },
 
   selectAll: () => {
-    set((state) => ({
-      selectedIds: state.conversations.map((c) => c.id),
-    }));
+    set((state) => {
+      const filteredIds = state.conversations
+        .filter(
+          (c) =>
+            c.persisted !== false &&
+            c.title.toLowerCase().includes(state.searchQuery.toLowerCase()),
+        )
+        .map((c) => c.id);
+      return { selectedIds: filteredIds };
+    });
   },
 
   deselectAll: () => {
@@ -127,12 +149,18 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
   },
 
   deleteSelectedConversations: async () => {
-    const { selectedIds } = get();
+    const { selectedIds, conversations: currentConversations } = get();
     if (selectedIds.length === 0) return;
 
     try {
-      // Delete from DB in parallel
-      await Promise.all(selectedIds.map((id) => conversationsDb.delete(id)));
+      // Delete persisted conversations
+      const persistedIds = currentConversations
+        .filter((c) => selectedIds.includes(c.id) && c.persisted !== false)
+        .map((c) => c.id);
+
+      if (persistedIds.length > 0) {
+        await Promise.all(persistedIds.map((id) => conversationsDb.delete(id)));
+      }
 
       set((state) => {
         const newConversations = state.conversations.filter(
@@ -160,17 +188,35 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
   },
 
   setActiveConversation: (id: string) => {
-    set({ activeConversationId: id });
+    set((state) => {
+      // If current conversation is empty and ephemeral, remove it
+      // Only if we are switching to a DIFFERENT conversation
+      let cleanedConversations = state.conversations;
+      if (state.activeConversationId !== id) {
+        cleanedConversations = cleanupEmptyDrafts(
+          state.conversations,
+          state.activeConversationId,
+        );
+      }
+
+      return {
+        conversations: cleanedConversations,
+        activeConversationId: id,
+      };
+    });
   },
 
   createConversation: async (
     modelId: string,
     params: ModelParameters,
     systemPrompt?: string,
+    options: { isTemporary?: boolean } = {},
   ) => {
     set({ isLoading: true, error: null });
     try {
-      const newConversation: Omit<Conversation, "id"> = {
+      const id = crypto.randomUUID();
+      const newConversation: Conversation = {
+        id,
         title: "New Conversation",
         modelId,
         parameters: params,
@@ -178,15 +224,23 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
         messages: [],
         createdAt: Date.now(),
         updatedAt: Date.now(),
+        persisted: false,
+        isTemporary: options.isTemporary,
       };
-      const id = await conversationsDb.create(newConversation);
-      const createdConversation = { ...newConversation, id };
 
-      set((state) => ({
-        conversations: [createdConversation, ...state.conversations],
-        activeConversationId: id,
-        isLoading: false,
-      }));
+      set((state) => {
+        // If current conversation is empty and ephemeral, remove it
+        const cleanedConversations = cleanupEmptyDrafts(
+          state.conversations,
+          state.activeConversationId,
+        );
+
+        return {
+          conversations: [newConversation, ...cleanedConversations],
+          activeConversationId: id,
+          isLoading: false,
+        };
+      });
 
       return id;
     } catch (error) {
@@ -198,7 +252,11 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
 
   deleteConversation: async (id: string) => {
     try {
-      await conversationsDb.delete(id);
+      const conversation = get().conversations.find((c) => c.id === id);
+      if (conversation && conversation.persisted !== false) {
+        await conversationsDb.delete(id);
+      }
+
       set((state) => {
         const newConversations = state.conversations.filter((c) => c.id !== id);
         return {
@@ -285,14 +343,39 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
       error: null,
       abortController,
     }));
-
     // Persist user message and potentially title
     try {
-      await conversationsDb.update(activeConversationId, {
-        messages: conversationWithUserMsg.messages,
-        title: titleUpdate || conversation.title,
-        updatedAt: conversationWithUserMsg.updatedAt,
-      });
+      // Check if conversation is not persisted (was ephemeral)
+      // Note: undefined persisted means it IS persisted (legacy/default), only === false means not persisted
+      if (conversationWithUserMsg.persisted === false) {
+        // First message in new conversation -> Persist everything
+        // destruct persisted to exclude it from persisted object (optional, but good for clean DB)
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { persisted, isTemporary, ...conversationData } =
+          conversationWithUserMsg;
+
+        if (!isTemporary) {
+          const persistedConversation = {
+            ...conversationData,
+            title: titleUpdate || conversation.title,
+          };
+
+          await conversationsDb.save(persistedConversation);
+
+          // Update local state to mark as persisted
+          set((state) => ({
+            conversations: state.conversations.map((c) =>
+              c.id === activeConversationId ? { ...c, persisted: true } : c,
+            ),
+          }));
+        }
+      } else if (!conversationWithUserMsg.isTemporary) {
+        await conversationsDb.update(activeConversationId, {
+          messages: conversationWithUserMsg.messages,
+          title: titleUpdate || conversation.title,
+          updatedAt: conversationWithUserMsg.updatedAt,
+        });
+      }
     } catch (err) {
       console.error("Failed to persist user message:", err);
       // Continue anyway, we can retry persistence later
@@ -444,7 +527,11 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
       const finalConversation = get().conversations.find(
         (c) => c.id === activeConversationId,
       );
-      if (finalConversation) {
+      if (
+        finalConversation &&
+        finalConversation.persisted !== false &&
+        !finalConversation.isTemporary
+      ) {
         await conversationsDb.update(activeConversationId, {
           messages: finalConversation.messages,
           updatedAt: Date.now(),
@@ -510,7 +597,15 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
 
   renameConversation: async (id: string, title: string) => {
     try {
-      await conversationsDb.update(id, { title, updatedAt: Date.now() });
+      const conversation = get().conversations.find((c) => c.id === id);
+      if (
+        conversation &&
+        conversation.persisted !== false &&
+        !conversation.isTemporary
+      ) {
+        await conversationsDb.update(id, { title, updatedAt: Date.now() });
+      }
+
       set((state) => ({
         conversations: state.conversations
           .map((c) =>
@@ -578,9 +673,11 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
     };
 
     try {
-      await conversationsDb.update(conversationId, {
-        messages: updatedMessages,
-      });
+      if (conversation.persisted !== false && !conversation.isTemporary) {
+        await conversationsDb.update(conversationId, {
+          messages: updatedMessages,
+        });
+      }
 
       set((state) => ({
         conversations: state.conversations
@@ -617,10 +714,12 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
     };
 
     try {
-      await conversationsDb.update(activeConversationId, {
-        parameters: updatedParameters,
-        updatedAt: updatedConversation.updatedAt,
-      });
+      if (conversation.persisted !== false && !conversation.isTemporary) {
+        await conversationsDb.update(activeConversationId, {
+          parameters: updatedParameters,
+          updatedAt: updatedConversation.updatedAt,
+        });
+      }
 
       set((state) => ({
         conversations: state.conversations
@@ -633,3 +732,21 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
     }
   },
 }));
+
+// Helper to remove empty ephemeral conversations
+function cleanupEmptyDrafts(
+  conversations: Conversation[],
+  activeId: string | null,
+): Conversation[] {
+  if (!activeId) return conversations;
+
+  const activeConv = conversations.find((c) => c.id === activeId);
+  if (
+    activeConv &&
+    activeConv.persisted === false &&
+    activeConv.messages.length === 0
+  ) {
+    return conversations.filter((c) => c.id !== activeId);
+  }
+  return conversations;
+}

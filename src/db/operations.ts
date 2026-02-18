@@ -23,6 +23,9 @@ export const conversations = {
   async delete(id: string) {
     return await db.conversations.delete(id);
   },
+  async save(conversation: Conversation) {
+    return await db.conversations.put(conversation);
+  },
 };
 
 // Settings

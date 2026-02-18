@@ -1,7 +1,7 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { conversations, db } from "@/db";
+import { conversations, db, type Conversation } from "@/db";
 import { GoogleAPIClient } from "@/services/api";
 import {
   useConversationStore,
@@ -52,10 +52,10 @@ describe("ConversationStore", () => {
     expect(state.activeConversationId).toBe(conversationId);
     expect(state.conversations[0].modelId).toBe("test-model");
 
-    // Verify persistence
+    // Verify NOT persisted (persisted:false by default)
     const persisted = await conversations.get(conversationId);
-    expect(persisted).toBeDefined();
-    expect(persisted?.modelId).toBe("test-model");
+    expect(persisted).toBeUndefined();
+    expect(state.conversations[0].persisted).toBe(false);
   });
 
   it("should update a message in a conversation", async () => {
@@ -74,7 +74,28 @@ describe("ConversationStore", () => {
       timestamp: Date.now(),
     };
 
-    // Update store state directly for test setup
+    // Manually persist conversation first (since it's not persisted by default)
+    const storeState = useConversationStore.getState();
+    const currConv = storeState.conversations.find(
+      (c) => c.id === conversationId,
+    );
+    if (currConv) {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { persisted, ...data } = currConv;
+      await conversations.save({ ...data, persisted: true } as Conversation);
+      // Update store to reflect persistence
+      useConversationStore.setState((state) => ({
+        conversations: state.conversations.map((c) =>
+          c.id === conversationId ? { ...c, persisted: true } : c,
+        ),
+      }));
+    }
+
+    // Also update DB with the message we want to test updating
+    await conversations.update(conversationId, {
+      messages: [message],
+    });
+    // And update store to have that message
     useConversationStore.setState((state) => ({
       conversations: state.conversations.map((c) =>
         c.id === conversationId
@@ -82,11 +103,6 @@ describe("ConversationStore", () => {
           : c,
       ),
     }));
-
-    // Also update DB
-    await conversations.update(conversationId, {
-      messages: [message],
-    });
 
     await store.updateMessage(conversationId, "msg-1", "Hello World");
 
@@ -426,9 +442,16 @@ describe("ConversationStore", () => {
     const conversation = state.conversations.find((c) => c.id === id);
     expect(conversation?.title).toBe("New Title");
 
-    // Verify persistence
+    // Should NOT persist rename for non-persisted conversation
     const persisted = await conversations.get(id);
-    expect(persisted?.title).toBe("New Title");
+    expect(persisted).toBeUndefined();
+
+    // Now persist it and try again
+    await store.sendMessage("Init"); // Persists
+    await store.renameConversation(id, "Another Title");
+
+    const persisted2 = await conversations.get(id);
+    expect(persisted2?.title).toBe("Another Title");
   });
 
   it("should duplicate a conversation", async () => {
@@ -439,14 +462,10 @@ describe("ConversationStore", () => {
       topP: 0.9,
     });
 
-    // Add a message
-    const message = {
-      id: "msg-1",
-      role: "user" as const,
-      content: "Deep content",
-      timestamp: Date.now(),
-    };
-    await conversations.update(originalId, { messages: [message] });
+    // Add a message (will persist the conversation)
+    await store.setActiveConversation(originalId);
+    await store.sendMessage("Deep content");
+
     await store.loadConversations(); // Sync store
 
     await store.duplicateConversation(originalId);
@@ -456,16 +475,23 @@ describe("ConversationStore", () => {
 
     const duplicate = state.conversations[0]; // Newest usually first
     expect(duplicate.id).not.toBe(originalId);
-    expect(duplicate.title).toBe("New Conversation (Copy)");
+    expect(duplicate.title).toBe("Deep content (Copy)");
     expect(duplicate.modelId).toBe("test-model");
     expect(duplicate.parameters.temperature).toBe(0.5);
-    expect(duplicate.messages.length).toBe(1);
-    expect(duplicate.messages[0].content).toBe("Deep content");
+    expect(duplicate.parameters.temperature).toBe(0.5);
+    // Expect 3 messages: User(Deep content), Assistant(Response), Assistant(Empty/Stop)
+    // The previous sendMessage implementation in tests usually implies a response flow.
+    // But duplicateConversation duplicates current state.
+    // If we used sendMessage, we have user + assistant.
+    // Let's just check user message content.
+    expect(duplicate.messages.some((m) => m.content === "Deep content")).toBe(
+      true,
+    );
 
     // Verify persistence
     const persisted = await conversations.get(duplicate.id);
     expect(persisted).toBeDefined();
-    expect(persisted?.title).toBe("New Conversation (Copy)");
+    expect(persisted?.title).toBe("Deep content (Copy)");
   });
 
   it("should generate title automatically after first user message", async () => {
@@ -510,6 +536,240 @@ describe("ConversationStore", () => {
     const persisted = await conversations.get(id);
     expect(persisted?.title).toBe("This is a very long first message tha...");
   });
+  describe("Draft Conversations (Non-Persisted)", () => {
+    it("should create non-persisted conversation by default", async () => {
+      const store = useConversationStore.getState();
+      const conversationId = await store.createConversation("test-model", {
+        temperature: 0.7,
+        maxTokens: 100,
+        topP: 0.9,
+      });
+
+      const state = useConversationStore.getState();
+      const conversation = state.conversations.find(
+        (c) => c.id === conversationId,
+      );
+
+      expect(conversation).toBeDefined();
+      expect(conversation?.persisted).toBe(false);
+
+      // Verify NOT persisted
+      const persisted = await conversations.get(conversationId);
+      expect(persisted).toBeUndefined();
+    });
+
+    it("should persist conversation on first message", async () => {
+      // Mock settings and API
+      vi.mocked(useSettingsStore.getState).mockReturnValue({
+        settings: {
+          id: "app-settings",
+          apiKeys: { google: "test-api-key" },
+          defaultModel: "gemini-2.5-flash",
+        },
+      } as unknown as SettingsState);
+
+      const mockStream = async function* () {
+        yield { delta: "Response" };
+        yield { delta: "", finishReason: "stop" };
+      };
+      vi.mocked(GoogleAPIClient.createClient).mockResolvedValue({
+        streamChat: vi.fn().mockReturnValue(mockStream()),
+      } as unknown as GoogleAPIClient);
+
+      const store = useConversationStore.getState();
+      const conversationId = await store.createConversation("test-model", {
+        temperature: 0.7,
+        maxTokens: 100,
+        topP: 0.9,
+      });
+      store.setActiveConversation(conversationId);
+
+      // Verify it starts as not persisted
+      let state = useConversationStore.getState();
+      expect(
+        state.conversations.find((c) => c.id === conversationId)?.persisted,
+      ).toBe(false);
+      expect(await conversations.get(conversationId)).toBeUndefined();
+
+      // Send message
+      await store.sendMessage("Hello");
+
+      // Verify persisted in store
+      state = useConversationStore.getState();
+      const conversation = state.conversations.find(
+        (c) => c.id === conversationId,
+      );
+      expect(conversation?.persisted).toBe(true);
+
+      // Verify persisted in DB
+      const persisted = await conversations.get(conversationId);
+      expect(persisted).toBeDefined();
+      expect(persisted?.title).toBeDefined();
+      expect(persisted?.messages.length).toBeGreaterThan(0);
+    });
+
+    it("should not persist parameters updates for non-persisted conversation", async () => {
+      const store = useConversationStore.getState();
+      const conversationId = await store.createConversation("test-model", {
+        temperature: 0.7,
+        maxTokens: 100,
+        topP: 0.9,
+      });
+      store.setActiveConversation(conversationId);
+
+      await store.setParameters({ temperature: 0.5 });
+
+      const state = useConversationStore.getState();
+      const conversation = state.conversations.find(
+        (c) => c.id === conversationId,
+      );
+      expect(conversation?.parameters.temperature).toBe(0.5);
+
+      // Verify NOT persisted
+      const persisted = await conversations.get(conversationId);
+      expect(persisted).toBeUndefined();
+    });
+
+    it("should handle deletion of non-persisted conversation", async () => {
+      const store = useConversationStore.getState();
+      const conversationId = await store.createConversation("test-model", {
+        temperature: 0.7,
+        maxTokens: 100,
+        topP: 0.9,
+      });
+
+      await store.deleteConversation(conversationId);
+
+      const state = useConversationStore.getState();
+      expect(
+        state.conversations.find((c) => c.id === conversationId),
+      ).toBeUndefined();
+
+      // Verify DB interaction didn't crash (and nothing in DB)
+      const persisted = await conversations.get(conversationId);
+      expect(persisted).toBeUndefined();
+    });
+
+    it("should remove ephemeral conversation when creating a new one", async () => {
+      const store = useConversationStore.getState();
+      // 1. Create first conversation (ephemeral)
+      const id1 = await store.createConversation("test-model", {
+        temperature: 0.7,
+        maxTokens: 100,
+        topP: 0.9,
+      });
+
+      let state = useConversationStore.getState();
+      expect(state.conversations.length).toBe(1);
+      expect(state.conversations[0].id).toBe(id1);
+
+      // 2. Create second conversation
+      // This should trigger cleanup of id1 because it's ephemeral and active
+      const id2 = await store.createConversation("test-model", {
+        temperature: 0.7,
+        maxTokens: 100,
+        topP: 0.9,
+      });
+
+      state = useConversationStore.getState();
+      // Should still have only 1 conversation (the new one)
+      expect(state.conversations.length).toBe(1);
+      expect(state.conversations[0].id).toBe(id2);
+      expect(state.conversations.find((c) => c.id === id1)).toBeUndefined();
+    });
+
+    it("should remove ephemeral conversation when switching to another conversation", async () => {
+      const store = useConversationStore.getState();
+
+      // 1. Create a persisted conversation
+      const persistedId = await store.createConversation("test-model", {
+        temperature: 0.7,
+        maxTokens: 100,
+        topP: 0.9,
+      });
+      // Persist it manually for this test setup (or via sendMessage)
+      await store.sendMessage("Persist me");
+
+      // 2. Create an ephemeral conversation
+      const ephemeralId = await store.createConversation("test-model", {
+        temperature: 0.7,
+        maxTokens: 100,
+        topP: 0.9,
+      });
+
+      let state = useConversationStore.getState();
+      expect(state.conversations.length).toBe(2);
+      expect(state.activeConversationId).toBe(ephemeralId);
+
+      // 3. Switch back to persisted conversation
+      store.setActiveConversation(persistedId);
+
+      state = useConversationStore.getState();
+      expect(state.activeConversationId).toBe(persistedId);
+      // Ephemeral conversation should be gone
+      expect(state.conversations.length).toBe(1);
+      expect(
+        state.conversations.find((c) => c.id === ephemeralId),
+      ).toBeUndefined();
+    });
+
+    it("should NEVER persist an ephemeral (isTemporary=true) conversation", async () => {
+      // Mock settings and API
+      vi.mocked(useSettingsStore.getState).mockReturnValue({
+        settings: {
+          id: "app-settings",
+          apiKeys: { google: "test-api-key" },
+          defaultModel: "gemini-2.5-flash",
+        },
+      } as unknown as SettingsState);
+
+      const mockStream = async function* () {
+        yield { delta: "Response" };
+        yield { delta: "", finishReason: "stop" };
+      };
+      vi.mocked(GoogleAPIClient.createClient).mockResolvedValue({
+        streamChat: vi.fn().mockReturnValue(mockStream()),
+      } as unknown as GoogleAPIClient);
+
+      const store = useConversationStore.getState();
+      // Create with isTemporary: true
+      const conversationId = await store.createConversation(
+        "test-model",
+        {
+          temperature: 0.7,
+          maxTokens: 100,
+          topP: 0.9,
+        },
+        undefined,
+        { isTemporary: true },
+      );
+      store.setActiveConversation(conversationId);
+
+      // Verify it starts as not persisted
+      let state = useConversationStore.getState();
+      expect(
+        state.conversations.find((c) => c.id === conversationId)?.persisted,
+      ).toBe(false);
+      expect(
+        state.conversations.find((c) => c.id === conversationId)?.isTemporary,
+      ).toBe(true);
+
+      // Send message
+      await store.sendMessage("Hello");
+
+      // Verify STILL not persisted in store or DB
+      state = useConversationStore.getState();
+      const conversation = state.conversations.find(
+        (c) => c.id === conversationId,
+      );
+      expect(conversation?.persisted).toBe(false); // Should remain false
+      expect(conversation?.isTemporary).toBe(true);
+
+      // Verify NOT in DB
+      const persisted = await conversations.get(conversationId);
+      expect(persisted).toBeUndefined();
+    });
+  });
 
   describe("Search", () => {
     it("should update search query", () => {
@@ -524,35 +784,44 @@ describe("ConversationStore", () => {
       const store = useConversationStore.getState();
 
       // Create test conversations
-      await store.createConversation("model-1", {
+      const id1 = await store.createConversation("model-1", {
         temperature: 0.7,
         maxTokens: 100,
         topP: 0.9,
       });
-      await store.renameConversation(
-        useConversationStore.getState().conversations[0].id,
-        "React Hooks",
-      );
+      await store.renameConversation(id1, "React Hooks");
+      // Mark as persisted to prevent cleanup
+      useConversationStore.setState((s) => ({
+        conversations: s.conversations.map((c) =>
+          c.id === id1 ? { ...c, persisted: true } : c,
+        ),
+      }));
 
-      await store.createConversation("model-1", {
+      const id2 = await store.createConversation("model-1", {
         temperature: 0.7,
         maxTokens: 100,
         topP: 0.9,
       });
-      await store.renameConversation(
-        useConversationStore.getState().conversations[0].id,
-        "TypeScript Guide",
-      );
+      await store.renameConversation(id2, "TypeScript Guide");
+      // Mark as persisted
+      useConversationStore.setState((s) => ({
+        conversations: s.conversations.map((c) =>
+          c.id === id2 ? { ...c, persisted: true } : c,
+        ),
+      }));
 
-      await store.createConversation("model-1", {
+      const id3 = await store.createConversation("model-1", {
         temperature: 0.7,
         maxTokens: 100,
         topP: 0.9,
       });
-      await store.renameConversation(
-        useConversationStore.getState().conversations[0].id,
-        "Refactoring",
-      );
+      await store.renameConversation(id3, "Refactoring");
+      // Mark as persisted
+      useConversationStore.setState((s) => ({
+        conversations: s.conversations.map((c) =>
+          c.id === id3 ? { ...c, persisted: true } : c,
+        ),
+      }));
 
       // Search for "react"
       store.setSearchQuery("react");

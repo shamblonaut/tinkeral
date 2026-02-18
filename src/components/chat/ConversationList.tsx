@@ -1,11 +1,13 @@
 import {
   CheckSquare,
+  ChevronDown,
   Loader2,
   Plus,
   Search,
   Square,
   Trash2,
   X,
+  Zap,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -18,6 +20,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Input,
   ScrollArea,
 } from "@/components/ui";
@@ -132,10 +138,24 @@ export function ConversationList({
 
   const { settings } = useSettingsStore();
 
-  const handleCreate = async () => {
+  /* Removed unused activeConversation */
+
+  const [menuWidth, setMenuWidth] = useState<number | undefined>(undefined);
+  const buttonGroupRef = useCallback((node: HTMLDivElement | null) => {
+    if (node !== null) {
+      setMenuWidth(node.getBoundingClientRect().width);
+    }
+  }, []);
+
+  const handleCreate = async (options: { isTemporary?: boolean } = {}) => {
+    // Force create new conversation even if current one is empty/ephemeral
+    // The store's createConversation handles cleaning up empty/ephemeral ones if needed
+    // or we can explicitly force it here if store prevents it.
+    // Based on store logic viewed earlier, it removes current ephemeral if exists.
+
     const defaultModel = settings?.defaultModel || "gemini-2.5-flash-lite";
     const params = getModelDefaultParameters(defaultModel);
-    await createConversation(defaultModel, params);
+    await createConversation(defaultModel, params, undefined, options);
     onSelect?.();
   };
 
@@ -172,9 +192,11 @@ export function ConversationList({
   };
 
   const filteredConversations = useMemo(() => {
-    return conversations.filter((conv) =>
-      conv.title.toLowerCase().includes(searchQuery.toLowerCase()),
-    );
+    return conversations
+      .filter((conv) => conv.persisted !== false)
+      .filter((conv) =>
+        conv.title.toLowerCase().includes(searchQuery.toLowerCase()),
+      );
   }, [conversations, searchQuery]);
 
   return (
@@ -183,14 +205,38 @@ export function ConversationList({
         <div className="flex min-h-9 items-center gap-2">
           {!isSelectionMode ? (
             <>
-              <Button
-                onClick={handleCreate}
-                className="h-9 flex-1 justify-start gap-2"
-                variant="outline"
+              <div
+                className="flex w-full items-center gap-px"
+                ref={buttonGroupRef}
               >
-                <Plus className="h-4 w-4" />
-                New Conversation
-              </Button>
+                <Button
+                  onClick={() => handleCreate()}
+                  className="h-9 flex-1 justify-start gap-2 rounded-r-none pr-2"
+                  variant="outline"
+                >
+                  <Plus className="h-4 w-4" />
+                  New Conversation
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="h-9 w-9 rounded-l-none px-0"
+                    >
+                      <ChevronDown className="h-4 w-4" />
+                      <span className="sr-only">More options</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" style={{ width: menuWidth }}>
+                    <DropdownMenuItem
+                      onClick={() => handleCreate({ isTemporary: true })}
+                    >
+                      <Zap className="mr-2 h-4 w-4" />
+                      Temporary Chat
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
               <Button
                 onClick={toggleSelectionMode}
                 variant="ghost"

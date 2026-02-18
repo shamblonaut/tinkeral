@@ -43,7 +43,12 @@ export function useModelSelection(onSelect?: () => void) {
     // Persist as default model
     updateSettings({ defaultModel: modelId });
 
-    await createConversation(modelId, defaultParams);
+    // Check if current conversation is temporary (isTemporary)
+    const isTemporary = activeConversation?.isTemporary;
+
+    await createConversation(modelId, defaultParams, undefined, {
+      isTemporary: isTemporary,
+    });
   };
 
   return {

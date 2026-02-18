@@ -1,4 +1,4 @@
-import { PanelLeft, Settings2 } from "lucide-react";
+import { PanelLeft, Settings2, Zap } from "lucide-react";
 import { useEffect } from "react";
 import { toast } from "sonner";
 
@@ -9,8 +9,9 @@ import {
   MessageList,
 } from "@/components/chat";
 import { Button } from "@/components/ui";
+import { getModelDefaultParameters } from "@/lib/models";
 import { cn } from "@/lib/utils";
-import { useConversationStore, useUIStore } from "@/stores";
+import { useConversationStore, useSettingsStore, useUIStore } from "@/stores";
 
 export function ChatInterface() {
   const {
@@ -39,6 +40,22 @@ export function ChatInterface() {
       toast.error(error);
     }
   }, [error]);
+
+  // Auto-create new conversation if none selected
+  // This handles cases like deleting the last conversation
+  useEffect(() => {
+    if (!activeConversationId && !isLoading) {
+      const createNew = async () => {
+        const { settings } = useSettingsStore.getState();
+        const defaultModel = settings?.defaultModel || "gemini-2.5-flash-lite";
+        const params = getModelDefaultParameters(defaultModel);
+        await useConversationStore
+          .getState()
+          .createConversation(defaultModel, params);
+      };
+      createNew();
+    }
+  }, [activeConversationId, isLoading]);
 
   const handleSend = (content: string) => {
     sendMessage(content).catch((err) => {
@@ -83,6 +100,13 @@ export function ChatInterface() {
             </Button>
           </div>
         </header>
+
+        {conversation?.isTemporary && (
+          <div className="bg-muted/50 flex items-center justify-center gap-2 border-b py-1 text-xs text-amber-500">
+            <Zap className="h-3 w-3" />
+            <span className="font-medium">Temporary Chat</span>
+          </div>
+        )}
 
         <div className="flex flex-1 overflow-hidden">
           <div className="flex flex-1 flex-col overflow-hidden">
