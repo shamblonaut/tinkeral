@@ -16,12 +16,19 @@ interface ConversationState {
   abortController: AbortController | null;
   searchQuery: string;
   isSearching: boolean;
+  isSelectionMode: boolean;
+  selectedIds: string[];
 
   // Actions
   loadConversations: () => Promise<void>;
   loadModels: () => Promise<void>;
   setSearchQuery: (query: string) => void;
   setIsSearching: (isSearching: boolean) => void;
+  toggleSelectionMode: () => void;
+  toggleSelection: (id: string) => void;
+  selectAll: () => void;
+  deselectAll: () => void;
+  deleteSelectedConversations: () => Promise<void>;
   setActiveConversation: (id: string) => void;
   createConversation: (
     modelId: string,
@@ -54,6 +61,8 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
   abortController: null,
   searchQuery: "",
   isSearching: false,
+  isSelectionMode: false,
+  selectedIds: [],
 
   loadConversations: async () => {
     set({ isLoading: true, error: null });
@@ -89,6 +98,65 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
 
   setIsSearching: (isSearching: boolean) => {
     set({ isSearching });
+  },
+
+  toggleSelectionMode: () => {
+    set((state) => ({
+      isSelectionMode: !state.isSelectionMode,
+      selectedIds: [], // Clear selection when toggling mode
+    }));
+  },
+
+  toggleSelection: (id: string) => {
+    set((state) => {
+      const selectedIds = state.selectedIds.includes(id)
+        ? state.selectedIds.filter((selectedId) => selectedId !== id)
+        : [...state.selectedIds, id];
+      return { selectedIds };
+    });
+  },
+
+  selectAll: () => {
+    set((state) => ({
+      selectedIds: state.conversations.map((c) => c.id),
+    }));
+  },
+
+  deselectAll: () => {
+    set({ selectedIds: [] });
+  },
+
+  deleteSelectedConversations: async () => {
+    const { selectedIds } = get();
+    if (selectedIds.length === 0) return;
+
+    try {
+      // Delete from DB in parallel
+      await Promise.all(selectedIds.map((id) => conversationsDb.delete(id)));
+
+      set((state) => {
+        const newConversations = state.conversations.filter(
+          (c) => !selectedIds.includes(c.id),
+        );
+
+        // If active conversation was deleted, deselect it
+        const newActiveId = selectedIds.includes(
+          state.activeConversationId || "",
+        )
+          ? null
+          : state.activeConversationId;
+
+        return {
+          conversations: newConversations,
+          activeConversationId: newActiveId,
+          selectedIds: [],
+          isSelectionMode: false, // Exit selection mode after delete
+        };
+      });
+    } catch (error) {
+      console.error("Failed to delete selected conversations:", error);
+      set({ error: "Failed to delete selected conversations" });
+    }
   },
 
   setActiveConversation: (id: string) => {

@@ -1,4 +1,12 @@
-import { Copy, Edit2, MessageSquare, MoreVertical, Trash2 } from "lucide-react";
+import {
+  CheckSquare,
+  Copy,
+  Edit2,
+  MessageSquare,
+  MoreVertical,
+  Square,
+  Trash2,
+} from "lucide-react";
 import { memo, useEffect, useRef, useState } from "react";
 
 import {
@@ -19,6 +27,10 @@ interface ConversationItemProps {
   isActive: boolean;
   onSelect: (id: string) => void;
   onDelete: (id: string, e: React.MouseEvent) => void;
+  // New props for selection
+  isSelectionMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelection?: (id: string) => void;
 }
 
 export const ConversationItem = memo(function ConversationItem({
@@ -26,6 +38,9 @@ export const ConversationItem = memo(function ConversationItem({
   isActive,
   onSelect,
   onDelete,
+  isSelectionMode = false,
+  isSelected = false,
+  onToggleSelection,
 }: ConversationItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(conversation.title);
@@ -77,7 +92,13 @@ export const ConversationItem = memo(function ConversationItem({
 
   return (
     <div
-      onClick={() => !isEditing && onSelect(conversation.id)}
+      onClick={() => {
+        if (isSelectionMode) {
+          onToggleSelection?.(conversation.id);
+        } else if (!isEditing) {
+          onSelect(conversation.id);
+        }
+      }}
       className={cn(
         "group relative flex cursor-pointer flex-col gap-1 rounded-lg p-3 transition-colors",
         isActive
@@ -87,7 +108,15 @@ export const ConversationItem = memo(function ConversationItem({
       )}
     >
       <div className="flex items-center gap-2 pr-8">
-        <MessageSquare className="h-4 w-4 shrink-0" />
+        {isSelectionMode ? (
+          isSelected ? (
+            <CheckSquare className="text-primary h-4 w-4 shrink-0" />
+          ) : (
+            <Square className="text-muted-foreground h-4 w-4 shrink-0" />
+          )
+        ) : (
+          <MessageSquare className="h-4 w-4 shrink-0" />
+        )}
         {isEditing ? (
           <Input
             ref={inputRef}

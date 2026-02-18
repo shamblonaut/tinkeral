@@ -1,4 +1,12 @@
-import { Loader2, Plus, Search, X } from "lucide-react";
+import {
+  CheckSquare,
+  Loader2,
+  Plus,
+  Search,
+  Square,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ConversationItem } from "@/components/chat";
@@ -101,6 +109,23 @@ export function ConversationList({
   const searchQuery = useConversationStore((state) => state.searchQuery);
   const isSearching = useConversationStore((state) => state.isSearching);
 
+  // Selection state
+  const isSelectionMode = useConversationStore(
+    (state) => state.isSelectionMode,
+  );
+  const selectedIds = useConversationStore((state) => state.selectedIds);
+  const toggleSelectionMode = useConversationStore(
+    (state) => state.toggleSelectionMode,
+  );
+  const toggleSelection = useConversationStore(
+    (state) => state.toggleSelection,
+  );
+  const selectAll = useConversationStore((state) => state.selectAll);
+  const deselectAll = useConversationStore((state) => state.deselectAll);
+  const deleteSelectedConversations = useConversationStore(
+    (state) => state.deleteSelectedConversations,
+  );
+
   const [conversationToDelete, setConversationToDelete] = useState<
     string | null
   >(null);
@@ -127,9 +152,21 @@ export function ConversationList({
     setConversationToDelete(id);
   }, []);
 
+  // Stable callback for toggling selection
+  const handleToggleSelection = useCallback(
+    (id: string) => {
+      toggleSelection(id);
+    },
+    [toggleSelection],
+  );
+
   const confirmDelete = async () => {
     if (conversationToDelete) {
-      await deleteConversation(conversationToDelete);
+      if (conversationToDelete === "bulk") {
+        await deleteSelectedConversations();
+      } else {
+        await deleteConversation(conversationToDelete);
+      }
       setConversationToDelete(null);
     }
   };
@@ -143,14 +180,86 @@ export function ConversationList({
   return (
     <div className={cn("bg-sidebar flex h-full flex-col", className)}>
       <div className="space-y-3 border-b p-4">
-        <Button
-          onClick={handleCreate}
-          className="h-9 w-full justify-start gap-2"
-          variant="outline"
-        >
-          <Plus className="h-4 w-4" />
-          New Conversation
-        </Button>
+        <div className="flex min-h-9 items-center gap-2">
+          {!isSelectionMode ? (
+            <>
+              <Button
+                onClick={handleCreate}
+                className="h-9 flex-1 justify-start gap-2"
+                variant="outline"
+              >
+                <Plus className="h-4 w-4" />
+                New Conversation
+              </Button>
+              <Button
+                onClick={toggleSelectionMode}
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                title="Select conversations"
+              >
+                <CheckSquare className="h-4 w-4" />
+              </Button>
+            </>
+          ) : (
+            <div className="animate-in fade-in slide-in-from-top-1 flex w-full items-center justify-between gap-2 duration-200">
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={toggleSelectionMode}
+                  title="Cancel selection"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+                <span className="text-sm font-medium">
+                  {selectedIds.length} selected
+                </span>
+              </div>
+
+              <div className="flex items-center gap-1">
+                {selectedIds.length > 0 && (
+                  <Button
+                    variant="destructive"
+                    size="icon"
+                    className="h-8 w-8"
+                    onClick={() => setConversationToDelete("bulk")}
+                    title="Delete selected"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground h-8 w-8"
+                  onClick={
+                    selectedIds.length === filteredConversations.length &&
+                    filteredConversations.length > 0
+                      ? deselectAll
+                      : selectAll
+                  }
+                  title={
+                    selectedIds.length === filteredConversations.length &&
+                    filteredConversations.length > 0
+                      ? "Deselect All"
+                      : "Select All"
+                  }
+                >
+                  {selectedIds.length === filteredConversations.length &&
+                  filteredConversations.length > 0 ? (
+                    <CheckSquare className="text-primary h-4 w-4" />
+                  ) : (
+                    <Square className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+
         <SearchInput />
       </div>
 
@@ -172,6 +281,9 @@ export function ConversationList({
                 isActive={activeConversationId === conv.id}
                 onSelect={handleSelect}
                 onDelete={handleDelete}
+                isSelectionMode={isSelectionMode}
+                isSelected={selectedIds.includes(conv.id)}
+                onToggleSelection={handleToggleSelection}
               />
             ))}
         </div>
@@ -182,10 +294,15 @@ export function ConversationList({
       >
         <DialogContent className="max-w-[75vw]">
           <DialogHeader>
-            <DialogTitle>Delete Conversation</DialogTitle>
+            <DialogTitle>
+              {conversationToDelete === "bulk"
+                ? `Delete ${selectedIds.length} Conversations`
+                : "Delete Conversation"}
+            </DialogTitle>
             <DialogDescription className="text-left">
-              Are you sure you want to delete this conversation? This action
-              cannot be undone.
+              {conversationToDelete === "bulk"
+                ? `Are you sure you want to delete ${selectedIds.length} selected conversations? This action cannot be undone.`
+                : "Are you sure you want to delete this conversation? This action cannot be undone."}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

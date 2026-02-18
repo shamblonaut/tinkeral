@@ -120,6 +120,10 @@ describe("ChatInterface Integration", () => {
       activeConversationId: null,
       isLoading: false,
       error: null,
+      searchQuery: "",
+      isSearching: false,
+      isSelectionMode: false,
+      selectedIds: [],
     });
 
     // Initialize mock settings
@@ -488,5 +492,127 @@ describe("ChatInterface Integration", () => {
 
     // Verify UI update
     expect(screen.getByText("New Title")).toBeInTheDocument();
+  });
+
+  describe("Selection Mode", () => {
+    it("should toggle selection mode and select items", async () => {
+      // Setup initial state with multiple conversations
+      useConversationStore.setState({
+        conversations: [
+          {
+            id: "c1",
+            title: "Conv 1",
+            modelId: "gemini-pro",
+            parameters: { temperature: 0.7, maxTokens: 1024, topP: 0.9 },
+            messages: [],
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          },
+          {
+            id: "c2",
+            title: "Conv 2",
+            modelId: "gemini-pro",
+            parameters: { temperature: 0.7, maxTokens: 1024, topP: 0.9 },
+            messages: [],
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          },
+        ],
+        activeConversationId: "c1",
+      });
+
+      render(
+        <TooltipProvider>
+          <ChatInterface />
+        </TooltipProvider>,
+      );
+
+      // 1. Enter selection mode
+      const toggleButton = screen.getByTitle("Select conversations");
+      fireEvent.click(toggleButton);
+
+      // Verify header changes
+      expect(screen.getByText("0 selected")).toBeInTheDocument();
+      expect(screen.getByTitle("Select All")).toBeInTheDocument();
+
+      // 2. Select first conversation
+      // In selection mode, clicking the item toggles selection
+      const conv1 = screen.getByText("Conv 1").closest("div[class*='group']");
+      fireEvent.click(conv1!);
+
+      expect(screen.getByText("1 selected")).toBeInTheDocument();
+
+      // 3. Select all
+      const selectAllBtn = screen.getByTitle("Select All");
+      fireEvent.click(selectAllBtn);
+
+      expect(screen.getByText("2 selected")).toBeInTheDocument();
+
+      // 4. Deselect all
+      const deselectAllBtn = screen.getByTitle("Deselect All");
+      fireEvent.click(deselectAllBtn);
+
+      expect(screen.getByText("0 selected")).toBeInTheDocument();
+    });
+
+    it("should bulk delete conversations", async () => {
+      useConversationStore.setState({
+        conversations: [
+          {
+            id: "c1",
+            title: "Conv 1",
+            modelId: "gemini-pro",
+            parameters: { temperature: 0.7, maxTokens: 1024, topP: 0.9 },
+            messages: [],
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          },
+          {
+            id: "c2",
+            title: "Conv 2",
+            modelId: "gemini-pro",
+            parameters: { temperature: 0.7, maxTokens: 1024, topP: 0.9 },
+            messages: [],
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          },
+        ],
+        activeConversationId: null,
+      });
+
+      render(
+        <TooltipProvider>
+          <ChatInterface />
+        </TooltipProvider>,
+      );
+
+      // 1. Enter selection mode
+      fireEvent.click(screen.getByTitle("Select conversations"));
+
+      // 2. Select All
+      fireEvent.click(screen.getByTitle("Select All"));
+
+      // 3. Click Delete (trash icon in header)
+      const deleteBtn = screen.getByTitle("Delete selected");
+      fireEvent.click(deleteBtn);
+
+      // 4. Confirm in dialog
+      // Dialog title should indicate bulk delete
+      expect(screen.getByText(/Delete 2 Conversations/i)).toBeInTheDocument();
+
+      const confirmBtn = screen.getByRole("button", { name: "Delete" });
+      fireEvent.click(confirmBtn);
+
+      // 5. Verify deletion
+      await waitFor(() => {
+        expect(conversationsDb.delete).toHaveBeenCalledTimes(2);
+        expect(conversationsDb.delete).toHaveBeenCalledWith("c1");
+        expect(conversationsDb.delete).toHaveBeenCalledWith("c2");
+      });
+
+      // Verify UI update
+      expect(screen.queryByText("Conv 1")).not.toBeInTheDocument();
+      expect(screen.queryByText("Conv 2")).not.toBeInTheDocument();
+    });
   });
 });
