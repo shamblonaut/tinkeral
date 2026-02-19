@@ -931,4 +931,234 @@ describe("ConversationStore", () => {
       expect(filtered.length).toBe(3);
     });
   });
+
+  describe("Message Operations", () => {
+    beforeEach(() => {
+      // Mock settings and API for regeneration tests
+      vi.mocked(useSettingsStore.getState).mockReturnValue({
+        settings: {
+          id: "app-settings",
+          apiKeys: { google: "test-api-key" },
+          defaultModel: "gemini-2.5-flash",
+        },
+      } as unknown as SettingsState);
+
+      const mockStream = async function* () {
+        yield { delta: "Regenerated response" };
+        yield { delta: "", finishReason: "stop" };
+      };
+
+      vi.mocked(GoogleAPIClient.createClient).mockResolvedValue({
+        streamChat: vi.fn().mockReturnValue(mockStream()),
+      } as unknown as GoogleAPIClient);
+    });
+
+    it("should delete a message and all following context", async () => {
+      const store = useConversationStore.getState();
+      const id = await store.createConversation("test-model", {
+        temperature: 0.7,
+        maxTokens: 100,
+        topP: 0.9,
+      });
+      store.setActiveConversation(id);
+
+      // Add dummy messages
+      useConversationStore.setState((s) => ({
+        conversations: s.conversations.map((c) =>
+          c.id === id
+            ? {
+                ...c,
+                messages: [
+                  { id: "msg-1", role: "user", content: "Hi", timestamp: 1 },
+                  {
+                    id: "msg-2",
+                    role: "model",
+                    content: "Hello",
+                    timestamp: 2,
+                  },
+                  {
+                    id: "msg-3",
+                    role: "user",
+                    content: "How are you?",
+                    timestamp: 3,
+                  },
+                ],
+              }
+            : c,
+        ),
+      }));
+
+      await store.deleteMessage("msg-2");
+
+      const conversation = useConversationStore
+        .getState()
+        .conversations.find((c) => c.id === id);
+      expect(conversation?.messages.length).toBe(1);
+      expect(conversation?.messages[0].id).toBe("msg-1");
+    });
+
+    it("should retry a model message", async () => {
+      const store = useConversationStore.getState();
+      const id = await store.createConversation("test-model", {
+        temperature: 0.7,
+        maxTokens: 100,
+        topP: 0.9,
+      });
+      store.setActiveConversation(id);
+
+      // Add dummy messages
+      useConversationStore.setState((s) => ({
+        conversations: s.conversations.map((c) =>
+          c.id === id
+            ? {
+                ...c,
+                messages: [
+                  { id: "msg-1", role: "user", content: "Hi", timestamp: 1 },
+                  {
+                    id: "msg-2",
+                    role: "model",
+                    content: "Hello",
+                    timestamp: 2,
+                  },
+                ],
+              }
+            : c,
+        ),
+      }));
+
+      await store.retryMessage("msg-2");
+
+      const conversation = useConversationStore
+        .getState()
+        .conversations.find((c) => c.id === id);
+      // msg-2 removed, then assistant message placeholder + final message added
+      // Wait, retryMessage calls executeChat which adds a new assistant message
+      expect(conversation?.messages.length).toBe(2);
+      expect(conversation?.messages[0].id).toBe("msg-1");
+      expect(conversation?.messages[1].role).toBe("model");
+      expect(conversation?.messages[1].content).toBe("Regenerated response");
+    });
+
+    it("should retry a user message by removing subsequent context", async () => {
+      const store = useConversationStore.getState();
+      const id = await store.createConversation("test-model", {
+        temperature: 0.7,
+        maxTokens: 100,
+        topP: 0.9,
+      });
+      store.setActiveConversation(id);
+
+      // Add dummy messages
+      useConversationStore.setState((s) => ({
+        conversations: s.conversations.map((c) =>
+          c.id === id
+            ? {
+                ...c,
+                messages: [
+                  { id: "msg-1", role: "user", content: "Hi", timestamp: 1 },
+                  {
+                    id: "msg-2",
+                    role: "model",
+                    content: "Hello",
+                    timestamp: 2,
+                  },
+                ],
+              }
+            : c,
+        ),
+      }));
+
+      await store.retryMessage("msg-1");
+
+      const conversation = useConversationStore
+        .getState()
+        .conversations.find((c) => c.id === id);
+      expect(conversation?.messages.length).toBe(2);
+      expect(conversation?.messages[0].id).toBe("msg-1");
+      expect(conversation?.messages[1].content).toBe("Regenerated response");
+    });
+
+    it("should edit a user message and trigger regeneration", async () => {
+      const store = useConversationStore.getState();
+      const id = await store.createConversation("test-model", {
+        temperature: 0.7,
+        maxTokens: 100,
+        topP: 0.9,
+      });
+      store.setActiveConversation(id);
+
+      // Add dummy messages
+      useConversationStore.setState((s) => ({
+        conversations: s.conversations.map((c) =>
+          c.id === id
+            ? {
+                ...c,
+                messages: [
+                  { id: "msg-1", role: "user", content: "Hi", timestamp: 1 },
+                  {
+                    id: "msg-2",
+                    role: "model",
+                    content: "Hello",
+                    timestamp: 2,
+                  },
+                ],
+              }
+            : c,
+        ),
+      }));
+
+      await store.editMessage("msg-1", "New content");
+
+      const conversation = useConversationStore
+        .getState()
+        .conversations.find((c) => c.id === id);
+      expect(conversation?.messages.length).toBe(2);
+      expect(conversation?.messages[0].content).toBe("New content");
+      expect(conversation?.messages[1].content).toBe("Regenerated response");
+    });
+
+    it("should edit a model message without regeneration", async () => {
+      const store = useConversationStore.getState();
+      const id = await store.createConversation("test-model", {
+        temperature: 0.7,
+        maxTokens: 100,
+        topP: 0.9,
+      });
+      store.setActiveConversation(id);
+
+      // Add dummy messages
+      useConversationStore.setState((s) => ({
+        conversations: s.conversations.map((c) =>
+          c.id === id
+            ? {
+                ...c,
+                messages: [
+                  { id: "msg-1", role: "user", content: "Hi", timestamp: 1 },
+                  {
+                    id: "msg-2",
+                    role: "model",
+                    content: "Hello",
+                    timestamp: 2,
+                  },
+                  { id: "msg-3", role: "user", content: "Next", timestamp: 3 },
+                ],
+              }
+            : c,
+        ),
+      }));
+
+      await store.editMessage("msg-2", "Edited model content");
+
+      const conversation = useConversationStore
+        .getState()
+        .conversations.find((c) => c.id === id);
+      expect(conversation?.messages.length).toBe(2);
+      expect(conversation?.messages[0].id).toBe("msg-1");
+      expect(conversation?.messages[1].content).toBe("Edited model content");
+      // msg-3 should be removed
+      expect(
+        conversation?.messages.find((m) => m.id === "msg-3"),
+      ).toBeUndefined();
+    });
+  });
 });

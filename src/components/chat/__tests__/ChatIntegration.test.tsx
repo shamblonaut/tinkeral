@@ -798,6 +798,222 @@ describe("ChatInterface Integration", () => {
     expect(newConvBtn).not.toBeDisabled();
   });
 
+  it("should show confirmation dialog when deleting a message", async () => {
+    // Setup initial state with a conversation and a message
+    useConversationStore.setState({
+      conversations: [
+        {
+          id: "test-conv",
+          title: "Test Conversation",
+          modelId: "gemini-pro",
+          parameters: { temperature: 0.7, maxTokens: 1024, topP: 0.9 },
+          messages: [
+            {
+              id: "msg-1",
+              role: "user",
+              content: "Hello",
+              timestamp: Date.now(),
+            },
+            {
+              id: "msg-2",
+              role: "model",
+              content: "Hi there",
+              timestamp: Date.now(),
+              metadata: {
+                model: "gemini-pro",
+                usage: { totalTokens: 5 },
+                finishReason: "stop",
+              },
+            },
+          ],
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        },
+      ],
+      activeConversationId: "test-conv",
+    });
+
+    render(
+      <TooltipProvider>
+        <ChatInterface />
+      </TooltipProvider>,
+    );
+
+    // 1. Find the User message
+    const userMessage = screen.getByText("Hello");
+    const userMessageContainer = userMessage.closest("div[class*='group']");
+    expect(userMessageContainer).toBeInTheDocument();
+
+    // 2. Hover over the message to reveal actions (or just find the button if hidden)
+    // In tests, hidden elements might still be queryable if not display:none
+    // Our actions are opacity-0 but in the DOM.
+    // However, user-event hover might be needed if there's logic dependent on hover state (there isn't logic, just CSS)
+    // We can directly click the button if we find it.
+
+    // The delete button has title "Delete message"
+    const deleteButtons = screen.getAllByTitle("Delete message");
+    // Should be 1 because only USER messages have actions now
+    expect(deleteButtons).toHaveLength(1);
+    const deleteBtn = deleteButtons[0];
+
+    fireEvent.click(deleteBtn);
+
+    // 3. Verify Dialog appears
+    expect(screen.getByText("Delete Message")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /Are you sure you want to delete this message\? This will also remove all subsequent messages/i,
+      ),
+    ).toBeInTheDocument();
+
+    // 4. Click Cancel
+    const cancelBtn = screen.getByRole("button", { name: /cancel/i });
+    fireEvent.click(cancelBtn);
+
+    // Dialog should close
+    await waitFor(() => {
+      expect(screen.queryByText("Delete Message")).not.toBeInTheDocument();
+    });
+
+    // 5. Open Dialog again and Confirm
+    fireEvent.click(deleteBtn);
+    const confirmBtn = screen.getByRole("button", { name: "Delete" });
+    fireEvent.click(confirmBtn);
+
+    // Default mock implementation of deleteMessage in conversation store uses splice/slice
+    // verifying store update via state check
+    await waitFor(() => {
+      const state = useConversationStore.getState();
+      const conv = state.conversations.find((c) => c.id === "test-conv");
+      // Should have deleted msg-1 AND msg-2 (subsequent)
+      expect(conv?.messages).toHaveLength(0);
+    });
+  });
+
+  it("should edit a message and trigger regeneration", async () => {
+    // Setup initial state
+    useConversationStore.setState({
+      conversations: [
+        {
+          id: "test-edit-conv",
+          title: "Test Edit",
+          modelId: "gemini-pro",
+          parameters: { temperature: 0.7, maxTokens: 1024, topP: 0.9 },
+          messages: [
+            {
+              id: "msg-1",
+              role: "user",
+              content: "Original Content",
+              timestamp: Date.now(),
+            },
+            {
+              id: "msg-2",
+              role: "model",
+              content: "Response",
+              timestamp: Date.now(),
+            },
+          ],
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        },
+      ],
+      activeConversationId: "test-edit-conv",
+    });
+
+    render(
+      <TooltipProvider>
+        <ChatInterface />
+      </TooltipProvider>,
+    );
+
+    // 1. Find the User message
+    screen.getByText("Original Content");
+
+    // 2. Click Edit button
+    const editButtons = screen.getAllByTitle("Edit message");
+    expect(editButtons).toHaveLength(1);
+    fireEvent.click(editButtons[0]);
+
+    // 3. Verify Textarea appears with current content
+    // There might be multiple textboxes (main input + edit input), so we need to be specific
+    // The edit input is inside the message container, which we can find by the text "Original Content"
+    // But "Original Content" is now inside the textarea value.
+    const editInput = screen.getByDisplayValue("Original Content");
+    expect(editInput).toBeInTheDocument();
+    expect(editInput.tagName).toBe("TEXTAREA");
+
+    // 4. Change content
+    fireEvent.change(editInput, { target: { value: "New Content" } });
+
+    // 5. Click Save
+    const saveButton = screen.getByRole("button", { name: /save & submit/i });
+    fireEvent.click(saveButton);
+
+    // 6. Verify Store Update (content updated + subsequent message removed + regeneration triggered)
+    await waitFor(() => {
+      const state = useConversationStore.getState();
+      const conv = state.conversations.find((c) => c.id === "test-edit-conv");
+
+      // Message 1 should have new content
+      expect(conv?.messages[0].content).toBe("New Content");
+
+      // Message 2 (old response) should be removed (ready for regeneration)
+      expect(conv?.messages).toHaveLength(1);
+    });
+  });
+
+  it("should retry a message regeneration", async () => {
+    // Setup initial state
+    useConversationStore.setState({
+      conversations: [
+        {
+          id: "test-retry-conv",
+          title: "Test Retry",
+          modelId: "gemini-pro",
+          parameters: { temperature: 0.7, maxTokens: 1024, topP: 0.9 },
+          messages: [
+            {
+              id: "msg-1",
+              role: "user",
+              content: "Retry Request",
+              timestamp: Date.now(),
+            },
+            {
+              id: "msg-2",
+              role: "model",
+              content: "Bad Response",
+              timestamp: Date.now(),
+            },
+          ],
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        },
+      ],
+      activeConversationId: "test-retry-conv",
+    });
+
+    render(
+      <TooltipProvider>
+        <ChatInterface />
+      </TooltipProvider>,
+    );
+
+    // 1. Find Retry button on user message
+    const retryButtons = screen.getAllByTitle("Regenerate response");
+    expect(retryButtons).toHaveLength(1);
+    fireEvent.click(retryButtons[0]);
+
+    // 2. Verify Store Update (subsequent message removed + regeneration triggered)
+    await waitFor(() => {
+      const state = useConversationStore.getState();
+      const conv = state.conversations.find((c) => c.id === "test-retry-conv");
+
+      // Message 2 (old response) should be removed
+      expect(conv?.messages).toHaveLength(1);
+      expect(conv?.messages[0].content).toBe("Retry Request");
+    });
+  });
+
   it("should preserve ephemeral conversations when loading from DB", async () => {
     // 1. Setup: Store has an ephemeral conversation
     const ephemeralId = "ephemeral-1";

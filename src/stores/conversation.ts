@@ -38,6 +38,9 @@ interface ConversationState {
   ) => Promise<string>;
   deleteConversation: (id: string) => Promise<void>;
   sendMessage: (content: string) => Promise<void>;
+  deleteMessage: (messageId: string) => Promise<void>;
+  retryMessage: (messageId: string) => Promise<void>;
+  editMessage: (messageId: string, content: string) => Promise<void>;
   abortGeneration: () => void;
   updateMessage: (
     conversationId: string,
@@ -46,6 +49,11 @@ interface ConversationState {
   ) => Promise<void>;
   renameConversation: (id: string, title: string) => Promise<void>;
   duplicateConversation: (id: string) => Promise<string>;
+  executeChat: (
+    conversationId: string,
+    userMessage?: Message,
+    titleUpdate?: string,
+  ) => Promise<void>;
   setParameters: (
     params: Partial<ModelParameters>,
     mode?: "merge" | "replace",
@@ -329,30 +337,45 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
       conversationWithUserMsg.title = titleUpdate;
     }
 
-    const abortController = new AbortController();
-
-    // Optimistic update
+    // Update state with user message
     set((state) => ({
       conversations: state.conversations
         .map((c) =>
           c.id === activeConversationId ? conversationWithUserMsg : c,
         )
         .sort((a, b) => b.updatedAt - a.updatedAt),
+      error: null,
+    }));
+
+    // Trigger execution
+    await get().executeChat(activeConversationId, userMessage, titleUpdate);
+  },
+
+  // Internal helper to execute chat logic
+  executeChat: async (
+    conversationId: string,
+    userMessage?: Message,
+    titleUpdate?: string,
+  ) => {
+    const { conversations } = get();
+    const conversation = conversations.find((c) => c.id === conversationId);
+    if (!conversation) return;
+
+    const abortController = new AbortController();
+
+    // Optimistic update for loading state
+    set({
       isLoading: true,
       isStreaming: true,
       error: null,
       abortController,
-    }));
-    // Persist user message and potentially title
+    });
+
+    // Persist conversation and potentially title
     try {
-      // Check if conversation is not persisted (was ephemeral)
-      // Note: undefined persisted means it IS persisted (legacy/default), only === false means not persisted
-      if (conversationWithUserMsg.persisted === false) {
-        // First message in new conversation -> Persist everything
-        // destruct persisted to exclude it from persisted object (optional, but good for clean DB)
+      if (conversation.persisted === false) {
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { persisted, isTemporary, ...conversationData } =
-          conversationWithUserMsg;
+        const { persisted, isTemporary, ...conversationData } = conversation;
 
         if (!isTemporary) {
           const persistedConversation = {
@@ -365,43 +388,34 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
           // Update local state to mark as persisted
           set((state) => ({
             conversations: state.conversations.map((c) =>
-              c.id === activeConversationId ? { ...c, persisted: true } : c,
+              c.id === conversationId ? { ...c, persisted: true } : c,
             ),
           }));
         }
-      } else if (!conversationWithUserMsg.isTemporary) {
-        await conversationsDb.update(activeConversationId, {
-          messages: conversationWithUserMsg.messages,
+      } else if (!conversation.isTemporary) {
+        await conversationsDb.update(conversationId, {
+          messages: conversation.messages,
           title: titleUpdate || conversation.title,
-          updatedAt: conversationWithUserMsg.updatedAt,
+          updatedAt: conversation.updatedAt,
         });
       }
     } catch (err) {
-      console.error("Failed to persist user message:", err);
-      // Continue anyway, we can retry persistence later
+      console.error("Failed to persist conversation state:", err);
     }
 
-    // Variables needed for error handling
     let assistantMessageId: string | undefined;
     let fullContent = "";
 
-    // 2. Prepare for API call
     try {
-      // Get settings from store state (synchronous)
       const { settings } = useSettingsStore.getState();
+      if (!settings) throw new Error("Settings not initialized");
 
-      if (!settings) {
-        throw new Error("Settings not initialized");
-      }
-
-      const apiKey = settings.apiKeys["google"]; // Hardcoded provider for now as per MVP
-      if (!apiKey) {
-        throw new Error("API key not found for Google provider");
-      }
+      const apiKey = settings.apiKeys["google"];
+      if (!apiKey) throw new Error("API key not found for Google provider");
 
       const client = await GoogleAPIClient.createClient(apiKey);
 
-      // 3. Create placeholder assistant message
+      // Create placeholder assistant message
       assistantMessageId = crypto.randomUUID();
       const assistantMessage: Message = {
         id: assistantMessageId,
@@ -413,30 +427,26 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
         },
       };
 
-      // Update state with empty assistant message
+      // Add placeholder to state
       set((state) => {
         const currentConv = state.conversations.find(
-          (c) => c.id === activeConversationId,
+          (c) => c.id === conversationId,
         );
         if (!currentConv) return {};
 
-        const updatedConv = {
-          ...currentConv,
-          messages: [...currentConv.messages, assistantMessage],
-        };
-
         return {
           conversations: state.conversations.map((c) =>
-            c.id === activeConversationId ? updatedConv : c,
+            c.id === conversationId
+              ? { ...c, messages: [...c.messages, assistantMessage] }
+              : c,
           ),
-          activeConversationId, // Force update
         };
       });
 
-      // 4. Stream response
+      // Stream response
       const stream = client.streamChat(
         {
-          messages: conversationWithUserMsg.messages,
+          messages: conversation.messages,
           model: conversation.modelId,
           parameters: conversation.parameters,
           systemPrompt: conversation.systemPrompt,
@@ -451,7 +461,6 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
       for await (const chunk of stream) {
         fullContent += chunk.delta;
 
-        // Collect metadata if present (usually in final chunk)
         if (chunk.finishReason || chunk.usage) {
           lastMetadata = {
             finishReason: chunk.finishReason,
@@ -459,27 +468,21 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
           };
         }
 
-        // Throttle updates to ~60fps (16ms)
         const now = Date.now();
         if (now - lastUpdate >= 16) {
           set((state) => {
             const currentConv = state.conversations.find(
-              (c) => c.id === activeConversationId,
+              (c) => c.id === conversationId,
             );
             if (!currentConv) return {};
 
             const updatedMessages = currentConv.messages.map((m) =>
-              m.id === assistantMessageId
-                ? {
-                    ...m,
-                    content: fullContent,
-                  }
-                : m,
+              m.id === assistantMessageId ? { ...m, content: fullContent } : m,
             );
 
             return {
               conversations: state.conversations.map((c) =>
-                c.id === activeConversationId
+                c.id === conversationId
                   ? { ...c, messages: updatedMessages }
                   : c,
               ),
@@ -489,10 +492,10 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
         }
       }
 
-      // 5. Finalize update with complete content and metadata
+      // Finalize update
       set((state) => {
         const currentConv = state.conversations.find(
-          (c) => c.id === activeConversationId,
+          (c) => c.id === conversationId,
         );
         if (!currentConv) return {};
 
@@ -501,21 +504,20 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
             return {
               ...m,
               content: fullContent,
-              metadata: {
-                ...m.metadata,
-                ...lastMetadata,
-              },
+              metadata: { ...m.metadata, ...lastMetadata },
             };
           }
 
-          if (m.id === userMessage.id && lastMetadata.usage?.inputTokens) {
+          if (
+            userMessage &&
+            m.id === userMessage.id &&
+            lastMetadata.usage?.inputTokens
+          ) {
             return {
               ...m,
               metadata: {
                 ...m.metadata,
-                usage: {
-                  inputTokens: lastMetadata.usage.inputTokens,
-                },
+                usage: { inputTokens: lastMetadata.usage.inputTokens },
               },
             };
           }
@@ -534,7 +536,7 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
 
         return {
           conversations: state.conversations.map((c) =>
-            c.id === activeConversationId ? updatedConv : c,
+            c.id === conversationId ? updatedConv : c,
           ),
           isLoading: false,
           isStreaming: false,
@@ -542,19 +544,19 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
         };
       });
 
-      // 6. Persist final conversation state
-      const finalConversation = get().conversations.find(
-        (c) => c.id === activeConversationId,
+      // Persist final state
+      const finalConv = get().conversations.find(
+        (c) => c.id === conversationId,
       );
       if (
-        finalConversation &&
-        finalConversation.persisted !== false &&
-        !finalConversation.isTemporary
+        finalConv &&
+        finalConv.persisted !== false &&
+        !finalConv.isTemporary
       ) {
-        await conversationsDb.update(activeConversationId, {
-          messages: finalConversation.messages,
+        await conversationsDb.update(conversationId, {
+          messages: finalConv.messages,
           updatedAt: Date.now(),
-          metadata: finalConversation.metadata,
+          metadata: finalConv.metadata,
         });
       }
     } catch (error: unknown) {
@@ -562,41 +564,166 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
       const errorMessage =
         error instanceof Error ? error.message : "Failed to generate response";
 
-      // Attempt to save partial content if any
       if (fullContent) {
         set((state) => {
           const currentConv = state.conversations.find(
-            (c) => c.id === activeConversationId,
+            (c) => c.id === conversationId,
           );
           if (!currentConv) return {};
-
           const updatedMessages = currentConv.messages.map((m) =>
             m.id === assistantMessageId ? { ...m, content: fullContent } : m,
           );
-
           return {
             conversations: state.conversations.map((c) =>
-              c.id === activeConversationId
-                ? { ...c, messages: updatedMessages }
-                : c,
+              c.id === conversationId ? { ...c, messages: updatedMessages } : c,
             ),
           };
         });
       }
 
-      // Check if it was an abort error
       const isAborted =
         error instanceof DOMException && error.name === "AbortError";
-
       set({
-        error: isAborted ? null : errorMessage, // Don't show error if aborted
+        error: isAborted ? null : errorMessage,
         isLoading: false,
         isStreaming: false,
         abortController: null,
       });
+    }
+  },
 
-      if (!isAborted) {
-        // Error is already set in state
+  deleteMessage: async (messageId: string) => {
+    const { activeConversationId, conversations } = get();
+    if (!activeConversationId) return;
+
+    const conversation = conversations.find(
+      (c) => c.id === activeConversationId,
+    );
+    if (!conversation) return;
+
+    const messageIndex = conversation.messages.findIndex(
+      (m) => m.id === messageId,
+    );
+    if (messageIndex === -1) return;
+
+    // Remove message and all following context
+    const updatedMessages = conversation.messages.slice(0, messageIndex);
+    const updatedConversation = {
+      ...conversation,
+      messages: updatedMessages,
+      updatedAt: Date.now(),
+    };
+
+    set((state) => ({
+      conversations: state.conversations.map((c) =>
+        c.id === activeConversationId ? updatedConversation : c,
+      ),
+    }));
+
+    if (conversation.persisted !== false && !conversation.isTemporary) {
+      await conversationsDb.update(activeConversationId, {
+        messages: updatedMessages,
+      });
+    }
+  },
+
+  retryMessage: async (messageId: string) => {
+    const { activeConversationId, conversations } = get();
+    if (!activeConversationId) return;
+
+    const conversation = conversations.find(
+      (c) => c.id === activeConversationId,
+    );
+    if (!conversation) return;
+
+    const messageIndex = conversation.messages.findIndex(
+      (m) => m.id === messageId,
+    );
+    if (messageIndex === -1) return;
+
+    const message = conversation.messages[messageIndex];
+    let userMsgToLink: Message | undefined;
+    let sliceIndex = messageIndex;
+
+    if (message.role === "model") {
+      // Find the user message before this one to link the new response to
+      for (let i = messageIndex - 1; i >= 0; i--) {
+        if (conversation.messages[i].role === "user") {
+          userMsgToLink = conversation.messages[i];
+          break;
+        }
+      }
+      // Remove this model message and everything after
+      sliceIndex = messageIndex;
+    } else if (message.role === "user") {
+      userMsgToLink = message;
+      // Keep this user message, but remove everything after
+      sliceIndex = messageIndex + 1;
+    }
+
+    if (!userMsgToLink) return;
+
+    const updatedMessages = conversation.messages.slice(0, sliceIndex);
+    const updatedConversation = {
+      ...conversation,
+      messages: updatedMessages,
+      updatedAt: Date.now(),
+    };
+
+    set((state) => ({
+      conversations: state.conversations.map((c) =>
+        c.id === activeConversationId ? updatedConversation : c,
+      ),
+    }));
+
+    // Trigger regeneration
+    await get().executeChat(activeConversationId, userMsgToLink);
+  },
+
+  editMessage: async (messageId: string, content: string) => {
+    const { activeConversationId, conversations } = get();
+    if (!activeConversationId) return;
+
+    const conversation = conversations.find(
+      (c) => c.id === activeConversationId,
+    );
+    if (!conversation) return;
+
+    const messageIndex = conversation.messages.findIndex(
+      (m) => m.id === messageId,
+    );
+    if (messageIndex === -1) return;
+
+    const message = conversation.messages[messageIndex];
+
+    // Update message content and remove subsequent context
+    const updatedMessage = { ...message, content, timestamp: Date.now() };
+    const updatedMessages = [
+      ...conversation.messages.slice(0, messageIndex),
+      updatedMessage,
+    ];
+
+    const updatedConversation = {
+      ...conversation,
+      messages: updatedMessages,
+      updatedAt: Date.now(),
+    };
+
+    set((state) => ({
+      conversations: state.conversations.map((c) =>
+        c.id === activeConversationId ? updatedConversation : c,
+      ),
+    }));
+
+    // Only regenerate if it's a user message (typically)
+    if (message.role === "user") {
+      await get().executeChat(activeConversationId, updatedMessage);
+    } else {
+      // If editing a model message, we just update it and context is gone anyway
+      if (conversation.persisted !== false && !conversation.isTemporary) {
+        await conversationsDb.update(activeConversationId, {
+          messages: updatedMessages,
+        });
       }
     }
   },
