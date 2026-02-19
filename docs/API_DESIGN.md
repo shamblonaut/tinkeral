@@ -28,8 +28,8 @@ interface Message {
   // Optional metadata
   metadata?: {
     model?: string;
-    tokens?: number;
     finishReason?: FinishReason;
+    usage?: TokenUsage;
   };
 
   // Function calling support (v1.1+)
@@ -72,6 +72,9 @@ interface Conversation {
   readonly createdAt: number;
   updatedAt: number;
 
+  // State
+  isTemporary?: boolean; // If true, not persisted to DB (unless changed)
+
   // Optional metadata
   metadata?: {
     totalTokens?: number;
@@ -89,6 +92,7 @@ interface ConversationSummary {
   lastMessage?: string;
   updatedAt: number;
   messageCount: number;
+  isTemporary?: boolean;
 }
 ```
 
@@ -144,13 +148,16 @@ interface LLMProvider {
    * Send a chat request and get complete response.
    * Use for non-streaming scenarios.
    */
-  chat(request: ChatRequest): Promise<ChatResponse>;
+  chat(request: ChatRequest, signal?: AbortSignal): Promise<ChatResponse>;
 
   /**
    * Send a chat request and stream response.
    * Returns async iterator of chunks.
    */
-  streamChat(request: ChatRequest): AsyncIterableIterator<StreamChunk>;
+  streamChat(
+    request: ChatRequest,
+    signal?: AbortSignal,
+  ): AsyncIterableIterator<StreamChunk>;
 
   /**
    * Estimate token count for the contents.
@@ -160,7 +167,7 @@ interface LLMProvider {
   /**
    * Normalize provider-specific errors to common format.
    */
-  normalizeError(error: unknown): NormalizedError;
+  normalizeError(error: unknown): ProviderError;
 }
 ```
 
@@ -171,30 +178,44 @@ interface LLMProvider {
  * Information about a specific model
  */
 interface ModelInfo {
-  readonly id: string; // e.g., 'gemini-pro'
-  readonly name: string; // Display name
-  readonly provider: string; // Provider id
-  description?: string; // Brief description
+  readonly id: string;
+  readonly name: string;
+  readonly provider: string; // 'google'
+  readonly family: "gemini" | "gemma" | "imagen" | "veo" | "other";
+  readonly tier?: "flash" | "pro" | "ultra" | "nano" | "fast" | "lite";
+  readonly stage: "stable" | "preview" | "experimental" | "legacy";
 
-  readonly contextWindow: number;
-  readonly maxOutputTokens: number;
-  capabilities: ModelCapabilities;
-  isRecommended?: boolean; // Show in "popular" list
-}
+  readonly description: string;
 
-/**
- * Model capabilities - what features it supports
- */
-interface ModelCapabilities {
-  streaming: boolean;
-  functionCalling: boolean;
-  systemPrompt: boolean;
-  vision: boolean;
+  // Technical Limits
+  readonly contextWindow: {
+    readonly input: number;
+    readonly output: number;
+  };
 
-  // Parameter ranges
-  temperatureRange: [number, number];
-  topPRange: [number, number];
-  supportsTopK: boolean;
+  // Features (Boolean Map)
+  readonly capabilities: {
+    // Input Modalities
+    readonly imageInput: boolean;
+    readonly videoInput: boolean;
+    readonly audioInput: boolean;
+
+    // Output Modalities
+    readonly textGeneration: boolean;
+    readonly imageGeneration: boolean;
+    readonly videoGeneration: boolean;
+    readonly speechGeneration: boolean; // TTS
+
+    // Tools & Features
+    readonly functionCalling: boolean;
+    readonly codeExecution: boolean;
+    readonly systemInstruction: boolean;
+    readonly thinking?: boolean; // specialized thinking/reasoning
+    readonly embedding?: boolean; // Can create embeddings
+  };
+
+  readonly defaultParameters?: Partial<ModelParameters>;
+  readonly isRecommended?: boolean;
 }
 ```
 
@@ -244,9 +265,11 @@ interface StreamChunk {
  * Token usage information
  */
 interface TokenUsage {
-  promptTokens: number;
-  completionTokens: number;
-  totalTokens: number;
+  inputTokens?: number;
+  outputTokens?: number;
+  totalTokens?: number;
+  thinkingTokens?: number;
+  cachedTokens?: number;
 }
 ```
 
@@ -418,7 +441,7 @@ interface JSONSchemaProperty {
 }
 ```
 
-### Function Executor
+### Function Executor (v1.1+ - Planned)
 
 ```typescript
 /**
@@ -510,22 +533,15 @@ interface ConversationStore {
  * Manages global application settings
  */
 interface SettingsStore {
-  // State
-  settings: AppSettings;
+  settings: AppSettings | null;
+  isLoading: boolean;
+  error: string | null;
 
   // Actions
-  setApiKey(provider: string, key: string): Promise<void>;
-  removeApiKey(provider: string): Promise<void>;
-  setDefaultModel(modelId: string): Promise<void>;
-  setDefaultParameters(params: ModelParameters): Promise<void>;
-  setUIPreference<K extends keyof UIPreferences>(
-    key: K,
-    value: UIPreferences[K],
-  ): Promise<void>;
-
-  // Persistence
-  loadSettings(): Promise<void>;
-  saveSettings(): Promise<void>;
+  loadSettings: () => Promise<void>;
+  updateSettings: (changes: Partial<AppSettings>) => Promise<void>;
+  setApiKey: (provider: string, key: string) => Promise<void>;
+  updatePreferences: (prefs: Partial<UIPreferences>) => Promise<void>;
 }
 ```
 
@@ -536,39 +552,27 @@ interface SettingsStore {
  * Manages transient UI state
  */
 interface UIStore {
-  // State
-  isParametersPanelOpen: boolean;
-  isConversationListOpen: boolean;
-  activeModal: ModalType | null;
-  notifications: Notification[];
+  isSidebarOpen: boolean;
+  isChatSettingsOpen: boolean;
+  activeModal: string | null;
+  toasts: Toast[];
 
   // Actions
-  toggleParametersPanel(): void;
-  toggleConversationList(): void;
-  openModal(type: ModalType): void;
-  closeModal(): void;
-  showNotification(notification: Omit<Notification, "id">): void;
-  dismissNotification(id: string): void;
+  toggleSidebar: () => void;
+  setSidebarOpen: (isOpen: boolean) => void;
+  toggleChatSettings: () => void;
+  setChatSettingsOpen: (isOpen: boolean) => void;
+  openModal: (modalId: string) => void;
+  closeModal: () => void;
+  addToast: (toast: Omit<Toast, "id">) => void;
+  removeToast: (id: string) => void;
 }
 
-type ModalType =
-  | "settings"
-  | "import-export"
-  | "function-editor"
-  | "model-info"
-  | "confirmation";
-
-interface Notification {
-  readonly id: string;
+interface Toast {
+  id: string;
   type: "info" | "success" | "warning" | "error";
   message: string;
-  duration?: number; // Auto-dismiss after ms (null = manual)
-  action?: NotificationAction;
-}
-
-interface NotificationAction {
-  label: string;
-  onClick: () => void;
+  duration?: number;
 }
 ```
 
@@ -710,6 +714,7 @@ export const ConversationSchema = z.object({
   systemPrompt: z.string().optional(),
   createdAt: z.number(),
   updatedAt: z.number(),
+  isTemporary: z.boolean().optional(),
   metadata: z
     .object({
       totalTokens: z.number().optional(),

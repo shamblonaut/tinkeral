@@ -450,10 +450,10 @@ src/
 ├── stores/            # Zustand stores (state layer)
 ├── services/          # Business logic (service layer)
 │   ├── api/          # Provider implementations
-│   ├── storage.ts    # Storage service
-│   └── executor.ts   # Function executor
+│   ├── storage.ts    # Storage service (Planned)
+│   └── executor.ts   # Function executor (Planned)
 ├── db/               # Database schema (Dexie)
-├── workers/          # Web Workers
+├── workers/          # Web Workers (Planned)
 ├── types/            # TypeScript definitions
 ├── hooks/            # Custom React hooks
 ├── utils/            # Utility functions

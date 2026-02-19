@@ -40,6 +40,7 @@ export interface ConversationRecord {
   systemPrompt?: string;
   createdAt: number;
   updatedAt: number;
+  isTemporary?: boolean;
   metadata?: {
     totalTokens?: number;
     estimatedCost?: number;
