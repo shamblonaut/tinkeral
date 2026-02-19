@@ -445,7 +445,8 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
       );
 
       let lastUpdate = Date.now();
-      let lastMetadata = {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let lastMetadata: any = {};
 
       for await (const chunk of stream) {
         fullContent += chunk.delta;
@@ -454,7 +455,7 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
         if (chunk.finishReason || chunk.usage) {
           lastMetadata = {
             finishReason: chunk.finishReason,
-            tokens: chunk.usage?.totalTokens,
+            usage: chunk.usage,
           };
         }
 
@@ -495,22 +496,40 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
         );
         if (!currentConv) return {};
 
-        const updatedMessages = currentConv.messages.map((m) =>
-          m.id === assistantMessageId
-            ? {
-                ...m,
-                content: fullContent,
-                metadata: {
-                  ...m.metadata,
-                  ...lastMetadata,
+        const updatedMessages = currentConv.messages.map((m) => {
+          if (m.id === assistantMessageId) {
+            return {
+              ...m,
+              content: fullContent,
+              metadata: {
+                ...m.metadata,
+                ...lastMetadata,
+              },
+            };
+          }
+
+          if (m.id === userMessage.id && lastMetadata.usage?.inputTokens) {
+            return {
+              ...m,
+              metadata: {
+                ...m.metadata,
+                usage: {
+                  inputTokens: lastMetadata.usage.inputTokens,
                 },
-              }
-            : m,
-        );
+              },
+            };
+          }
+
+          return m;
+        });
 
         const updatedConv = {
           ...currentConv,
           messages: updatedMessages,
+          metadata: {
+            ...currentConv.metadata,
+            totalTokens: lastMetadata.usage?.totalTokens,
+          },
         };
 
         return {
@@ -535,6 +554,7 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
         await conversationsDb.update(activeConversationId, {
           messages: finalConversation.messages,
           updatedAt: Date.now(),
+          metadata: finalConversation.metadata,
         });
       }
     } catch (error: unknown) {

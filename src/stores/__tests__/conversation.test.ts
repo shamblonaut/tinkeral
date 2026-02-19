@@ -227,7 +227,11 @@ describe("ConversationStore", () => {
       yield {
         delta: "",
         finishReason: "stop",
-        usage: { totalTokens: 10 },
+        usage: {
+          inputTokens: 5,
+          outputTokens: 5,
+          totalTokens: 10,
+        },
       };
     };
 
@@ -263,13 +267,82 @@ describe("ConversationStore", () => {
       (c) => c.id === conversationId,
     );
 
-    // Check assistant response
+    // Check user message for input tokens
+    expect(conversation?.messages[0].metadata?.usage?.inputTokens).toBe(5);
+
+    // Check assistant response for output tokens
     expect(conversation?.messages[1].role).toBe("model");
     expect(conversation?.messages[1].content).toBe("Hello World");
-    expect(conversation?.messages[1].metadata?.tokens).toBe(10);
+
+    expect(conversation?.messages[1].metadata?.usage).toEqual({
+      // inputTokens might be present or not depending on how we merge, but typically we merge all
+      // In current implementation, we merge ...lastMetadata which has inputTokens too.
+      // But let's check what we expect.
+      inputTokens: 5,
+      outputTokens: 5,
+      totalTokens: 10,
+    });
+    expect(conversation?.metadata?.totalTokens).toBe(10);
     expect(state.isStreaming).toBe(false);
 
     expect(mockStreamChat).toHaveBeenCalled();
+  });
+
+  it("should track cumulative totalTokens across multiple turns", async () => {
+    // Mock settings
+    vi.mocked(useSettingsStore.getState).mockReturnValue({
+      settings: {
+        id: "app-settings",
+        apiKeys: { google: "test-api-key" },
+        defaultModel: "gemini-2.5-flash",
+      },
+    } as unknown as SettingsState);
+
+    // Mock first response
+    const mockStream1 = async function* () {
+      yield { delta: "Response 1" };
+      yield {
+        delta: "",
+        finishReason: "stop",
+        usage: { inputTokens: 10, outputTokens: 5, totalTokens: 15 },
+      };
+    };
+
+    const mockStreamChat = vi.fn().mockReturnValue(mockStream1());
+
+    vi.mocked(GoogleAPIClient.createClient).mockResolvedValue({
+      streamChat: mockStreamChat,
+    } as unknown as GoogleAPIClient);
+
+    const store = useConversationStore.getState();
+    const conversationId = await store.createConversation("test-model", {
+      temperature: 0.7,
+      maxTokens: 100,
+      topP: 0.9,
+    });
+    store.setActiveConversation(conversationId);
+
+    // Turn 1
+    await store.sendMessage("Turn 1");
+    let state = useConversationStore.getState();
+    let conversation = state.conversations.find((c) => c.id === conversationId);
+    expect(conversation?.metadata?.totalTokens).toBe(15);
+
+    // Turn 2 - Update mock for second turn
+    const mockStream2 = async function* () {
+      yield { delta: "Response 2" };
+      yield {
+        delta: "",
+        finishReason: "stop",
+        usage: { inputTokens: 20, outputTokens: 10, totalTokens: 30 },
+      };
+    };
+    mockStreamChat.mockReturnValue(mockStream2());
+
+    await store.sendMessage("Turn 2");
+    state = useConversationStore.getState();
+    conversation = state.conversations.find((c) => c.id === conversationId);
+    expect(conversation?.metadata?.totalTokens).toBe(30);
   });
 
   it("should handle error during streaming", async () => {

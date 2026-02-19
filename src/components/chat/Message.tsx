@@ -6,6 +6,7 @@ import remarkGfm from "remark-gfm";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import type { Message as MessageType } from "@/types";
+import { TokenUsageDisplay } from "./TokenUsageDisplay";
 
 interface MessageProps {
   message: MessageType;
@@ -60,21 +61,47 @@ export const Message = memo(function Message({
           isUser ? "items-end" : "items-start",
         )}
       >
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-medium opacity-70">
-            {isUser ? "You" : message.metadata?.model || "Model"}
-          </span>
-          <span className="text-muted-foreground text-[10px]">
-            {new Date(message.timestamp).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </span>
+        <div
+          className={cn("flex items-center gap-2", isUser ? "pl-4" : "pr-4")}
+        >
+          {isUser ? (
+            <>
+              <TokenUsageDisplay
+                usage={message.metadata?.usage}
+                role={message.role}
+                contentLength={message.content.length}
+              />
+              <span className="text-muted-foreground text-[10px]">
+                {new Date(message.timestamp).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+              <span className="text-xs font-medium opacity-70">You</span>
+            </>
+          ) : (
+            <>
+              <span className="text-xs font-medium opacity-70">
+                {message.metadata?.model || "Model"}
+              </span>
+              <span className="text-muted-foreground text-[10px]">
+                {new Date(message.timestamp).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+              <TokenUsageDisplay
+                usage={message.metadata?.usage}
+                role={message.role}
+                contentLength={message.content.length}
+              />
+            </>
+          )}
         </div>
 
         <div
           className={cn(
-            "prose prose-neutral dark:prose-invert max-w-none text-sm leading-relaxed wrap-break-word",
+            "prose prose-neutral dark:prose-invert w-full text-sm leading-relaxed wrap-break-word",
             isUser
               ? "bg-primary text-primary-foreground rounded-2xl rounded-tr-sm px-4 py-2"
               : "bg-muted rounded-2xl rounded-tl-sm px-4 py-2",

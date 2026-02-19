@@ -5,7 +5,8 @@ import type {
   FunctionCall,
   Message,
   ModelParameters,
-} from "@/types";
+  TokenUsage,
+} from "./conversation";
 
 /**
  * Information about a specific model
@@ -84,7 +85,6 @@ export interface ChatRequest {
  */
 export interface ChatResponse {
   message: Message;
-  usage: TokenUsage;
   model: string;
   finishReason: FinishReason;
 }
@@ -97,15 +97,6 @@ export interface StreamChunk {
   finishReason?: FinishReason;
   usage?: TokenUsage; // Only in final chunk
   functionCall?: Partial<FunctionCall>;
-}
-
-/**
- * Token usage information
- */
-export interface TokenUsage {
-  promptTokens: number;
-  completionTokens: number;
-  totalTokens: number;
 }
 
 /**

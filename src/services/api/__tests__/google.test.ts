@@ -165,10 +165,12 @@ describe("GoogleAPIClient", () => {
       // Verify response mapping
       expect(response.message.content).toBe("Hi there!");
       expect(response.message.role).toBe("model");
-      expect(response.usage).toEqual({
-        promptTokens: 10,
-        completionTokens: 5,
+      expect(response.message.metadata?.usage).toEqual({
+        inputTokens: 10,
+        outputTokens: 5,
         totalTokens: 15,
+        thinkingTokens: 0,
+        cachedTokens: 0,
       });
       expect(response.finishReason).toBe("stop");
     });
@@ -245,9 +247,11 @@ describe("GoogleAPIClient", () => {
       expect(chunks[1].delta).toBe(" World");
       expect(chunks[1].finishReason).toBe("stop");
       expect(chunks[1].usage).toEqual({
-        promptTokens: 10,
-        completionTokens: 5,
+        inputTokens: 10,
+        outputTokens: 5,
         totalTokens: 15,
+        thinkingTokens: 0,
+        cachedTokens: 0,
       });
     });
 

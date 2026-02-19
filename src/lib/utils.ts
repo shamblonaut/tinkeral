@@ -27,3 +27,14 @@ export function formatRelativeTime(date: number | Date): string {
 
   return new Date(date).toLocaleDateString();
 }
+
+export function formatSmartDate(date: number | Date): string {
+  const d = new Date(date);
+  const now = new Date();
+  const isSameDay = d.toDateString() === now.toDateString();
+
+  if (isSameDay) {
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+  return d.toLocaleDateString();
+}

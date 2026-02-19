@@ -135,14 +135,17 @@ export class GoogleAPIClient implements LLMProvider {
                 finishReason: this.mapFinishReason(
                   response.candidates?.[0]?.finishReason,
                 ),
-                tokens: response.usageMetadata?.totalTokenCount || 0,
+                usage: response.usageMetadata
+                  ? {
+                      inputTokens: response.usageMetadata.promptTokenCount,
+                      outputTokens: response.usageMetadata.candidatesTokenCount,
+                      totalTokens: response.usageMetadata.totalTokenCount,
+                      thinkingTokens: response.usageMetadata.thoughtsTokenCount,
+                      cachedTokens:
+                        response.usageMetadata.cachedContentTokenCount,
+                    }
+                  : undefined,
               },
-            },
-            usage: {
-              promptTokens: response.usageMetadata?.promptTokenCount || 0,
-              completionTokens:
-                response.usageMetadata?.candidatesTokenCount || 0,
-              totalTokens: response.usageMetadata?.totalTokenCount || 0,
             },
             model: request.model,
             finishReason: this.mapFinishReason(
@@ -173,13 +176,19 @@ export class GoogleAPIClient implements LLMProvider {
             finishReason: this.mapFinishReason(
               response.candidates?.[0]?.finishReason,
             ),
-            tokens: response.usageMetadata?.totalTokenCount || 0,
+            usage: response.usageMetadata
+              ? {
+                  inputTokens: response.usageMetadata.promptTokenCount || 0,
+                  outputTokens:
+                    response.usageMetadata.candidatesTokenCount || 0,
+                  totalTokens: response.usageMetadata.totalTokenCount || 0,
+                  thinkingTokens:
+                    response.usageMetadata.thoughtsTokenCount || 0,
+                  cachedTokens:
+                    response.usageMetadata.cachedContentTokenCount || 0,
+                }
+              : undefined,
           },
-        },
-        usage: {
-          promptTokens: response.usageMetadata?.promptTokenCount || 0,
-          completionTokens: response.usageMetadata?.candidatesTokenCount || 0,
-          totalTokens: response.usageMetadata?.totalTokenCount || 0,
         },
         model: request.model,
         finishReason: this.mapFinishReason(
@@ -233,9 +242,11 @@ export class GoogleAPIClient implements LLMProvider {
           ),
           usage: chunk.usageMetadata
             ? {
-                promptTokens: chunk.usageMetadata.promptTokenCount || 0,
-                completionTokens: chunk.usageMetadata.candidatesTokenCount || 0,
+                inputTokens: chunk.usageMetadata.promptTokenCount || 0,
+                outputTokens: chunk.usageMetadata.candidatesTokenCount || 0,
                 totalTokens: chunk.usageMetadata.totalTokenCount || 0,
+                thinkingTokens: chunk.usageMetadata.thoughtsTokenCount || 0,
+                cachedTokens: chunk.usageMetadata.cachedContentTokenCount || 0,
               }
             : undefined,
         };

@@ -19,7 +19,8 @@ import {
 import { type Conversation } from "@/db";
 import { useMediaQuery } from "@/hooks";
 import { KNOWN_MODELS } from "@/lib/models";
-import { cn, formatRelativeTime } from "@/lib/utils";
+import { calculateConversationTokens } from "@/lib/tokens";
+import { cn, formatRelativeTime, formatSmartDate } from "@/lib/utils";
 import { useConversationStore } from "@/stores";
 
 interface ConversationItemProps {
@@ -223,7 +224,7 @@ export const ConversationItem = memo(function ConversationItem({
 
             <div className="bg-muted/50 text-accent-foreground/70 rounded-md border p-2 text-[10px] leading-tight">
               <div className="grid grid-cols-2 gap-x-2 gap-y-1.5">
-                <div className="flex flex-col gap-0.5">
+                <div className="col-span-2 flex flex-col gap-0.5">
                   <span className="text-[9px] font-semibold tracking-wider uppercase opacity-40">
                     Model
                   </span>
@@ -237,20 +238,56 @@ export const ConversationItem = memo(function ConversationItem({
                     {conversation.messages.length}
                   </span>
                 </div>
-                <div className="col-span-2 flex flex-col gap-0.5">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[9px] font-semibold tracking-wider uppercase opacity-40">
+                    Tokens
+                  </span>
+                  <span className="font-medium">
+                    {(() => {
+                      const { total, isExact } =
+                        calculateConversationTokens(conversation);
+                      return (
+                        <span
+                          title={
+                            isExact
+                              ? "Exact count from model summary"
+                              : "Approximate count based on message history"
+                          }
+                        >
+                          {!isExact && "~"}
+                          {total}
+                          {model?.contextWindow && (
+                            <span
+                              className="ml-1 opacity-50"
+                              title={`Percentage of total context window used (${model.contextWindow.input.toLocaleString()} tokens)`}
+                            >
+                              (
+                              {(
+                                (total / model.contextWindow.input) *
+                                100
+                              ).toFixed(2)}
+                              %)
+                            </span>
+                          )}
+                        </span>
+                      );
+                    })()}
+                  </span>
+                </div>
+                <div className="col-span-1 flex flex-col gap-0.5">
                   <span className="text-[9px] font-semibold tracking-wider uppercase opacity-40">
                     Created
                   </span>
-                  <span className="font-medium">
-                    {new Date(conversation.createdAt).toLocaleString()}
+                  <span className="truncate font-medium">
+                    {formatSmartDate(conversation.createdAt)}
                   </span>
                 </div>
-                <div className="col-span-2 flex flex-col gap-0.5">
+                <div className="col-span-1 flex flex-col gap-0.5">
                   <span className="text-[9px] font-semibold tracking-wider uppercase opacity-40">
                     Updated
                   </span>
-                  <span className="font-medium">
-                    {new Date(conversation.updatedAt).toLocaleString()}
+                  <span className="truncate font-medium">
+                    {formatSmartDate(conversation.updatedAt)}
                   </span>
                 </div>
               </div>

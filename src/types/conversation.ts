@@ -18,6 +18,14 @@ export interface FunctionResult {
   error?: string;
 }
 
+export interface TokenUsage {
+  inputTokens?: number;
+  outputTokens?: number;
+  totalTokens?: number;
+  thinkingTokens?: number;
+  cachedTokens?: number;
+}
+
 export interface Message {
   readonly id: string;
   role: MessageRole;
@@ -25,8 +33,8 @@ export interface Message {
   readonly timestamp: number;
   metadata?: {
     model?: string;
-    tokens?: number;
     finishReason?: FinishReason;
+    usage?: TokenUsage;
   };
   functionCall?: FunctionCall;
   functionResult?: FunctionResult;
