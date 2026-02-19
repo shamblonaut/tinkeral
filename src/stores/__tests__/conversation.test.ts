@@ -1161,4 +1161,62 @@ describe("ConversationStore", () => {
       ).toBeUndefined();
     });
   });
+  describe("System Prompt", () => {
+    it("should update system prompt in state", async () => {
+      const store = useConversationStore.getState();
+      const id = await store.createConversation("test-model", {
+        temperature: 0.7,
+        maxTokens: 1024,
+        topP: 0.9,
+      });
+
+      const prompt = "You are a helpful assistant.";
+      await store.setSystemPrompt(prompt);
+
+      const conversation = useConversationStore
+        .getState()
+        .conversations.find((c) => c.id === id);
+      expect(conversation?.systemPrompt).toBe(prompt);
+    });
+
+    it("should persist system prompt to database", async () => {
+      const id = await useConversationStore
+        .getState()
+        .createConversation("test-model", {
+          temperature: 0.7,
+          maxTokens: 1024,
+          topP: 0.9,
+        });
+
+      // Manually mark as persisted for this test
+      useConversationStore.setState((state) => ({
+        conversations: state.conversations.map((c) =>
+          c.id === id ? { ...c, persisted: true } : c,
+        ),
+      }));
+
+      // In the original test we mocked conversations.save/update directly.
+      // Here we rely on fake-indexeddb which is already set up in this file.
+      // So we just check if it's in the DB.
+
+      // First, we need to make sure the conversation is in the DB
+      // We can do this by simulating a message or manually saving
+      // In this test suite, createConversation does NOT persist by default.
+      // So we need to manually persist it to the DB first if we want update to work.
+      const conversation = useConversationStore
+        .getState()
+        .conversations.find((c) => c.id === id);
+      if (conversation) {
+        await conversations.save({ ...conversation, persisted: true });
+      }
+
+      const prompt = "You are a pirate.";
+      await useConversationStore.getState().setSystemPrompt(prompt);
+
+      // Verify persistence
+      const persisted = await conversations.get(id);
+      expect(persisted).toBeDefined();
+      expect(persisted?.systemPrompt).toBe(prompt);
+    });
+  });
 });

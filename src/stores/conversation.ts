@@ -58,6 +58,7 @@ interface ConversationState {
     params: Partial<ModelParameters>,
     mode?: "merge" | "replace",
   ) => Promise<void>;
+  setSystemPrompt: (systemPrompt: string) => Promise<void>;
 }
 
 export const useConversationStore = create<ConversationState>((set, get) => ({
@@ -623,6 +624,7 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
     if (conversation.persisted !== false && !conversation.isTemporary) {
       await conversationsDb.update(activeConversationId, {
         messages: updatedMessages,
+        updatedAt: Date.now(),
       });
     }
   },
@@ -876,6 +878,40 @@ export const useConversationStore = create<ConversationState>((set, get) => ({
     } catch (error) {
       console.error("Failed to update parameters:", error);
       set({ error: "Failed to update parameters" });
+    }
+  },
+
+  setSystemPrompt: async (systemPrompt: string) => {
+    const { activeConversationId, conversations } = get();
+    if (!activeConversationId) return;
+
+    const conversation = conversations.find(
+      (c) => c.id === activeConversationId,
+    );
+    if (!conversation) return;
+
+    const updatedConversation = {
+      ...conversation,
+      systemPrompt,
+      updatedAt: Date.now(),
+    };
+
+    try {
+      if (conversation.persisted !== false && !conversation.isTemporary) {
+        await conversationsDb.update(activeConversationId, {
+          systemPrompt,
+          updatedAt: Date.now(),
+        });
+      }
+
+      set((state) => ({
+        conversations: state.conversations.map((c) =>
+          c.id === activeConversationId ? updatedConversation : c,
+        ),
+      }));
+    } catch (error) {
+      console.error("Failed to update system prompt:", error);
+      set({ error: "Failed to update system prompt" });
     }
   },
 }));

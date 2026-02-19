@@ -6,13 +6,18 @@ import {
   DrawerDescription,
   DrawerHeader,
   DrawerTitle,
+  Label,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
   ScrollArea,
+  Textarea,
 } from "@/components/ui";
 import { useMediaQuery } from "@/hooks";
 import { getModelDefaultParameters } from "@/lib/models";
 import { useConversationStore, useUIStore } from "@/stores";
 import { DEFAULT_PARAMETERS } from "@/types";
-import { RotateCcw, X } from "lucide-react";
+import { Info, RotateCcw, X } from "lucide-react";
 
 export function ChatSettings() {
   const { isChatSettingsOpen, toggleChatSettings, setChatSettingsOpen } =
@@ -38,6 +43,11 @@ export function ChatSettings() {
     (m) => m.id === conversation?.modelId,
   );
 
+  const systemPrompt = conversation?.systemPrompt || "";
+  const setSystemPrompt = useConversationStore(
+    (state) => state.setSystemPrompt,
+  );
+
   const maxOutputTokens = activeModel?.contextWindow.output || 8192;
 
   const handleParamChange = (key: string, value: number) => {
@@ -54,6 +64,50 @@ export function ChatSettings() {
       </div>
 
       <div className="bg-border h-px" />
+
+      {activeModel?.capabilities.systemInstruction && (
+        <>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Label className="text-muted-foreground text-sm font-semibold tracking-wider uppercase">
+                  System Prompt
+                </Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-4 w-4 cursor-help rounded-full p-0"
+                      tabIndex={-1}
+                    >
+                      <Info className="text-muted-foreground hover:text-foreground h-3.5 w-3.5" />
+                      <span className="sr-only">Info</span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent side="top" className="max-w-[200px] p-2">
+                    <p className="text-xs">
+                      Instructions for how the model should behave.
+                    </p>
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <span className="text-muted-foreground text-xs">
+                ~{Math.ceil(systemPrompt.length / 4)} tokens
+              </span>
+            </div>
+            <Textarea
+              placeholder="You are a helpful assistant..."
+              value={systemPrompt}
+              onChange={(e) => setSystemPrompt(e.target.value)}
+              className="min-h-[100px] resize-y"
+              disabled={isDisabled}
+            />
+          </div>
+
+          <div className="bg-border h-px" />
+        </>
+      )}
 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
@@ -131,7 +185,7 @@ export function ChatSettings() {
   if (isDesktop) {
     if (!isChatSettingsOpen) return null;
     return (
-      <div className="bg-background flex h-full w-100 shrink-0 flex-col border-l transition-all duration-300 ease-in-out">
+      <div className="bg-background flex h-full w-80 shrink-0 flex-col overflow-auto border-l transition-all duration-300 ease-in-out">
         <div className="flex items-center justify-between border-b p-4">
           <h2 className="text-sm font-semibold">Chat Settings</h2>
           <Button

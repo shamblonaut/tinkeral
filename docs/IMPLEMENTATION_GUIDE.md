@@ -305,12 +305,12 @@ src/components/chat/ParameterControl.tsx
 
 **Tasks**:
 
-- [ ] Create ConversationList component
-- [ ] Display all saved conversations
-- [ ] Show conversation title, last updated, model
-- [ ] Implement conversation switching
-- [ ] Add "new conversation" button
-- [ ] Responsive layout (sidebar / bottom sheet)
+- [x] Create ConversationList component
+- [x] Display all saved conversations
+- [x] Show conversation title, last updated, model
+- [x] Implement conversation switching
+- [x] Add "new conversation" button
+- [x] Responsive layout (sidebar / bottom sheet)
 
 **Acceptance Criteria**:
 
@@ -335,11 +335,11 @@ src/components/conversations/ConversationItem.tsx
 
 **Tasks**:
 
-- [ ] Add rename conversation
-- [ ] Add delete conversation (with confirmation)
-- [ ] Add duplicate conversation
-- [ ] Implement auto-title generation (from first message)
-- [ ] Add conversation metadata (created, updated)
+- [x] Add rename conversation
+- [x] Add delete conversation (with confirmation)
+- [x] Add duplicate conversation
+- [x] Implement auto-title generation (from first message)
+- [x] Add conversation metadata (created, updated)
 
 **Acceptance Criteria**:
 
@@ -357,11 +357,11 @@ src/components/conversations/ConversationItem.tsx
 
 **Tasks**:
 
-- [ ] Add edit message functionality
-- [ ] Add retry message functionality
-- [ ] Add delete message functionality
-- [ ] Update conversation on message changes
-- [ ] Handle edge cases (edit middle message, etc.)
+- [x] Add edit message functionality
+- [x] Add retry message functionality
+- [x] Add delete message functionality
+- [x] Update conversation on message changes
+- [x] Handle edge cases (edit middle message, etc.)
 
 **Acceptance Criteria**:
 
@@ -372,6 +372,27 @@ src/components/conversations/ConversationItem.tsx
 - **End-to-end: User can edit and retry messages**
 
 **Estimated Time**: 2 days
+
+---
+
+#### Milestone 4.4: System Prompts
+
+**Tasks**:
+
+- [x] Add system prompt textarea in parameters panel
+- [x] Add token counter for system prompt
+- [x] Connect to ConversationStore
+- [x] Include in API requests
+- [x] Persist per conversation
+
+**Acceptance Criteria**:
+
+- User can enter system prompt
+- Token counter updates in real-time
+- System prompt affects conversation behavior
+- Persists across page refresh
+
+**Estimated Time**: 1 day
 
 ---
 
@@ -437,28 +458,7 @@ src/components/settings/ImportExport.tsx
 
 ---
 
-#### Milestone 5.3: System Prompts
-
-**Tasks**:
-
-- [ ] Add system prompt textarea in parameters panel
-- [ ] Add token counter for system prompt
-- [ ] Connect to ConversationStore
-- [ ] Include in API requests
-- [ ] Persist per conversation
-
-**Acceptance Criteria**:
-
-- User can enter system prompt
-- Token counter updates in real-time
-- System prompt affects conversation behavior
-- Persists across page refresh
-
-**Estimated Time**: 1 day
-
----
-
-#### Milestone 5.4: Testing & Bug Fixes
+#### Milestone 5.3: Testing & Bug Fixes
 
 **Tasks**:
 
