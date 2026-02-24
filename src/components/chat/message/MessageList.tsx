@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Message } from "./Message";
 
+import { Message } from "@/components/chat";
 import { ScrollArea } from "@/components/ui";
 import type { Message as MessageType } from "@/types";
 

@@ -96,7 +96,7 @@ This is a client-side web application that provides an interactive playground fo
 
 **Three Separate Stores** (separation of concerns):
 
-1. **ConversationStore**: Current conversation state, messages, model selection, parameters
+1. **ConversationStore**: Split into focused slices (`coreSlice`, `chatSlice`, `searchSlice`, `selectionSlice`) under `src/stores/conversation/`
 2. **SettingsStore**: Global settings, API keys, defaults, function definitions
 3. **UIStore**: Transient UI state (modals, panels, notifications)
 
@@ -447,10 +447,17 @@ See TESTING.md for detailed testing strategy.
 ```
 src/
 ├── components/         # React components (UI layer)
+│   └── chat/
+│       ├── conversation/  # ConversationList, ConversationItem, SearchInput
+│       ├── layout/        # ChatInterface, ConversationSidebar, ChatHeader
+│       ├── message/       # Message, MessageList, ChatInput, TokenUsageDisplay
+│       └── settings/      # ChatSettings, ModelSelector, ParameterControl, ModelDetails
 ├── stores/            # Zustand stores (state layer)
+│   └── conversation/  # Sliced store: coreSlice, chatSlice, searchSlice, selectionSlice
 ├── services/          # Business logic (service layer)
 │   ├── api/          # Provider implementations
-│   ├── storage.ts    # Storage service (Planned)
+│   ├── chat.ts       # Chat service
+│   ├── persistence.ts # Persistence service
 │   └── executor.ts   # Function executor (Planned)
 ├── db/               # Database schema (Dexie)
 ├── workers/          # Web Workers (Planned)
@@ -458,7 +465,8 @@ src/
 ├── hooks/            # Custom React hooks
 ├── utils/            # Utility functions
 ├── config/           # Configuration & feature flags
-└── lib/              # Third-party setup
+└── lib/
+    └── models/       # Model definitions (google.ts, index.ts)
 ```
 
 See CODE_ORGANIZATION.md for detailed structure and naming conventions.

@@ -237,13 +237,13 @@ this.version(3)
 
 ## Data Access Patterns
 
-### StorageService Implementation
+### PersistenceService Implementation
 
 ```typescript
-// src/services/storage.ts
+// src/services/persistence.ts
 import { db } from "@/db/schema";
 
-export class StorageService {
+export class PersistenceService {
   // Conversations
   async saveConversation(conversation: Conversation): Promise<void> {
     await db.conversations.put({

@@ -1,12 +1,15 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { ParameterControl } from "../ParameterControl";
+
+import { ParameterControl } from "@/components/chat";
+
 // Mock ResizeObserver
 global.ResizeObserver = class ResizeObserver {
   observe() {}
   unobserve() {}
   disconnect() {}
 };
+
 describe("ParameterControl", () => {
   const defaultProps = {
     id: "test-param",

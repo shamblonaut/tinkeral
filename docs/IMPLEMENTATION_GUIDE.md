@@ -103,10 +103,10 @@ Use mock data and responses to develop UI independently of API integration.
 **Files to Create**:
 
 ```
-src/stores/conversation.ts
+src/stores/conversation/  (coreSlice, chatSlice, searchSlice, selectionSlice)
 src/stores/settings.ts
 src/stores/ui.ts
-src/stores/conversation.test.ts
+src/stores/conversation/*.test.ts
 src/stores/settings.test.ts
 ```
 
@@ -138,7 +138,7 @@ src/stores/settings.test.ts
 
 ```
 src/types/provider.ts
-src/types/conversation.ts
+src/types/schema.ts
 src/services/api/base.ts
 src/services/api/google.ts
 src/services/api/google.test.ts
@@ -173,10 +173,10 @@ src/services/api/google.test.ts
 **Files to Create**:
 
 ```
-src/components/chat/Message.tsx
-src/components/chat/MessageList.tsx
-src/components/chat/ChatInput.tsx
-src/components/chat/ChatInterface.tsx
+src/components/chat/message/Message.tsx
+src/components/chat/message/MessageList.tsx
+src/components/chat/message/ChatInput.tsx
+src/components/chat/layout/ChatInterface.tsx
 ```
 
 ---
@@ -258,7 +258,7 @@ src/components/chat/ChatInterface.tsx
 **Files to Create**:
 
 ```
-src/components/chat/ModelSelector.tsx
+src/components/chat/settings/ModelSelector.tsx
 ```
 
 ---
@@ -291,8 +291,8 @@ src/components/chat/ModelSelector.tsx
 **Files to Create**:
 
 ```
-src/components/chat/ChatSettings.tsx
-src/components/chat/ParameterControl.tsx
+src/components/chat/settings/ChatSettings.tsx
+src/components/chat/settings/ParameterControl.tsx
 ```
 
 ---
@@ -325,8 +325,8 @@ src/components/chat/ParameterControl.tsx
 **Files to Create**:
 
 ```
-src/components/conversations/ConversationList.tsx
-src/components/conversations/ConversationItem.tsx
+src/components/chat/conversation/ConversationList.tsx
+src/components/chat/conversation/ConversationItem.tsx
 ```
 
 ---

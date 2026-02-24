@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+
 export interface Toast {
   id: string;
   type: "info" | "success" | "warning" | "error";

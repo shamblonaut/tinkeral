@@ -1,7 +1,8 @@
-import { cn } from "@/lib/utils";
-import type { TokenUsage } from "@/types/conversation";
 import { ArrowDown, ArrowDownUp, ArrowUp, Brain, Zap } from "lucide-react";
 import { memo } from "react";
+
+import { cn } from "@/lib/utils";
+import type { TokenUsage } from "@/types/conversation";
 
 interface TokenUsageDisplayProps {
   usage?: TokenUsage;

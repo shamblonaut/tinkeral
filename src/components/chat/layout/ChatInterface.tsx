@@ -1,16 +1,15 @@
-import { PanelLeft, Settings2, Zap } from "lucide-react";
+import { Zap } from "lucide-react";
 import { useEffect } from "react";
 import { toast } from "sonner";
 
 import {
+  ChatHeader,
   ChatInput,
   ChatSettings,
   ConversationSidebar,
   MessageList,
 } from "@/components/chat";
-import { Button } from "@/components/ui";
-import { getModelDefaultParameters } from "@/lib/models";
-import { cn } from "@/lib/utils";
+import { DEFAULT_MODEL_ID, getModelDefaultParameters } from "@/lib/models";
 import { useConversationStore, useSettingsStore, useUIStore } from "@/stores";
 
 export function ChatInterface() {
@@ -47,7 +46,7 @@ export function ChatInterface() {
     if (!activeConversationId && !isLoading) {
       const createNew = async () => {
         const { settings } = useSettingsStore.getState();
-        const defaultModel = settings?.defaultModel || "gemini-2.5-flash-lite";
+        const defaultModel = settings?.defaultModel || DEFAULT_MODEL_ID;
         const params = getModelDefaultParameters(defaultModel);
         await useConversationStore
           .getState()
@@ -69,37 +68,12 @@ export function ChatInterface() {
       <ConversationSidebar />
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b px-4">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleSidebar}
-              className={cn(
-                "h-8 w-8",
-                isSidebarOpen && "bg-accent text-accent-foreground",
-              )}
-            >
-              <PanelLeft className="h-4 w-4" />
-              <span className="sr-only">Toggle sidebar</span>
-            </Button>
-            <h1 className="text-xl font-bold">🧩 Tinkeral</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleChatSettings}
-              className={cn(
-                "h-8 w-8",
-                isChatSettingsOpen && "bg-accent text-accent-foreground",
-              )}
-            >
-              <Settings2 className="h-4 w-4" />
-              <span className="sr-only">Toggle chat settings</span>
-            </Button>
-          </div>
-        </header>
+        <ChatHeader
+          isSidebarOpen={isSidebarOpen}
+          toggleSidebar={toggleSidebar}
+          isChatSettingsOpen={isChatSettingsOpen}
+          toggleChatSettings={toggleChatSettings}
+        />
 
         {conversation?.isTemporary && (
           <div className="bg-muted/50 flex items-center justify-center gap-2 border-b py-1 text-xs text-amber-500">

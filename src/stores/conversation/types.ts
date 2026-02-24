@@ -1,0 +1,75 @@
+import type {
+  Conversation,
+  Message,
+  ModelInfo,
+  ModelParameters,
+} from "@/types";
+
+export interface ConversationCoreState {
+  conversations: Conversation[];
+  activeConversationId: string | null;
+  availableModels: ModelInfo[];
+  isLoading: boolean;
+  error: string | null;
+
+  loadConversations: () => Promise<void>;
+  loadModels: () => Promise<void>;
+  setActiveConversation: (id: string) => void;
+  createConversation: (
+    modelId: string,
+    params: ModelParameters,
+    systemPrompt?: string,
+    options?: { isTemporary?: boolean },
+  ) => Promise<string>;
+  deleteConversation: (id: string) => Promise<void>;
+  renameConversation: (id: string, title: string) => Promise<void>;
+  duplicateConversation: (id: string) => Promise<string>;
+}
+
+export interface ConversationChatState {
+  isStreaming: boolean;
+  abortController: AbortController | null;
+
+  sendMessage: (content: string) => Promise<void>;
+  deleteMessage: (messageId: string) => Promise<void>;
+  retryMessage: (messageId: string) => Promise<void>;
+  editMessage: (messageId: string, content: string) => Promise<void>;
+  abortGeneration: () => void;
+  updateMessage: (
+    conversationId: string,
+    messageId: string,
+    content: string,
+  ) => Promise<void>;
+  executeChat: (
+    conversationId: string,
+    userMessage?: Message,
+    titleUpdate?: string,
+  ) => Promise<void>;
+  setParameters: (
+    params: Partial<ModelParameters>,
+    mode?: "merge" | "replace",
+  ) => Promise<void>;
+  setSystemPrompt: (systemPrompt: string) => Promise<void>;
+}
+
+export interface ConversationSearchState {
+  searchQuery: string;
+  isSearching: boolean;
+  setSearchQuery: (query: string) => void;
+  setIsSearching: (isSearching: boolean) => void;
+}
+
+export interface ConversationSelectionState {
+  isSelectionMode: boolean;
+  selectedIds: string[];
+  toggleSelectionMode: () => void;
+  toggleSelection: (id: string) => void;
+  selectAll: () => void;
+  deselectAll: () => void;
+  deleteSelectedConversations: () => Promise<void>;
+}
+
+export type ConversationState = ConversationCoreState &
+  ConversationChatState &
+  ConversationSearchState &
+  ConversationSelectionState;

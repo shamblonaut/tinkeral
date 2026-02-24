@@ -1,17 +1,16 @@
 import {
   CheckSquare,
   ChevronDown,
-  Loader2,
   Plus,
-  Search,
   Square,
   Trash2,
   X,
   Zap,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 
-import { ConversationItem } from "@/components/chat";
+import { ConversationItem, SearchInput } from "@/components/chat";
 import {
   Button,
   Dialog,
@@ -24,11 +23,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  Input,
   ScrollArea,
 } from "@/components/ui";
-import { useDebounce } from "@/hooks";
-import { getModelDefaultParameters } from "@/lib/models";
+import { DEFAULT_MODEL_ID, getModelDefaultParameters } from "@/lib/models";
 import { cn } from "@/lib/utils";
 import { useConversationStore, useSettingsStore } from "@/stores";
 
@@ -37,99 +34,44 @@ interface ConversationListProps {
   onSelect?: () => void; // Optional callback for mobile to close the sheet
 }
 
-function SearchInput() {
-  const searchQuery = useConversationStore((state) => state.searchQuery);
-  const setSearchQuery = useConversationStore((state) => state.setSearchQuery);
-  const isSearching = useConversationStore((state) => state.isSearching);
-  const setIsSearching = useConversationStore((state) => state.setIsSearching);
-
-  const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery);
-
-  // Update isSearching immediately when local input changes
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setLocalSearchQuery(value);
-    if (value !== searchQuery) {
-      setIsSearching(true);
-    }
-  };
-
-  const debouncedSearchQuery = useDebounce(localSearchQuery, 300);
-
-  useEffect(() => {
-    setSearchQuery(debouncedSearchQuery);
-    setIsSearching(false);
-  }, [debouncedSearchQuery, setSearchQuery, setIsSearching]);
-
-  // Sync local search query if store changes (e.g. from clear button or external reset)
-  useEffect(() => {
-    setLocalSearchQuery(searchQuery);
-  }, [searchQuery]);
-
-  return (
-    <div className="relative">
-      <Search className="text-muted-foreground absolute top-1/2 left-2 h-4 w-4 -translate-y-1/2" />
-      <Input
-        placeholder="Search conversations..."
-        value={localSearchQuery}
-        onChange={handleInputChange}
-        className="h-8 pr-8 pl-8 text-xs focus-visible:ring-1"
-      />
-      <div className="absolute top-1/2 right-2 flex -translate-y-1/2 items-center gap-1">
-        {isSearching && (
-          <Loader2 className="text-muted-foreground h-3 w-3 animate-spin" />
-        )}
-        {searchQuery && !isSearching && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 hover:bg-transparent"
-            onClick={() => setSearchQuery("")}
-          >
-            <X className="text-muted-foreground h-3 w-3" />
-          </Button>
-        )}
-      </div>
-    </div>
-  );
-}
-
 export function ConversationList({
   className,
   onSelect,
 }: ConversationListProps) {
-  const conversations = useConversationStore((state) => state.conversations);
-  const activeConversationId = useConversationStore(
-    (state) => state.activeConversationId,
-  );
-  const setActiveConversation = useConversationStore(
-    (state) => state.setActiveConversation,
-  );
-  const createConversation = useConversationStore(
-    (state) => state.createConversation,
-  );
-  const deleteConversation = useConversationStore(
-    (state) => state.deleteConversation,
-  );
-  const isLoading = useConversationStore((state) => state.isLoading);
-  const searchQuery = useConversationStore((state) => state.searchQuery);
-  const isSearching = useConversationStore((state) => state.isSearching);
-
-  // Selection state
-  const isSelectionMode = useConversationStore(
-    (state) => state.isSelectionMode,
-  );
-  const selectedIds = useConversationStore((state) => state.selectedIds);
-  const toggleSelectionMode = useConversationStore(
-    (state) => state.toggleSelectionMode,
-  );
-  const toggleSelection = useConversationStore(
-    (state) => state.toggleSelection,
-  );
-  const selectAll = useConversationStore((state) => state.selectAll);
-  const deselectAll = useConversationStore((state) => state.deselectAll);
-  const deleteSelectedConversations = useConversationStore(
-    (state) => state.deleteSelectedConversations,
+  const {
+    conversations,
+    activeConversationId,
+    setActiveConversation,
+    createConversation,
+    deleteConversation,
+    isLoading,
+    searchQuery,
+    isSearching,
+    isSelectionMode,
+    selectedIds,
+    toggleSelectionMode,
+    toggleSelection,
+    selectAll,
+    deselectAll,
+    deleteSelectedConversations,
+  } = useConversationStore(
+    useShallow((state) => ({
+      conversations: state.conversations,
+      activeConversationId: state.activeConversationId,
+      setActiveConversation: state.setActiveConversation,
+      createConversation: state.createConversation,
+      deleteConversation: state.deleteConversation,
+      isLoading: state.isLoading,
+      searchQuery: state.searchQuery,
+      isSearching: state.isSearching,
+      isSelectionMode: state.isSelectionMode,
+      selectedIds: state.selectedIds,
+      toggleSelectionMode: state.toggleSelectionMode,
+      toggleSelection: state.toggleSelection,
+      selectAll: state.selectAll,
+      deselectAll: state.deselectAll,
+      deleteSelectedConversations: state.deleteSelectedConversations,
+    })),
   );
 
   const [conversationToDelete, setConversationToDelete] = useState<
@@ -137,8 +79,6 @@ export function ConversationList({
   >(null);
 
   const { settings } = useSettingsStore();
-
-  /* Removed unused activeConversation */
 
   const [menuWidth, setMenuWidth] = useState<number | undefined>(undefined);
   const buttonGroupRef = useCallback((node: HTMLDivElement | null) => {
@@ -148,12 +88,7 @@ export function ConversationList({
   }, []);
 
   const handleCreate = async (options: { isTemporary?: boolean } = {}) => {
-    // Force create new conversation even if current one is empty/ephemeral
-    // The store's createConversation handles cleaning up empty/ephemeral ones if needed
-    // or we can explicitly force it here if store prevents it.
-    // Based on store logic viewed earlier, it removes current ephemeral if exists.
-
-    const defaultModel = settings?.defaultModel || "gemini-2.5-flash-lite";
+    const defaultModel = settings?.defaultModel || DEFAULT_MODEL_ID;
     const params = getModelDefaultParameters(defaultModel);
     await createConversation(defaultModel, params, undefined, options);
     onSelect?.();

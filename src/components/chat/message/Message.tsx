@@ -1,18 +1,12 @@
-import {
-  Bot,
-  Check,
-  Copy,
-  Pencil,
-  RotateCcw,
-  Trash2,
-  User,
-  X,
-} from "lucide-react";
+import { Bot, User } from "lucide-react";
 import { memo, useCallback, useState } from "react";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { toast } from "sonner";
 
+import {
+  MessageActions,
+  MessageContent,
+  TokenUsageDisplay,
+} from "@/components/chat";
 import {
   Avatar,
   AvatarFallback,
@@ -24,12 +18,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  Textarea,
 } from "@/components/ui";
 import { cn } from "@/lib/utils";
 import { useConversationStore } from "@/stores";
 import type { Message as MessageType } from "@/types";
-import { TokenUsageDisplay } from "./TokenUsageDisplay";
 
 interface MessageProps {
   message: MessageType;
@@ -76,7 +68,7 @@ export const Message = memo(function Message({
     await editMessage(message.id, editContent);
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     setShowDeleteDialog(true);
   };
 
@@ -85,8 +77,8 @@ export const Message = memo(function Message({
     setShowDeleteDialog(false);
   };
 
-  const handleRetry = async () => {
-    await retryMessage(message.id);
+  const handleRetry = () => {
+    retryMessage(message.id);
   };
 
   if (isSystem) {
@@ -168,111 +160,27 @@ export const Message = memo(function Message({
           )}
         </div>
 
-        <div
-          className={cn(
-            "prose prose-neutral dark:prose-invert relative w-full text-sm leading-relaxed wrap-break-word transition-colors duration-200",
-            isEditing
-              ? "bg-muted ring-border/50 rounded-xl px-2 py-1 shadow-inner ring-1"
-              : isUser
-                ? "bg-primary text-primary-foreground rounded-2xl rounded-tr-sm px-4 py-2 shadow-sm"
-                : "bg-muted rounded-2xl rounded-tl-sm px-4 py-2 shadow-sm",
-          )}
-        >
-          {isEditing ? (
-            <div className="flex flex-col gap-2">
-              <Textarea
-                value={editContent}
-                onChange={(e) => setEditContent(e.target.value)}
-                className="text-foreground min-h-[80px] w-full resize-none border-none bg-transparent p-2 shadow-none focus-visible:ring-0"
-                autoFocus
-              />
-              <div className="flex justify-end gap-1.5 p-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleCancel}
-                  className="hover:bg-background/50 h-7 px-3 text-xs"
-                >
-                  <X className="mr-1 h-3 w-3" /> Cancel
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={handleSave}
-                  className="bg-foreground text-background hover:bg-foreground/90 h-7 px-3 text-xs"
-                >
-                  <Check className="mr-1 h-3 w-3" /> Save & Submit
-                </Button>
-              </div>
-            </div>
-          ) : isUser ? (
-            <p className="whitespace-pre-wrap">{message.content}</p>
-          ) : !message.content && isStreaming ? (
-            <div className="flex h-6 items-center gap-1">
-              <span className="bg-muted-foreground/40 h-1.5 w-1.5 animate-bounce rounded-full [animation-delay:-0.3s]" />
-              <span className="bg-muted-foreground/40 h-1.5 w-1.5 animate-bounce rounded-full [animation-delay:-0.15s]" />
-              <span className="bg-muted-foreground/40 h-1.5 w-1.5 animate-bounce rounded-full" />
-            </div>
-          ) : (
-            <div
-              className={cn(
-                "relative",
-                isStreaming &&
-                  "[&>*:last-child]:after:bg-primary [&>*:last-child]:after:ml-1 [&>*:last-child]:after:inline-block [&>*:last-child]:after:h-4 [&>*:last-child]:after:w-2 [&>*:last-child]:after:animate-pulse [&>*:last-child]:after:align-middle [&>*:last-child]:after:content-['']",
-              )}
-            >
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {message.content}
-              </ReactMarkdown>
-            </div>
-          )}
-        </div>
+        <MessageContent
+          content={message.content}
+          isUser={isUser}
+          isEditing={isEditing}
+          isStreaming={isStreaming}
+          editContent={editContent}
+          onEditContentChange={setEditContent}
+          onSave={handleSave}
+          onCancel={handleCancel}
+        />
 
         {!isEditing && !isStreaming && (
           <div className="flex h-8 items-center pt-1">
-            {isUser && (
-              <div className="flex items-center justify-center gap-0.5 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={handleCopy}
-                  title="Copy message"
-                >
-                  {isCopied ? (
-                    <Check className="h-3.5 w-3.5 text-green-500" />
-                  ) : (
-                    <Copy className="h-3.5 w-3.5" />
-                  )}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={handleEdit}
-                  title="Edit message"
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7"
-                  onClick={handleRetry}
-                  title="Regenerate response"
-                >
-                  <RotateCcw className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="hover:text-destructive h-7 w-7"
-                  onClick={handleDelete}
-                  title="Delete message"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            )}
+            <MessageActions
+              isUser={isUser}
+              isCopied={isCopied}
+              onCopy={handleCopy}
+              onEdit={handleEdit}
+              onRetry={handleRetry}
+              onDelete={handleDelete}
+            />
           </div>
         )}
       </div>

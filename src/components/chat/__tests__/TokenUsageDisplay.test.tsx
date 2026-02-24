@@ -1,7 +1,8 @@
 import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { TokenUsageDisplay } from "../TokenUsageDisplay";
+
+import { TokenUsageDisplay } from "@/components/chat";
 
 describe("TokenUsageDisplay", () => {
   it("should render nothing for user message when usage is missing", () => {
@@ -73,16 +74,17 @@ describe("TokenUsageDisplay", () => {
       screen.getByTitle("Approximate total tokens in this turn"),
     ).toBeInTheDocument();
   });
-});
-it("should render cached tokens for user message when present", () => {
-  render(
-    <TokenUsageDisplay
-      role="user"
-      contentLength={100}
-      usage={{ inputTokens: 50, cachedTokens: 20 }}
-    />,
-  );
-  expect(screen.getByText("50")).toBeInTheDocument();
-  expect(screen.getByText("20")).toBeInTheDocument();
-  expect(screen.getByTitle("20 tokens from cache")).toBeInTheDocument();
+
+  it("should render cached tokens for user message when present", () => {
+    render(
+      <TokenUsageDisplay
+        role="user"
+        contentLength={100}
+        usage={{ inputTokens: 50, cachedTokens: 20 }}
+      />,
+    );
+    expect(screen.getByText("50")).toBeInTheDocument();
+    expect(screen.getByText("20")).toBeInTheDocument();
+    expect(screen.getByTitle("20 tokens from cache")).toBeInTheDocument();
+  });
 });

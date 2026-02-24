@@ -14,12 +14,6 @@ function App() {
   const settings = useSettingsStore((state) => state.settings);
   const isLoading = useSettingsStore((state) => state.isLoading);
 
-  // Expose stores for debugging
-  useEffect(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (window as any).settingsStore = useSettingsStore;
-  }, []);
-
   useEffect(() => {
     const init = async () => {
       try {

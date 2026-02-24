@@ -1,4 +1,4 @@
-import { type Conversation } from "@/db/schema";
+import type { Conversation } from "@/types";
 
 export interface CalculatedTokens {
   total: number;

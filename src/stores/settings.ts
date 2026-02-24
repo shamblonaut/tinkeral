@@ -1,6 +1,8 @@
 import { create } from "zustand";
 
-import { settings, type AppSettings } from "@/db";
+import { settings } from "@/db";
+import { DEFAULT_MODEL_ID } from "@/lib/models";
+import type { AppSettings } from "@/types";
 import { DEFAULT_PARAMETERS, type UIPreferences } from "@/types";
 
 export interface SettingsState {
@@ -18,7 +20,7 @@ export interface SettingsState {
 const DEFAULT_SETTINGS: AppSettings = {
   id: "app-settings",
   apiKeys: {},
-  defaultModel: "gemini-2.5-flash-lite",
+  defaultModel: DEFAULT_MODEL_ID,
   defaultParameters: DEFAULT_PARAMETERS,
   uiPreferences: {
     theme: "system",

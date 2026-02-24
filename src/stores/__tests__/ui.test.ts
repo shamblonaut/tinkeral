@@ -6,6 +6,7 @@ describe("UIStore", () => {
   beforeEach(() => {
     useUIStore.setState({
       isSidebarOpen: true,
+      isChatSettingsOpen: false,
       activeModal: null,
       toasts: [],
     });
@@ -75,6 +76,24 @@ describe("UIStore", () => {
     vi.advanceTimersByTime(1000);
 
     expect(useUIStore.getState().toasts.length).toBe(0);
+  });
+
+  it("should NOT auto-dismiss toasts with duration 0 (persistent)", () => {
+    const store = useUIStore.getState();
+
+    store.addToast({
+      type: "info",
+      message: "Persistent Toast",
+      duration: 0,
+    });
+
+    expect(useUIStore.getState().toasts.length).toBe(1);
+
+    // Even after a very long time, toast should still be there
+    vi.advanceTimersByTime(60000);
+
+    expect(useUIStore.getState().toasts.length).toBe(1);
+    expect(useUIStore.getState().toasts[0].message).toBe("Persistent Toast");
   });
 
   it("should toggle chat settings", () => {

@@ -1,4 +1,4 @@
-import { getModelDefaultParameters } from "@/lib/models";
+import { DEFAULT_MODEL_ID, getModelDefaultParameters } from "@/lib/models";
 import { useConversationStore, useSettingsStore } from "@/stores";
 import { useEffect } from "react";
 
@@ -18,23 +18,13 @@ export function useModelSelection(onSelect?: () => void) {
   );
 
   const currentModelId =
-    activeConversation?.modelId ||
-    settings?.defaultModel ||
-    "gemini-2.5-flash-lite";
+    activeConversation?.modelId || settings?.defaultModel || DEFAULT_MODEL_ID;
 
   useEffect(() => {
     loadModels();
   }, [loadModels]);
 
   const selectedModel = availableModels.find((m) => m.id === currentModelId);
-
-  // const models = useMemo(() => {
-  //   return [...availableModels].sort((a, b) => {
-  //     if (a.id === currentModelId) return -1;
-  //     if (b.id === currentModelId) return 1;
-  //     return 0; // Maintain original order for others
-  //   });
-  // }, [availableModels, currentModelId]);
 
   const handleSelect = async (modelId: string) => {
     onSelect?.();
@@ -47,7 +37,7 @@ export function useModelSelection(onSelect?: () => void) {
     const isTemporary = activeConversation?.isTemporary;
 
     await createConversation(modelId, defaultParams, undefined, {
-      isTemporary: isTemporary,
+      isTemporary,
     });
   };
 
