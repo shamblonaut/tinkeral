@@ -468,12 +468,12 @@ src/components/settings/ImportExport.tsx
 
 **Tasks**:
 
-- [ ] Write integration tests for critical paths
-- [ ] Cross-browser testing (Chrome, Firefox, Safari)
-- [ ] Mobile testing (iOS Safari, Chrome Android)
-- [ ] Performance audit with Lighthouse
-- [ ] Fix all critical and high-priority bugs
-- [ ] Add error boundaries for crash recovery
+- [x] Write integration tests for critical paths
+- [x] Cross-browser testing (Chrome, Firefox, Safari)
+- [x] Mobile testing (iOS Safari, Chrome Android)
+- [x] Performance audit with Lighthouse
+- [x] Fix all critical and high-priority bugs
+- [x] Add error boundaries for crash recovery
 
 **Acceptance Criteria**:
 

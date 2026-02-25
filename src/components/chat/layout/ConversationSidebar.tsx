@@ -1,7 +1,13 @@
 import { Settings, X } from "lucide-react";
 
 import { ConversationList } from "@/components/chat";
-import { Button, Sheet, SheetClose, SheetContent } from "@/components/ui";
+import {
+  Button,
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetTitle,
+} from "@/components/ui";
 import { useMediaQuery } from "@/hooks";
 import { cn } from "@/lib/utils";
 import { useUIStore } from "@/stores";
@@ -58,6 +64,7 @@ export function ConversationSidebar() {
   return (
     <Sheet open={isSidebarOpen} onOpenChange={setSidebarOpen}>
       <SheetContent side="left" className="w-80 p-0" showCloseButton={false}>
+        <SheetTitle className="sr-only">Conversations</SheetTitle>
         <div className="flex h-14 items-center justify-between border-b p-4">
           <h2 className="text-sm font-semibold">Conversations</h2>
           <SheetClose asChild>
