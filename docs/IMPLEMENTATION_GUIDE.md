@@ -439,11 +439,11 @@ src/services/rateLimiter.ts
 
 **Tasks**:
 
-- [ ] Implement configuration export (JSON)
-- [ ] Implement configuration import with validation
-- [ ] Implement conversation export (JSON)
-- [ ] Add error handling for corrupted imports
-- [ ] Add UI for import/export actions
+- [x] Implement configuration export (JSON)
+- [x] Implement configuration import with validation
+- [x] Implement conversation export (JSON)
+- [x] Add error handling for corrupted imports
+- [x] Add UI for import/export actions
 
 **Acceptance Criteria**:
 
@@ -458,7 +458,7 @@ src/services/rateLimiter.ts
 **Files to Create**:
 
 ```
-src/services/import-export.ts
+src/services/importExport.ts
 src/components/settings/ImportExport.tsx
 ```
 

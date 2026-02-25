@@ -9,6 +9,7 @@ import {
   ConversationSidebar,
   MessageList,
 } from "@/components/chat";
+import { SettingsModal } from "@/components/chat/settings/SettingsModal";
 import { DEFAULT_MODEL_ID, getModelDefaultParameters } from "@/lib/models";
 import { useConversationStore, useSettingsStore, useUIStore } from "@/stores";
 
@@ -116,6 +117,7 @@ export function ChatInterface() {
           <ChatSettings />
         </div>
       </div>
+      <SettingsModal />
     </div>
   );
 }

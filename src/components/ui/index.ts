@@ -1,3 +1,4 @@
+// Re-export all UI components
 export * from "./avatar";
 export * from "./button";
 export * from "./card";
@@ -14,5 +15,6 @@ export * from "./separator";
 export * from "./sheet";
 export * from "./slider";
 export * from "./sonner";
+export * from "./tabs";
 export * from "./textarea";
 export * from "./tooltip";

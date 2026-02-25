@@ -1,4 +1,4 @@
-import { X } from "lucide-react";
+import { Settings, X } from "lucide-react";
 
 import { ConversationList } from "@/components/chat";
 import { Button, Sheet, SheetClose, SheetContent } from "@/components/ui";
@@ -7,14 +7,26 @@ import { cn } from "@/lib/utils";
 import { useUIStore } from "@/stores";
 
 export function ConversationSidebar() {
-  const { isSidebarOpen, toggleSidebar, setSidebarOpen } = useUIStore();
+  const { isSidebarOpen, toggleSidebar, setSidebarOpen, openModal } =
+    useUIStore();
   const isDesktop = useMediaQuery("(min-width: 768px)");
 
   const Content = (
     <div className="flex h-full flex-1 flex-col overflow-hidden">
       <ConversationList
+        className="min-h-0 flex-1"
         onSelect={!isDesktop ? () => setSidebarOpen(false) : undefined}
       />
+      <div className="border-t p-2">
+        <Button
+          variant="ghost"
+          className="w-full justify-start gap-2"
+          onClick={() => openModal("settings")}
+        >
+          <Settings className="h-4 w-4" />
+          Settings
+        </Button>
+      </div>
     </div>
   );
 
@@ -55,7 +67,7 @@ export function ConversationSidebar() {
             </Button>
           </SheetClose>
         </div>
-        {Content}
+        <div className="flex-1 overflow-hidden">{Content}</div>
       </SheetContent>
     </Sheet>
   );
