@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { ChatInterface } from "@/components/chat";
@@ -60,6 +60,22 @@ vi.mock("@/services/api/google", () => ({
 setupChatTests();
 
 describe("Selection Mode & Bulk Actions", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({
+      toFake: [
+        "setTimeout",
+        "clearTimeout",
+        "setInterval",
+        "clearInterval",
+        "Date",
+      ],
+    });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("should toggle selection mode and select items", async () => {
     useConversationStore.setState({
       conversations: [
@@ -131,8 +147,10 @@ describe("Selection Mode & Bulk Actions", () => {
     fireEvent.click(screen.getByTitle("Delete selected"));
     fireEvent.click(screen.getByRole("button", { name: "Delete" }));
 
-    await waitFor(() => {
-      expect(conversationsDb.delete).toHaveBeenCalledTimes(2);
+    await act(async () => {
+      await vi.runAllTimersAsync();
     });
+
+    expect(conversationsDb.delete).toHaveBeenCalledTimes(2);
   });
 });

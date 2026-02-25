@@ -404,12 +404,18 @@ src/components/chat/conversation/ConversationItem.tsx
 
 **Tasks**:
 
-- [ ] Implement error classification system
-- [ ] Add rate limit detection and handling
-- [ ] Add retry logic with exponential backoff
-- [ ] Improve error messages (user-friendly)
-- [ ] Add error recovery UI (retry buttons)
-- [ ] Handle network offline/online
+- [x] Implementation
+  - [x] Create `src/utils/error-handling.ts` for classification and user-friendly messages
+  - [x] Create `src/services/rateLimiter.ts` for rate limit detection and backoff
+  - [x] Integrate error classification into `GoogleAPIClient`
+  - [x] Update `ConversationStore` to handle classified errors and retries
+  - [x] Implement error recovery UI in chat components
+  - [x] Handle network offline/online status
+- [x] Verification
+  - [x] Unit tests for error classification
+  - [x] Unit tests for rate limiter/retry logic
+  - [x] Integration tests for error UI and recovery
+  - [x] Manual verification of error states (rate limit, offline, auth error)
 
 **Acceptance Criteria**:
 
@@ -424,7 +430,7 @@ src/components/chat/conversation/ConversationItem.tsx
 
 ```
 src/utils/error-handling.ts
-src/services/rate-limiter.ts
+src/services/rateLimiter.ts
 ```
 
 ---

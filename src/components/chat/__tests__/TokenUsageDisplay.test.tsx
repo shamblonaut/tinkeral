@@ -5,6 +5,22 @@ import { describe, expect, it } from "vitest";
 import { TokenUsageDisplay } from "@/components/chat";
 
 describe("TokenUsageDisplay", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({
+      toFake: [
+        "setTimeout",
+        "clearTimeout",
+        "setInterval",
+        "clearInterval",
+        "Date",
+      ],
+    });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("should render nothing for user message when usage is missing", () => {
     const { container } = render(
       <TokenUsageDisplay role="user" contentLength={100} />,

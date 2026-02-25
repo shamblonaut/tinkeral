@@ -265,4 +265,42 @@ describe("GoogleAPIClient", () => {
       });
     });
   });
+
+  describe("Error Normalization", () => {
+    it("should normalize 401 as auth error", () => {
+      const error = new ApiError({ message: "Invalid key", status: 401 });
+      const normalized = client.normalizeError(error);
+      expect(normalized.type).toBe("auth");
+      expect(normalized.retriable).toBe(false);
+    });
+
+    it("should normalize 429 as rate_limit error", () => {
+      const error = new ApiError({ message: "Too many requests", status: 429 });
+      const normalized = client.normalizeError(error);
+      expect(normalized.type).toBe("rate_limit");
+      expect(normalized.retriable).toBe(true);
+    });
+
+    it("should normalize quota error message as quota type", () => {
+      const error = new ApiError({
+        message: "Your quota is exceeded",
+        status: 429,
+      });
+      const normalized = client.normalizeError(error);
+      expect(normalized.type).toBe("quota");
+      expect(normalized.retriable).toBe(true);
+    });
+
+    it("should normalize safety-related 400 as content_filter", () => {
+      const error = new ApiError({ message: "Safety filters", status: 400 });
+      const normalized = client.normalizeError(error);
+      expect(normalized.type).toBe("content_filter");
+    });
+
+    it("should normalize context window 400 as context_length", () => {
+      const error = new ApiError({ message: "too many tokens", status: 400 });
+      const normalized = client.normalizeError(error);
+      expect(normalized.type).toBe("context_length");
+    });
+  });
 });

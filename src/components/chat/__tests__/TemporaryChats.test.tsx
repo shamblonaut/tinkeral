@@ -1,6 +1,6 @@
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ChatInterface } from "@/components/chat";
 import { TooltipProvider } from "@/components/ui";
@@ -64,8 +64,23 @@ vi.mock("@/services/api/google", () => ({
 setupChatTests();
 
 describe("Temporary Chats", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({
+      toFake: [
+        "setTimeout",
+        "clearTimeout",
+        "setInterval",
+        "clearInterval",
+        "Date",
+      ],
+    });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("should create a temporary conversation and NOT persist it", async () => {
-    // delay: null removes artificial inter-event pause
     const user = userEvent.setup({ delay: null });
     render(
       <TooltipProvider>
@@ -73,10 +88,29 @@ describe("Temporary Chats", () => {
       </TooltipProvider>,
     );
 
-    await user.click(
-      await screen.findByRole("button", { name: "More options" }),
-    );
-    await user.click(await screen.findByText("Temporary Chat"));
+    const btnPromise = screen.findByRole("button", { name: "More options" });
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+    const btn = await btnPromise;
+
+    const click1 = user.click(btn);
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+    await click1;
+
+    const optPromise = screen.findByText("Temporary Chat");
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+    const opt = await optPromise;
+
+    const click2 = user.click(opt);
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+    await click2;
 
     const state = useConversationStore.getState();
     const activeConv = state.conversations.find(
@@ -84,13 +118,13 @@ describe("Temporary Chats", () => {
     );
     expect(activeConv?.isTemporary).toBe(true);
 
+    const sendPromise = useConversationStore
+      .getState()
+      .sendMessage("Hello Temp");
     await act(async () => {
-      await useConversationStore.getState().sendMessage("Hello Temp");
+      await vi.runAllTimersAsync();
     });
-
-    await waitFor(() => {
-      expect(useConversationStore.getState().isLoading).toBe(false);
-    });
+    await sendPromise;
 
     expect(conversationsDb.save).not.toHaveBeenCalled();
   });
@@ -111,27 +145,40 @@ describe("Temporary Chats", () => {
       </TooltipProvider>,
     );
 
-    // Models pre-loaded in setup.ts — no async wait needed
     expect(useConversationStore.getState().availableModels).toHaveLength(
       mockModels.length,
     );
 
-    await user.click(screen.getByRole("combobox"));
-    await user.click(await screen.findByText("Model 2", {}, { timeout: 2000 }));
+    const combo = screen.getByRole("combobox");
+    const click1 = user.click(combo);
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+    await click1;
 
-    await waitFor(
-      () => {
-        const active = useConversationStore
-          .getState()
-          .conversations.find(
-            (c) =>
-              c.id === useConversationStore.getState().activeConversationId,
-          );
-        expect(active?.modelId).toBe("m2");
-        expect(active?.isTemporary).toBe(true);
-      },
-      { timeout: 2000 },
-    );
+    const modelOptPromise = screen.findByText("Model 2", {}, { timeout: 2000 });
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+    const modelOpt = await modelOptPromise;
+
+    const click2 = user.click(modelOpt);
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+    await click2;
+
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+
+    const active = useConversationStore
+      .getState()
+      .conversations.find(
+        (c) => c.id === useConversationStore.getState().activeConversationId,
+      );
+    expect(active?.modelId).toBe("m2");
+    expect(active?.isTemporary).toBe(true);
   });
 
   it("should display a visual indicator for temporary chats", async () => {
@@ -156,9 +203,11 @@ describe("Temporary Chats", () => {
       });
     });
 
-    await waitFor(() => {
-      expect(screen.queryByText("Temporary Chat")).not.toBeInTheDocument();
+    await act(async () => {
+      await vi.runAllTimersAsync();
     });
+
+    expect(screen.queryByText("Temporary Chat")).not.toBeInTheDocument();
   });
 
   it("should allow switching models (UI Features)", async () => {
@@ -175,25 +224,38 @@ describe("Temporary Chats", () => {
       </TooltipProvider>,
     );
 
-    // Models pre-loaded in setup.ts — no async wait needed
     expect(useConversationStore.getState().availableModels).toHaveLength(
       mockModels.length,
     );
 
-    await user.click(screen.getByRole("combobox"));
-    await user.click(await screen.findByText("Model 2", {}, { timeout: 2000 }));
+    const combo = screen.getByRole("combobox");
+    const click1 = user.click(combo);
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+    await click1;
 
-    await waitFor(
-      () => {
-        const active = useConversationStore
-          .getState()
-          .conversations.find(
-            (c) =>
-              c.id === useConversationStore.getState().activeConversationId,
-          );
-        expect(active?.modelId).toBe("m2");
-      },
-      { timeout: 2000 },
-    );
+    const modelOptPromise = screen.findByText("Model 2", {}, { timeout: 2000 });
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+    const modelOpt = await modelOptPromise;
+
+    const click2 = user.click(modelOpt);
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+    await click2;
+
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+
+    const active = useConversationStore
+      .getState()
+      .conversations.find(
+        (c) => c.id === useConversationStore.getState().activeConversationId,
+      );
+    expect(active?.modelId).toBe("m2");
   });
 });

@@ -1,4 +1,4 @@
-import type { ErrorType } from "@/types";
+import type { ErrorType } from "@/types/error";
 
 /**
  * Normalize any error to a common format.
@@ -45,7 +45,6 @@ export class ProviderError extends Error {
     } else {
       let message = "An unexpected error occurred";
       let type: ErrorType = "unknown";
-      const statusCode: number | undefined = undefined;
       const originalError = error;
 
       if (error instanceof Error) {
@@ -57,36 +56,10 @@ export class ProviderError extends Error {
         type = "network";
       }
 
-      // Default user message
-      let userMessage = "Something went wrong. Please try again.";
-
-      // Map types to user messages
-      switch (type as ErrorType) {
-        case "network":
-          userMessage =
-            "Network connection failed. Please check your internet connection.";
-          break;
-        case "auth":
-          userMessage = "Authentication failed. Please check your API key.";
-          break;
-        case "rate_limit":
-          userMessage = "Rate limit exceeded. Please try again later.";
-          break;
-        case "model_unavailable":
-          userMessage = "The selected model is currently unavailable.";
-          break;
-        case "server":
-          userMessage =
-            "The AI provider is experiencing issues. Please try again later.";
-          break;
-      }
-
       params = {
         type,
         message,
-        userMessage,
         retriable: ProviderError.isRetriableType(type),
-        statusCode,
         provider,
         originalError,
       };
@@ -95,20 +68,51 @@ export class ProviderError extends Error {
     super(params.message);
     this.name = "ProviderError";
     this.type = params.type;
-    this.userMessage =
-      params.userMessage || "Something went wrong. Please try again.";
     this.retriable = params.retriable;
     this.statusCode = params.statusCode;
     this.provider = params.provider;
     this.originalError = params.originalError;
     this.retryAfter = params.retryAfter;
 
+    // Apply specialized user message if not already provided
+    this.userMessage =
+      params.userMessage ||
+      ProviderError.getUserMessage(this.type) ||
+      "Something went wrong. Please try again.";
+
     // Restore prototype chain for proper instanceof checks
     Object.setPrototypeOf(this, ProviderError.prototype);
   }
 
   static isRetriableType(type: ErrorType): boolean {
-    return ["network", "rate_limit", "server", "unknown"].includes(type);
+    return ["network", "rate_limit", "server", "unknown", "quota"].includes(
+      type,
+    );
+  }
+
+  static getUserMessage(type: ErrorType): string | null {
+    switch (type as string) {
+      case "network":
+        return "Network connection failed. Please check your internet connection.";
+      case "auth":
+        return "Authentication failed. Please check your API key.";
+      case "rate_limit":
+        return "Rate limit exceeded. Please try again later.";
+      case "quota":
+        return "Project quota exceeded. Please try again later or check your billing status.";
+      case "model_unavailable":
+        return "The selected model is currently unavailable or doesn't exist.";
+      case "server":
+        return "The AI provider is experiencing issues. Please try again later.";
+      case "content_filter":
+        return "The request was blocked by the safety filters.";
+      case "context_length":
+        return "The conversation is too long for this model's context window.";
+      case "validation":
+        return "The request contains invalid parameters.";
+      default:
+        return null;
+    }
   }
 }
 

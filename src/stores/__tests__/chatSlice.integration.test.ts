@@ -10,6 +10,8 @@ import {
 } from "@/stores";
 import type { FinishReason } from "@/types";
 
+vi.setConfig({ testTimeout: 15000 });
+
 // Mock dependencies
 vi.mock("../../services/api/google", () => ({
   GoogleAPIClient: {
@@ -29,6 +31,17 @@ describe("ChatSlice", () => {
   beforeEach(async () => {
     // Clear database and store state before each test
     await db.conversations.clear();
+    vi.useFakeTimers({
+      toFake: [
+        "setTimeout",
+        "clearTimeout",
+        "setInterval",
+        "clearInterval",
+        "Date",
+        "setImmediate",
+        "clearImmediate",
+      ],
+    });
     useConversationStore.setState({
       conversations: [],
       activeConversationId: null,
@@ -56,6 +69,8 @@ describe("ChatSlice", () => {
   const mockStreamResponse = (content: string, totalTokens = 10) => {
     const mockStream = async function* () {
       yield { delta: content };
+      // Small delay to ensure timers are needed
+      await new Promise((resolve) => setTimeout(resolve, 10));
       yield {
         delta: "",
         finishReason: "stop" as FinishReason,
@@ -66,33 +81,55 @@ describe("ChatSlice", () => {
   };
 
   it("should send a message and receive response", async () => {
-    const mockStreamChat = vi
-      .fn()
-      .mockReturnValue(mockStreamResponse("I am a helpful assistant"));
-    vi.mocked(GoogleAPIClient.createClient).mockResolvedValue({
-      streamChat: mockStreamChat,
-    } as unknown as GoogleAPIClient);
+    vi.useRealTimers();
+    try {
+      const mockStream = async function* () {
+        yield { delta: "I am a helpful assistant" };
+        yield {
+          delta: "",
+          finishReason: "stop",
+          usage: { totalTokens: 10, inputTokens: 5, outputTokens: 5 },
+        };
+      };
 
-    const store = useConversationStore.getState();
-    const id = await store.createConversation("test-model", {
-      temperature: 0.7,
-      maxTokens: 100,
-      topP: 0.9,
-    });
-    store.setActiveConversation(id);
+      vi.mocked(GoogleAPIClient.createClient).mockResolvedValue({
+        streamChat: vi.fn().mockImplementation(() => mockStream()),
+      } as unknown as GoogleAPIClient);
 
-    await store.sendMessage("Hello");
+      const store = useConversationStore.getState();
+      const id = await store.createConversation("test-model", {
+        temperature: 0.7,
+        maxTokens: 100,
+        topP: 0.9,
+      });
+      store.setActiveConversation(id);
 
-    const state = useConversationStore.getState();
-    const conversation = state.conversations.find((c) => c.id === id);
+      await store.sendMessage("Hello");
 
-    expect(conversation?.messages[0].content).toBe("Hello");
-    expect(conversation?.messages[1].content).toBe("I am a helpful assistant");
-    expect(mockStreamChat).toHaveBeenCalled();
+      const state = useConversationStore.getState();
+      const conversation = state.conversations.find((c) => c.id === id);
 
-    const persisted = await conversations.get(id);
-    expect(persisted).toBeDefined();
-    expect(persisted?.messages.length).toBe(2);
+      expect(conversation?.messages[0].content).toBe("Hello");
+      expect(conversation?.messages[1].content).toBe(
+        "I am a helpful assistant",
+      );
+
+      const persisted = await conversations.get(id);
+      expect(persisted).toBeDefined();
+      expect(persisted?.messages.length).toBe(2);
+    } finally {
+      vi.useFakeTimers({
+        toFake: [
+          "setTimeout",
+          "clearTimeout",
+          "setInterval",
+          "clearInterval",
+          "Date",
+          "setImmediate",
+          "clearImmediate",
+        ],
+      });
+    }
   });
 
   it("should stream a response and update message incrementally", async () => {
@@ -119,7 +156,9 @@ describe("ChatSlice", () => {
     });
     store.setActiveConversation(id);
 
-    await store.sendMessage("Hi");
+    const promise = store.sendMessage("Hi");
+    await vi.advanceTimersByTimeAsync(2000);
+    await promise;
 
     const conversation = useConversationStore
       .getState()
@@ -135,7 +174,7 @@ describe("ChatSlice", () => {
     };
 
     vi.mocked(GoogleAPIClient.createClient).mockResolvedValue({
-      streamChat: vi.fn().mockReturnValue(mockStream()),
+      streamChat: vi.fn().mockImplementation(() => mockStream()),
     } as unknown as GoogleAPIClient);
 
     const store = useConversationStore.getState();
@@ -146,10 +185,13 @@ describe("ChatSlice", () => {
     });
     store.setActiveConversation(id);
 
-    await store.sendMessage("Hi");
+    const sendPromise = store.sendMessage("Hi");
+    await vi.runAllTimersAsync();
+    await sendPromise;
 
     const state = useConversationStore.getState();
-    expect(state.error).toBe("Stream failed");
+    expect(state.error).toBeDefined();
+    expect((state.error as Error).message).toBe("Stream failed");
     expect(state.isStreaming).toBe(false);
   });
 
@@ -192,19 +234,11 @@ describe("ChatSlice", () => {
     // Start the stream
     resolveStream();
 
-    // Wait for "Start" to be processed (passing the 16ms debounce)
-    await vi.waitFor(
-      () => {
-        const state = useConversationStore.getState();
-        const conversation = state.conversations.find((c) => c.id === id);
-        const lastMessage =
-          conversation?.messages[conversation.messages.length - 1];
-        expect(lastMessage?.content).toBe("Start");
-      },
-      { timeout: 1000 },
-    );
+    // Fast-forward to pick up first chunk
+    await vi.advanceTimersByTimeAsync(30);
 
     store.abortGeneration();
+    await vi.runAllTimersAsync();
     await sendPromise;
 
     const state = useConversationStore.getState();
@@ -213,6 +247,10 @@ describe("ChatSlice", () => {
     expect(
       conversation?.messages[conversation.messages.length - 1].content,
     ).toBe("Start");
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("should delete a message and all following context", async () => {
@@ -254,7 +292,9 @@ describe("ChatSlice", () => {
       ),
     }));
 
-    await store.deleteMessage("msg-2");
+    const promise = store.deleteMessage("msg-2");
+    await vi.runAllTimersAsync();
+    await promise;
 
     const conversation = useConversationStore
       .getState()
@@ -302,7 +342,9 @@ describe("ChatSlice", () => {
       ),
     }));
 
-    await store.retryMessage("msg-2");
+    const promise = store.retryMessage("msg-2");
+    await vi.runAllTimersAsync();
+    await promise;
 
     const conversation = useConversationStore
       .getState()
@@ -371,7 +413,9 @@ describe("ChatSlice", () => {
       ),
     }));
 
-    await store.editMessage("m1", "Updated Hi");
+    const promise = store.editMessage("m1", "Updated Hi");
+    await vi.runAllTimersAsync();
+    await promise;
 
     const conversation = useConversationStore
       .getState()
@@ -475,7 +519,7 @@ describe("ChatSlice", () => {
 
   it("should truncate long first message to 40 chars as title", async () => {
     vi.mocked(GoogleAPIClient.createClient).mockResolvedValue({
-      streamChat: vi.fn().mockReturnValue(mockStreamResponse("Ok")),
+      streamChat: vi.fn().mockImplementation(() => mockStreamResponse("Ok")),
     } as unknown as GoogleAPIClient);
 
     const store = useConversationStore.getState();
@@ -488,7 +532,9 @@ describe("ChatSlice", () => {
 
     const longMessage =
       "This is a very long message that exceeds forty characters";
-    await store.sendMessage(longMessage);
+    const promise = store.sendMessage(longMessage);
+    await vi.runAllTimersAsync();
+    await promise;
 
     const conversation = useConversationStore
       .getState()

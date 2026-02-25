@@ -11,6 +11,7 @@ import { ProviderError } from "@/services/api";
 import type {
   ChatRequest,
   ChatResponse,
+  ErrorType,
   FinishReason,
   LLMProvider,
   Message,
@@ -271,17 +272,62 @@ export class GoogleAPIClient implements LLMProvider {
     let message =
       error instanceof Error ? error.message : "An unknown error occurred";
 
-    const { message: nestedErrorMessage, code } =
+    const { message: nestedErrorMessage, code: nestedCode } =
       this.getNestedErrorMessage(message);
     message = nestedErrorMessage;
 
+    // Use nested code if available, otherwise check for status/code on the error object
+    const err = error as { status?: number; code?: number };
+    const statusCode = nestedCode || err?.status || err?.code || 0;
+
+    let type: ErrorType = "unknown";
+    let retriable = false;
+
+    // Map Google API error codes/messages to ErrorType
+    if (
+      statusCode === 401 ||
+      statusCode === 403 ||
+      message.includes("API key")
+    ) {
+      type = "auth";
+    } else if (statusCode === 429) {
+      if (message.includes("quota") || message.includes("Quota")) {
+        type = "quota";
+      } else {
+        type = "rate_limit";
+      }
+      retriable = true;
+    } else if (statusCode === 404 || message.includes("not found")) {
+      type = "model_unavailable";
+    } else if (statusCode >= 500) {
+      type = "server";
+      retriable = true;
+    } else if (statusCode === 400) {
+      if (message.includes("safety") || message.includes("Safety")) {
+        type = "content_filter";
+      } else if (
+        message.includes("context length") ||
+        message.includes("too many tokens")
+      ) {
+        type = "context_length";
+      } else {
+        type = "validation";
+      }
+    }
+
+    // Network errors usually manifest as TypeError: fetch failed
+    if (error instanceof TypeError && message.toLowerCase().includes("fetch")) {
+      type = "network";
+      retriable = true;
+    }
+
     return new ProviderError({
-      type: "unknown", // You might want to map this based on code
+      type,
       provider: "google",
       message,
-      retriable: false,
+      retriable: retriable || ProviderError.isRetriableType(type),
       originalError: error,
-      statusCode: code,
+      statusCode: statusCode || undefined,
     });
   }
 

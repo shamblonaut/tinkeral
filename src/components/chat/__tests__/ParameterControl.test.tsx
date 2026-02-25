@@ -20,6 +20,23 @@ describe("ParameterControl", () => {
     step: 0.1,
     onChange: vi.fn(),
   };
+
+  beforeEach(() => {
+    vi.useFakeTimers({
+      toFake: [
+        "setTimeout",
+        "clearTimeout",
+        "setInterval",
+        "clearInterval",
+        "Date",
+      ],
+    });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("renders correctly with label and initial value", () => {
     render(<ParameterControl {...defaultProps} />);
     expect(screen.getByLabelText("Test Parameter")).toBeInTheDocument();

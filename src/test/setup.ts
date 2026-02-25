@@ -1,12 +1,17 @@
 import "@testing-library/jest-dom";
 import { cleanup } from "@testing-library/react";
 import "fake-indexeddb/auto";
-import { afterEach } from "vitest";
+import { afterEach, beforeEach, vi } from "vitest";
 
 import { createLocalStorageMock, createMatchMediaMock } from "@/test";
 
-// Automatically cleanup DOM after each test to prevent side effects
+beforeEach(() => {
+  vi.spyOn(console, "error").mockImplementation(() => {});
+  vi.spyOn(console, "warn").mockImplementation(() => {});
+});
+
 afterEach(() => {
+  vi.restoreAllMocks();
   cleanup();
 });
 

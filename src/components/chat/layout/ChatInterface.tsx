@@ -1,4 +1,4 @@
-import { Zap } from "lucide-react";
+import { WifiOff, Zap } from "lucide-react";
 import { useEffect } from "react";
 import { toast } from "sonner";
 
@@ -30,13 +30,19 @@ export function ChatInterface() {
     toggleSidebar,
   } = useUIStore();
 
-  const conversation = conversations.find((c) => c.id === activeConversationId);
+  const conversation = conversations.find(
+    (c: { id: string }) => c.id === activeConversationId,
+  );
   const messages = conversation?.messages || [];
 
   // Handle errors
   useEffect(() => {
     if (error) {
-      toast.error(error);
+      const message =
+        typeof error === "object"
+          ? error.userMessage || error.message || "An unexpected error occurred"
+          : String(error || "");
+      toast.error(message);
     }
   }, [error]);
 
@@ -57,7 +63,7 @@ export function ChatInterface() {
   }, [activeConversationId, isLoading]);
 
   const handleSend = (content: string) => {
-    sendMessage(content).catch((err) => {
+    sendMessage(content).catch((err: unknown) => {
       // Error handling is done via store error state, but we can also log here
       console.error("SendMessage failed", err);
     });
@@ -79,6 +85,15 @@ export function ChatInterface() {
           <div className="bg-muted/50 flex items-center justify-center gap-2 border-b py-1 text-xs text-amber-500">
             <Zap className="h-3 w-3" />
             <span className="font-medium">Temporary Chat</span>
+          </div>
+        )}
+
+        {!navigator.onLine && (
+          <div className="bg-destructive/10 text-destructive flex items-center justify-center gap-2 border-b py-1 text-xs">
+            <WifiOff className="h-3 w-3" />
+            <span className="font-medium">
+              You are currently offline. Some features may not work.
+            </span>
           </div>
         )}
 

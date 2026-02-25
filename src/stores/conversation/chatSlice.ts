@@ -1,7 +1,7 @@
 import type { StateCreator } from "zustand";
 
 import { DEFAULT_MODEL_ID, getModelDefaultParameters } from "@/lib/models";
-import { ChatService } from "@/services/chat";
+import { ChatService, type ChatMetadata } from "@/services/chat";
 import { PersistenceService } from "@/services/persistence";
 import { useSettingsStore } from "@/stores";
 import {
@@ -129,7 +129,7 @@ export const createChatSlice: StateCreator<
         metadata: { model: conversation.modelId },
       };
 
-      set((state) => ({
+      set((state: ConversationState) => ({
         conversations: state.conversations.map((c) =>
           c.id === conversationId
             ? { ...c, messages: [...c.messages, assistantMessage] }
@@ -146,8 +146,8 @@ export const createChatSlice: StateCreator<
           apiKey,
         },
         {
-          onChunk: (content) => {
-            set((state) => ({
+          onChunk: (content: string) => {
+            set((state: ConversationState) => ({
               conversations: state.conversations.map((c) =>
                 c.id === conversationId
                   ? {
@@ -160,8 +160,8 @@ export const createChatSlice: StateCreator<
               ),
             }));
           },
-          onFinish: async (fullContent, lastMetadata) => {
-            set((state) => {
+          onFinish: async (fullContent: string, lastMetadata: ChatMetadata) => {
+            set((state: ConversationState) => {
               const currentConv = state.conversations.find(
                 (c) => c.id === conversationId,
               );
@@ -238,7 +238,7 @@ export const createChatSlice: StateCreator<
             const isAborted =
               error instanceof DOMException && error.name === "AbortError";
             set({
-              error: isAborted ? null : (error as Error).message,
+              error: isAborted ? null : error,
               isLoading: false,
               isStreaming: false,
               abortController: null,

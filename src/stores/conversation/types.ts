@@ -1,3 +1,4 @@
+import type { ProviderError } from "@/services/api/base";
 import type {
   Conversation,
   Message,
@@ -10,7 +11,7 @@ export interface ConversationCoreState {
   activeConversationId: string | null;
   availableModels: ModelInfo[];
   isLoading: boolean;
-  error: string | null;
+  error: string | ProviderError | null;
 
   loadConversations: () => Promise<void>;
   loadModels: () => Promise<void>;

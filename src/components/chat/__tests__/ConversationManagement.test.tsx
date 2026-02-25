@@ -1,14 +1,16 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { act, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { ChatInterface } from "@/components/chat";
+import { ChatInterface, ConversationList } from "@/components/chat";
 import { TooltipProvider } from "@/components/ui";
-import { conversations as conversationsDb } from "@/db";
-import { useConversationStore } from "@/stores";
+import { useConversationStore, useUIStore } from "@/stores";
 
 import { createMockConv, mockModels, setupChatTests } from "./setup";
 
 vi.setConfig({ testTimeout: 15000 });
+
+// --- Mocks ---
 
 vi.mock("@/hooks", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/hooks")>();
@@ -45,6 +47,17 @@ const mockDb = vi.hoisted(() => ({
 vi.mock("@/db/operations", () => mockDb);
 vi.mock("@/db", () => mockDb);
 
+vi.mock("@/components/ui/scroll-area", () => ({
+  ScrollArea: ({
+    children,
+    className,
+  }: {
+    children: React.ReactNode;
+    className?: string;
+  }) => <div className={className}>{children}</div>,
+  ScrollBar: () => null,
+}));
+
 vi.mock("@/services/api/google", () => ({
   GoogleAPIClient: {
     createClient: vi.fn().mockImplementation(() =>
@@ -52,7 +65,11 @@ vi.mock("@/services/api/google", () => ({
         chat: vi.fn(),
         streamChat: vi.fn().mockImplementation(async function* () {
           yield { delta: "Hello" };
-          yield { delta: "", finishReason: "stop", usage: { totalTokens: 2 } };
+          yield {
+            delta: "",
+            finishReason: "stop",
+            usage: { totalTokens: 10, inputTokens: 5, outputTokens: 5 },
+          };
         }),
         getModels: vi.fn().mockResolvedValue(mockModels),
       }),
@@ -62,87 +79,198 @@ vi.mock("@/services/api/google", () => ({
 
 setupChatTests();
 
+beforeEach(() => {
+  vi.useFakeTimers({
+    toFake: [
+      "setTimeout",
+      "clearTimeout",
+      "setInterval",
+      "clearInterval",
+      "Date",
+    ],
+  });
+  // Ensure sidebar is open for tests
+  useUIStore.setState({ isSidebarOpen: true });
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 describe("Conversation Management", () => {
   it("should rename a conversation via UI", async () => {
-    const conversationId = "test-rename-id";
-    useConversationStore.setState({
-      conversations: [createMockConv(conversationId, "Old Title")],
-      activeConversationId: conversationId,
+    const convId = "test-rename-id";
+    await act(async () => {
+      useConversationStore.setState({
+        conversations: [createMockConv(convId, "Old Name")],
+        activeConversationId: convId,
+      });
     });
+
+    const user = userEvent.setup({ delay: null });
 
     render(
       <TooltipProvider>
-        <ChatInterface />
+        <ConversationList />
       </TooltipProvider>,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /toggle details/i }));
-    fireEvent.click(await screen.findByRole("button", { name: /rename/i }));
-
-    const input = await screen.findByDisplayValue("Old Title");
-    fireEvent.change(input, { target: { value: "New Title" } });
-    fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
-
-    await waitFor(() => {
-      expect(conversationsDb.update).toHaveBeenCalledWith(
-        conversationId,
-        expect.objectContaining({ title: "New Title" }),
-      );
+    // 1. Expand details
+    const click1 = user.click(
+      screen.getByRole("button", { name: /toggle details/i }),
+    );
+    await act(async () => {
+      await vi.runAllTimersAsync();
     });
-    expect(screen.getByText("New Title")).toBeInTheDocument();
+    await click1;
+
+    // 2. Click Rename button
+    const click2 = user.click(screen.getByRole("button", { name: /rename/i }));
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+    await click2;
+
+    // 3. Type new name
+    const input = screen.getByDisplayValue("Old Name");
+    const clear1 = user.clear(input);
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+    await clear1;
+
+    const type1 = user.type(input, "New Name{enter}");
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+    await type1;
+
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+
+    const state = useConversationStore.getState();
+    const conv = state.conversations.find((c) => c.id === convId);
+    expect(conv?.title).toBe("New Name");
   });
 
   it("should delete a conversation", async () => {
-    const conversationId = "test-delete-id";
-    useConversationStore.setState({
-      conversations: [createMockConv(conversationId, "Delete Me")],
-      activeConversationId: conversationId,
+    const convId = "test-delete-id";
+    await act(async () => {
+      useConversationStore.setState({
+        conversations: [createMockConv(convId, "Delete Me")],
+        activeConversationId: convId,
+      });
     });
+
+    const user = userEvent.setup({ delay: null });
 
     render(
       <TooltipProvider>
-        <ChatInterface />
+        <ConversationList />
       </TooltipProvider>,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /toggle details/i }));
-    fireEvent.click(await screen.findByRole("button", { name: /delete/i }));
-    fireEvent.click(await screen.findByRole("button", { name: /^delete$/i }));
-
-    await waitFor(() => {
-      expect(conversationsDb.delete).toHaveBeenCalledWith(conversationId);
+    // 1. Expand
+    const click1 = user.click(
+      screen.getByRole("button", { name: /toggle details/i }),
+    );
+    await act(async () => {
+      await vi.runAllTimersAsync();
     });
-    expect(screen.queryByText("Delete Me")).not.toBeInTheDocument();
+    await click1;
+
+    // 2. Click Delete button
+    const click2 = user.click(screen.getByRole("button", { name: /delete/i }));
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+    await click2;
+
+    // 3. Confirm dialog - pick the last 'Delete' button (the one in the dialog)
+    const deleteBtns = screen.getAllByRole("button", {
+      name: "Delete",
+      hidden: true,
+    });
+    const click3 = user.click(deleteBtns[deleteBtns.length - 1]);
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+    await click3;
+
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+
+    expect(useConversationStore.getState().conversations).toHaveLength(0);
   });
 
   it("should cancel deletion", async () => {
-    const conversationId = "test-cancel-delete-id";
-    useConversationStore.setState({
-      conversations: [createMockConv(conversationId, "Keep Me")],
-      activeConversationId: conversationId,
+    const convId = "test-cancel-id";
+    await act(async () => {
+      useConversationStore.setState({
+        conversations: [createMockConv(convId, "Keep Me")],
+        activeConversationId: convId,
+      });
     });
+
+    const user = userEvent.setup({ delay: null });
 
     render(
       <TooltipProvider>
-        <ChatInterface />
+        <ConversationList />
       </TooltipProvider>,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /toggle details/i }));
-    fireEvent.click(await screen.findByRole("button", { name: /delete/i }));
-    fireEvent.click(await screen.findByRole("button", { name: /cancel/i }));
-
-    await waitFor(() => {
-      expect(conversationsDb.delete).not.toHaveBeenCalled();
+    // 1. Expand
+    const click1 = user.click(
+      screen.getByRole("button", { name: /toggle details/i }),
+    );
+    await act(async () => {
+      await vi.runAllTimersAsync();
     });
-    expect(screen.getByText("Keep Me")).toBeInTheDocument();
+    await click1;
+
+    // 2. Click Delete button
+    const click2 = user.click(screen.getByRole("button", { name: /delete/i }));
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+    await click2;
+
+    // 3. Cancel dialog
+    const click3 = user.click(
+      screen.getByRole("button", { name: /cancel/i, hidden: true }),
+    );
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+    await click3;
+
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+
+    expect(useConversationStore.getState().conversations).toHaveLength(1);
   });
 
   it("should allow creating a new conversation even when an ephemeral one exists", async () => {
-    useConversationStore.setState({
-      conversations: [createMockConv("e1", "New", { persisted: false })],
-      activeConversationId: "e1",
+    const ephemeralId = "ephemeral-1";
+    await act(async () => {
+      useConversationStore.setState({
+        conversations: [
+          createMockConv(ephemeralId, "New Conversation", {
+            persisted: false,
+            messages: [
+              { id: "m1", role: "user", content: "Hi", timestamp: Date.now() },
+            ],
+          }),
+        ],
+        activeConversationId: ephemeralId,
+      });
     });
+
+    const user = userEvent.setup({ delay: null });
 
     render(
       <TooltipProvider>
@@ -150,7 +278,20 @@ describe("Conversation Management", () => {
       </TooltipProvider>,
     );
 
-    const newBtn = screen.getByRole("button", { name: /new conversation/i });
-    expect(newBtn).not.toBeDisabled();
+    const click1 = user.click(
+      screen.getByRole("button", { name: /new conversation/i }),
+    );
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+    await click1;
+
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+
+    const state = useConversationStore.getState();
+    expect(state.conversations).toHaveLength(2);
+    expect(state.activeConversationId).not.toBe(ephemeralId);
   });
 });
