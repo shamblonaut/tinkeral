@@ -94,7 +94,7 @@ export const Message = memo(function Message({
   return (
     <div
       className={cn(
-        "bg-background group hover:bg-muted/30 relative flex w-full gap-4 p-4 transition-colors",
+        "bg-background group relative flex w-full gap-4 p-4 transition-colors",
         isUser ? "flex-row-reverse" : "flex-row",
       )}
     >

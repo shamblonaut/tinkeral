@@ -11,6 +11,7 @@ import {
   TabsTrigger,
 } from "@/components/ui";
 import { useUIStore } from "@/stores";
+import { AppearanceSettings } from "./AppearanceSettings";
 import { GeneralSettingsTab } from "./GeneralSettingsTab";
 import { ImportExport } from "./ImportExport";
 
@@ -44,6 +45,15 @@ export function SettingsModal() {
 
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pt-4">
             <TabsContent value="general" className="mt-0">
+              <div className="mb-4 rounded-lg border p-4">
+                <div className="mb-4 space-y-2">
+                  <h3 className="font-medium">Appearance</h3>
+                  <p className="text-muted-foreground text-sm">
+                    Customize the look and feel of the application.
+                  </p>
+                </div>
+                <AppearanceSettings />
+              </div>
               <div className="rounded-lg border p-4">
                 <div className="mb-4 space-y-2">
                   <h3 className="font-medium">Authentication</h3>

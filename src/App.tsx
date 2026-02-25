@@ -1,3 +1,4 @@
+import { ThemeProvider } from "next-themes";
 import { useEffect, useState } from "react";
 
 import { APIKeyModal } from "@/components/auth";
@@ -78,10 +79,17 @@ function App() {
   const hasGoogleKey = !!settings?.apiKeys?.google;
 
   return (
-    <TooltipProvider>
-      {!hasGoogleKey ? <APIKeyModal /> : <ChatInterface />}
-      <Toaster />
-    </TooltipProvider>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="system"
+      enableSystem
+      disableTransitionOnChange
+    >
+      <TooltipProvider>
+        {!hasGoogleKey ? <APIKeyModal /> : <ChatInterface />}
+        <Toaster />
+      </TooltipProvider>
+    </ThemeProvider>
   );
 }
 
