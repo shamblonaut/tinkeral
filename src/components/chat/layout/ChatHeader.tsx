@@ -31,7 +31,10 @@ export function ChatHeader({
           <PanelLeft className="h-4 w-4" />
           <span className="sr-only">Toggle sidebar</span>
         </Button>
-        <h1 className="text-xl font-bold">🧩 Tinkeral</h1>
+        <h1 className="flex items-center gap-2">
+          <span>🧩</span>
+          <span className="text-2xl font-bold">Tinkeral</span>
+        </h1>
       </div>
       <div className="flex items-center gap-2">
         <Button

@@ -140,10 +140,7 @@ export function ConversationList({
         <div className="flex min-h-9 items-center gap-2">
           {!isSelectionMode ? (
             <>
-              <div
-                className="flex w-full items-center gap-px"
-                ref={buttonGroupRef}
-              >
+              <div className="flex w-full items-center" ref={buttonGroupRef}>
                 <Button
                   onClick={() => handleCreate()}
                   className="h-9 flex-1 justify-start gap-2 rounded-r-none pr-2"
@@ -156,7 +153,7 @@ export function ConversationList({
                   <DropdownMenuTrigger asChild>
                     <Button
                       variant="outline"
-                      className="h-9 w-9 rounded-l-none px-0"
+                      className="h-9 w-9 rounded-l-none border-l-0 px-0"
                     >
                       <ChevronDown className="h-4 w-4" />
                       <span className="sr-only">More options</span>

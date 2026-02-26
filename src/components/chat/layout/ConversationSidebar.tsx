@@ -23,10 +23,10 @@ export function ConversationSidebar() {
         className="min-h-0 flex-1"
         onSelect={!isDesktop ? () => setSidebarOpen(false) : undefined}
       />
-      <div className="border-t p-2">
+      <div className="border-t p-4">
         <Button
           variant="ghost"
-          className="w-full justify-start gap-2"
+          className="w-full justify-start gap-2 p-6"
           onClick={() => openModal("settings")}
         >
           <Settings className="h-4 w-4" />

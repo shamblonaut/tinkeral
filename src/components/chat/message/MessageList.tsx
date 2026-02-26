@@ -61,6 +61,7 @@ export function MessageList({
   if (messages.length === 0) {
     return (
       <div className="text-muted-foreground flex h-full flex-col items-center justify-center p-8 text-center">
+        <div className="mb-6 text-5xl">🧩</div>
         <h3 className="mb-2 text-lg font-semibold">Welcome to Tinkeral</h3>
         <p className="text-sm">
           Start a conversation by typing a message below.
