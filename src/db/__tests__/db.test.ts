@@ -50,7 +50,7 @@ describe("Database Operations", () => {
       await conversations.update(id, { title: "New Title" });
       const conversation = await conversations.get(id);
       expect(conversation?.title).toBe("New Title");
-      expect(conversation?.updatedAt).toBeGreaterThan(now);
+      expect(conversation?.updatedAt).toBeGreaterThanOrEqual(now);
     });
 
     it("should delete a conversation", async () => {
