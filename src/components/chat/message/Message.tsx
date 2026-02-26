@@ -98,7 +98,7 @@ export const Message = memo(function Message({
         isUser ? "flex-row-reverse" : "flex-row",
       )}
     >
-      <Avatar className="h-8 w-8 shrink-0">
+      <Avatar className="hidden h-8 w-8 shrink-0 md:block">
         {isUser ? (
           <>
             <AvatarImage src="" alt="User" />
@@ -108,7 +108,7 @@ export const Message = memo(function Message({
           </>
         ) : (
           <>
-            <AvatarImage src="/bot-avatar.png" alt="Model" />
+            <AvatarImage src="" alt="Model" />
             <AvatarFallback className="bg-secondary text-secondary-foreground">
               <Bot className="h-4 w-4" />
             </AvatarFallback>
@@ -118,13 +118,11 @@ export const Message = memo(function Message({
 
       <div
         className={cn(
-          "relative flex max-w-[80%] flex-col gap-1",
+          "relative flex max-w-full flex-col gap-1 md:max-w-[80%]",
           isUser ? "items-end" : "items-start",
         )}
       >
-        <div
-          className={cn("flex items-center gap-2", isUser ? "pl-4" : "pr-4")}
-        >
+        <div className="flex items-center gap-2 px-2">
           {isUser ? (
             <>
               <TokenUsageDisplay
