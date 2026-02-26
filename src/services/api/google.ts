@@ -7,7 +7,6 @@ import {
 } from "@google/genai";
 
 import { getModelById, getUnknownModel, KNOWN_MODELS } from "@/lib/models";
-import { ProviderError } from "@/services/api";
 import type {
   ChatRequest,
   ChatResponse,
@@ -18,6 +17,7 @@ import type {
   ModelInfo,
   StreamChunk,
 } from "@/types";
+import { ProviderError } from "./base";
 
 export class GoogleAPIClient implements LLMProvider {
   readonly id = "google";

@@ -2,8 +2,8 @@ import { ApiError } from "@google/genai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { KNOWN_MODELS } from "@/lib/models";
-import { GoogleAPIClient } from "@/services/api";
 import { DEFAULT_PARAMETERS, type ChatRequest } from "@/types";
+import { GoogleAPIClient } from "../google";
 
 const mocks = vi.hoisted(() => {
   return {

@@ -1,5 +1,5 @@
-import { GoogleAPIClient } from "@/services/api";
 import type { ProviderError } from "@/services/api/base";
+import { GoogleAPIClient } from "@/services/api/google";
 import { RateLimiter } from "@/services/rateLimiter";
 import type { FinishReason, Message, ModelParameters } from "@/types";
 

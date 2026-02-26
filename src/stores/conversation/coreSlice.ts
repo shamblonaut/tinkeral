@@ -1,6 +1,7 @@
 import type { StateCreator } from "zustand";
 
 import { conversations as conversationsDb } from "@/db";
+import { GoogleAPIClient } from "@/services/api/google";
 import { PersistenceService } from "@/services/persistence";
 import { useSettingsStore } from "@/stores";
 import type { Conversation, ModelParameters } from "@/types";
@@ -48,8 +49,8 @@ export const createCoreSlice: StateCreator<
       const apiKey = currentSettings?.apiKeys["google"];
       if (!apiKey) return;
 
-      // Import dynamically to avoid circular dependency if any
-      const { GoogleAPIClient } = await import("@/services/api");
+      // Imported statically above
+      // const { GoogleAPIClient } = await import("@/services/api/google");
       const client = await GoogleAPIClient.createClient(apiKey);
       const models = await client.getModels();
       set({ availableModels: models });
