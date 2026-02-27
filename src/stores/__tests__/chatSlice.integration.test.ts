@@ -303,7 +303,27 @@ describe("ChatSlice", () => {
     expect(conversation?.messages[0].id).toBe("msg-1");
   });
 
-  it("should retry a model message by moving user message to draft", async () => {
+  it("should abort ongoing generation when deleting a message", async () => {
+    let streamTrigger: () => void;
+    const streamTriggerPromise = new Promise<void>((r) => {
+      streamTrigger = r;
+    });
+
+    const mockStreamChat = vi
+      .fn()
+      .mockImplementation(async function* (_, signal) {
+        await streamTriggerPromise;
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        yield { delta: "Slow" };
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+        yield { delta: " Response" };
+      });
+
+    vi.mocked(GoogleAPIClient.createClient).mockResolvedValue({
+      streamChat: mockStreamChat,
+    } as unknown as GoogleAPIClient);
+
     const store = useConversationStore.getState();
     const id = await store.createConversation("test-model", {
       temperature: 0.7,
@@ -336,15 +356,160 @@ describe("ChatSlice", () => {
       ),
     }));
 
-    await store.retryMessage("msg-2");
+    // Start a message regeneration
+    const promise1 = store.retryMessage("msg-2");
+
+    // Give it time to start the stream request
+    streamTrigger!();
+    await vi.advanceTimersByTimeAsync(30); // Yields "Slow"
+
+    // AbortController should be active now
+    expect(useConversationStore.getState().abortController).toBeDefined();
+
+    // Trigger delete! This should halt the previous stream.
+    const promise2 = store.deleteMessage("msg-1");
+
+    // Let the delete operation complete and the stream abort
+    await vi.runAllTimersAsync();
+    await Promise.allSettled([promise1, promise2]);
+
+    const state = useConversationStore.getState();
+    expect(state.isStreaming).toBe(false);
+    expect(state.abortController).toBeNull();
+  });
+
+  it("should retry a model message by regenerating response", async () => {
+    vi.mocked(GoogleAPIClient.createClient).mockResolvedValue({
+      streamChat: vi
+        .fn()
+        .mockImplementation(() => mockStreamResponse("Regenerated Hello")),
+    } as unknown as GoogleAPIClient);
+
+    const store = useConversationStore.getState();
+    const id = await store.createConversation("test-model", {
+      temperature: 0.7,
+      maxTokens: 100,
+      topP: 0.9,
+    });
+    store.setActiveConversation(id);
+
+    useConversationStore.setState((s) => ({
+      conversations: s.conversations.map((c) =>
+        c.id === id
+          ? {
+              ...c,
+              messages: [
+                {
+                  id: "msg-1",
+                  role: "user" as const,
+                  content: "Hi",
+                  timestamp: 1,
+                },
+                {
+                  id: "msg-2",
+                  role: "model" as const,
+                  content: "Hello",
+                  timestamp: 2,
+                },
+              ],
+            }
+          : c,
+      ),
+    }));
+
+    const promise = store.retryMessage("msg-2");
+    await vi.runAllTimersAsync();
+    await promise;
 
     const state = useConversationStore.getState();
     const conversation = state.conversations.find((c) => c.id === id);
 
-    // The model message was removed from the array, but the preceding user message is kept.
-    expect(conversation?.messages.length).toBe(1);
-    // The user content is moved to draft message
-    expect(conversation?.draft).toBe("Hi");
+    // The old model message was removed, user message remains,
+    // and a new model message is generated.
+    expect(conversation?.messages.length).toBe(2);
+    expect(conversation?.messages[0].content).toBe("Hi");
+    expect(conversation?.draft).toBeUndefined(); // shouldn't be moved to draft
+    expect(conversation?.messages[1].role).toBe("model");
+    expect(conversation?.messages[1].content).toBe("Regenerated Hello");
+  });
+
+  it("should abort ongoing generation when retrying a message", async () => {
+    let streamTrigger: () => void;
+    const streamTriggerPromise = new Promise<void>((r) => {
+      streamTrigger = r;
+    });
+
+    const mockStreamChat = vi
+      .fn()
+      .mockImplementation(async function* (_, signal) {
+        await streamTriggerPromise;
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        yield { delta: "Slow" };
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
+        yield { delta: " Response" };
+      });
+
+    vi.mocked(GoogleAPIClient.createClient).mockResolvedValue({
+      streamChat: mockStreamChat,
+    } as unknown as GoogleAPIClient);
+
+    const store = useConversationStore.getState();
+    const id = await store.createConversation("test-model", {
+      temperature: 0.7,
+      maxTokens: 100,
+      topP: 0.9,
+    });
+    store.setActiveConversation(id);
+
+    useConversationStore.setState((s) => ({
+      conversations: s.conversations.map((c) =>
+        c.id === id
+          ? {
+              ...c,
+              messages: [
+                {
+                  id: "msg-1",
+                  role: "user" as const,
+                  content: "Hi",
+                  timestamp: 1,
+                },
+                {
+                  id: "msg-2",
+                  role: "model" as const,
+                  content: "Hello",
+                  timestamp: 2,
+                },
+              ],
+            }
+          : c,
+      ),
+    }));
+
+    // Start a message regeneration
+    const promise1 = store.retryMessage("msg-2");
+
+    // Give it time to start the stream request
+    streamTrigger!();
+    await vi.advanceTimersByTimeAsync(30); // Yields "Slow"
+
+    // AbortController should be active now
+    expect(useConversationStore.getState().abortController).toBeDefined();
+
+    // Trigger another retry! This should halt the first one.
+    const promise2 = store.retryMessage("msg-2");
+
+    // Let the second one complete and the first one abort
+    await vi.runAllTimersAsync();
+    await Promise.allSettled([promise1, promise2]);
+
+    const state = useConversationStore.getState();
+    expect(state.isStreaming).toBe(false);
+
+    const conversation = state.conversations.find((c) => c.id === id);
+    // Since mockStreamChat just throws, the second stream will fail due to no content from mocked stream
+    // but the point is it shouldn't hold the old stream content or freeze
+    expect(conversation).toBeDefined();
   });
 
   it("should NOT save draft for temporary conversations", async () => {

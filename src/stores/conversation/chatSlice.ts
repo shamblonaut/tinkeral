@@ -273,11 +273,17 @@ export const createChatSlice: StateCreator<
               void get().deleteMessage(userMessage.id);
             }
 
-            set({
-              error: isAborted ? null : error,
-              isLoading: false,
-              isStreaming: false,
-              abortController: null,
+            set((state: ConversationState) => {
+              if (state.abortController !== abortController) {
+                return {};
+              }
+
+              return {
+                error: isAborted ? null : error,
+                isLoading: false,
+                isStreaming: false,
+                abortController: null,
+              };
             });
           },
         },
@@ -300,6 +306,9 @@ export const createChatSlice: StateCreator<
   deleteMessage: async (messageId: string) => {
     const { activeConversationId, conversations } = get();
     if (!activeConversationId) return;
+
+    // Halt any ongoing generation
+    get().abortGeneration();
 
     const conversation = conversations.find(
       (c) => c.id === activeConversationId,
@@ -329,6 +338,9 @@ export const createChatSlice: StateCreator<
     const { activeConversationId, conversations } = get();
     if (!activeConversationId) return;
 
+    // Halt any ongoing generation
+    get().abortGeneration();
+
     const conversation = conversations.find(
       (c) => c.id === activeConversationId,
     );
@@ -350,16 +362,20 @@ export const createChatSlice: StateCreator<
       ),
     }));
 
-    // Instead of executing the chat again, move the message back to input
+    // Instead of moving the message back to input, regenerate the response
     if (userMessage) {
-      void get().setDraft(activeConversationId, userMessage.content);
+      await get().executeChat(activeConversationId, userMessage);
+    } else {
+      await PersistenceService.updateConversation(updatedConversation);
     }
-    await PersistenceService.updateConversation(updatedConversation);
   },
 
   editMessage: async (messageId: string, content: string) => {
     const { activeConversationId, conversations } = get();
     if (!activeConversationId) return;
+
+    // Halt any ongoing generation
+    get().abortGeneration();
 
     const conversation = conversations.find(
       (c) => c.id === activeConversationId,
