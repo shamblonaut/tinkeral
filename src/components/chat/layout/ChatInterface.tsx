@@ -109,7 +109,7 @@ export function ChatInterface() {
             </div>
             <ChatInput
               onSend={handleSend}
-              disabled={isLoading && !isStreaming}
+              disabled={isLoading || isStreaming}
               isStreaming={isStreaming}
               onStop={abortGeneration}
             />

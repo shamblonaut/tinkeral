@@ -195,6 +195,51 @@ describe("ChatInterface — Messaging & Streaming", () => {
     expect(screen.getByText("Hello world")).toBeInTheDocument();
   });
 
+  it("should disable the input field while a message is generating/streaming", async () => {
+    const user = userEvent.setup({ delay: null });
+    useConversationStore.setState({
+      conversations: [createMockConv("test-disable-conv", "Test Disable")],
+      activeConversationId: "test-disable-conv",
+    });
+
+    render(
+      <TooltipProvider>
+        <ChatInterface />
+      </TooltipProvider>,
+    );
+
+    const input = screen.getByPlaceholderText("Type a message...");
+    const typePromise = user.type(input, "Hello AI");
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+    await typePromise;
+
+    const sendBtn = screen.getByRole("button", { name: /send/i });
+    const clickPromise = user.click(sendBtn);
+
+    // Initial click should trigger loading state (preventing input)
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(input).toBeDisabled();
+
+    // Advance halfway to trigger streaming phase
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(15);
+    });
+    expect(input).toBeDisabled();
+
+    // Finish generation
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+    await clickPromise;
+
+    // After completion, input should be re-enabled
+    expect(input).not.toBeDisabled();
+  });
+
   it("should display error toast when streaming fails", async () => {
     const user = userEvent.setup({ delay: null });
     useConversationStore.setState({
