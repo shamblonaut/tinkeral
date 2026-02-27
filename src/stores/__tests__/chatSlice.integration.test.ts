@@ -303,13 +303,7 @@ describe("ChatSlice", () => {
     expect(conversation?.messages[0].id).toBe("msg-1");
   });
 
-  it("should retry a model message", async () => {
-    vi.mocked(GoogleAPIClient.createClient).mockResolvedValue({
-      streamChat: vi
-        .fn()
-        .mockReturnValue(mockStreamResponse("Regenerated response")),
-    } as unknown as GoogleAPIClient);
-
+  it("should retry a model message by moving user message to draft", async () => {
     const store = useConversationStore.getState();
     const id = await store.createConversation("test-model", {
       temperature: 0.7,
@@ -342,15 +336,80 @@ describe("ChatSlice", () => {
       ),
     }));
 
-    const promise = store.retryMessage("msg-2");
-    await vi.runAllTimersAsync();
-    await promise;
+    await store.retryMessage("msg-2");
 
-    const conversation = useConversationStore
-      .getState()
-      .conversations.find((c) => c.id === id);
-    expect(conversation?.messages.length).toBe(2);
-    expect(conversation?.messages[1].content).toBe("Regenerated response");
+    const state = useConversationStore.getState();
+    const conversation = state.conversations.find((c) => c.id === id);
+
+    // The model message was removed from the array, but the preceding user message is kept.
+    expect(conversation?.messages.length).toBe(1);
+    // The user content is moved to draft message
+    expect(conversation?.draft).toBe("Hi");
+  });
+
+  it("should NOT save draft for temporary conversations", async () => {
+    const store = useConversationStore.getState();
+    const id = await store.createConversation(
+      "test-model",
+      { temperature: 0.7, maxTokens: 100, topP: 0.9 },
+      undefined,
+      { isTemporary: true },
+    );
+    store.setActiveConversation(id);
+
+    await store.setDraft(id, "I am testing");
+
+    const state = useConversationStore.getState();
+    const conversation = state.conversations.find((c) => c.id === id);
+    expect(conversation?.draft).toBeUndefined();
+  });
+
+  it("should PRESERVE draft for ephemeral conversations when switching away and back", async () => {
+    const store = useConversationStore.getState();
+    const ephId = await store.createConversation("test-model", {
+      temperature: 0.7,
+      maxTokens: 100,
+      topP: 0.9,
+    });
+    store.setActiveConversation(ephId);
+
+    // Set a draft on the ephemeral conversation
+    await store.setDraft(ephId, "My ephemeral draft");
+
+    // Create a persisted conversation (mocking it)
+    useConversationStore.setState((s) => ({
+      conversations: [
+        ...s.conversations,
+        {
+          id: "persisted-chat",
+          title: "Persisted",
+          messages: [],
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          modelId: "test-model",
+          parameters: { temperature: 0.7, maxTokens: 100, topP: 0.9 },
+          persisted: true,
+        },
+      ],
+    }));
+
+    // Switch to persisted conversation
+    store.setActiveConversation("persisted-chat");
+
+    // Now click "New Conversation" again
+    const newEphId = await store.createConversation("test-model", {
+      temperature: 0.7,
+      maxTokens: 100,
+      topP: 0.9,
+    });
+
+    // It should reuse the exact same ephemeral conversation!
+    expect(newEphId).toBe(ephId);
+
+    // And the draft should still be there!
+    const state = useConversationStore.getState();
+    const reactivatedConv = state.conversations.find((c) => c.id === ephId);
+    expect(reactivatedConv?.draft).toBe("My ephemeral draft");
   });
 
   it("should update system prompt", async () => {

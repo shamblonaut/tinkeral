@@ -20,6 +20,7 @@ export interface Conversation {
   };
   persisted?: boolean;
   isTemporary?: boolean;
+  draft?: string;
 }
 
 export interface AppSettings {

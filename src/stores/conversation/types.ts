@@ -30,6 +30,7 @@ export interface ConversationCoreState {
 export interface ConversationChatState {
   isStreaming: boolean;
   abortController: AbortController | null;
+  setDraft: (conversationId: string, msg: string) => Promise<void>;
 
   sendMessage: (content: string) => Promise<void>;
   deleteMessage: (messageId: string) => Promise<void>;

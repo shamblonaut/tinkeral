@@ -1,7 +1,8 @@
 import { SendHorizontal, Square } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button, Textarea } from "@/components/ui";
+import { useConversationStore } from "@/stores";
 
 interface ChatInputProps {
   onSend: (content: string) => void;
@@ -18,6 +19,70 @@ export function ChatInput({
 }: ChatInputProps) {
   const [input, setInput] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const activeConversationId = useConversationStore(
+    (state) => state.activeConversationId,
+  );
+
+  const draft = useConversationStore(
+    (state) =>
+      state.conversations.find((c) => c.id === state.activeConversationId)
+        ?.draft,
+  );
+
+  const setDraft = useConversationStore((state) => state.setDraft);
+
+  const currentInputRef = useRef(input);
+
+  // Track latest input for safe unmount saving without triggering renders
+  useEffect(() => {
+    currentInputRef.current = input;
+  }, [input]);
+
+  // Save draft on unmount or switch
+  useEffect(() => {
+    const id = activeConversationId;
+    return () => {
+      if (id) {
+        void setDraft(id, currentInputRef.current);
+      }
+    };
+  }, [activeConversationId, setDraft]);
+
+  const [prevActiveConvId, setPrevActiveConvId] =
+    useState(activeConversationId);
+  const [prevDraft, setPrevDraft] = useState(draft);
+
+  // Derive state during render to avoid cascading render effects
+  if (activeConversationId !== prevActiveConvId) {
+    // Conversation switched
+    const currentDraft =
+      useConversationStore
+        .getState()
+        .conversations.find((c) => c.id === activeConversationId)?.draft || "";
+    setInput(currentDraft);
+    setPrevActiveConvId(activeConversationId);
+    setPrevDraft(currentDraft);
+  } else if (draft !== prevDraft) {
+    // External draft update on same conversation (e.g., error recovery)
+    if (draft !== undefined) {
+      setInput(draft);
+    }
+    setPrevDraft(draft);
+  }
+
+  // Handle focus when external draft updates
+  const focusDraftRef = useRef(draft);
+  useEffect(() => {
+    if (draft !== focusDraftRef.current) {
+      if (draft !== undefined && activeConversationId === prevActiveConvId) {
+        requestAnimationFrame(() => {
+          textareaRef.current?.focus();
+        });
+      }
+      focusDraftRef.current = draft;
+    }
+  }, [draft, activeConversationId, prevActiveConvId]);
 
   const handleSend = () => {
     if (input.trim() && !disabled) {

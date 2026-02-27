@@ -1,23 +1,4 @@
-import type { Conversation, Message } from "@/types";
-
-/**
- * Helper to remove empty ephemeral conversations
- */
-export function cleanupEmptyDrafts(
-  conversations: Conversation[],
-  activeId: string | null,
-): Conversation[] {
-  return conversations.filter((c) => {
-    // Keep if it's the active one
-    if (c.id === activeId) return true;
-    // Keep if it's persisted
-    if (c.persisted !== false) return true;
-    // Keep if it has messages
-    if (c.messages.length > 0) return true;
-    // Otherwise, it's an empty draft that can be removed
-    return false;
-  });
-}
+import type { Message } from "@/types";
 
 /**
  * Logic to delete a message and everything after it

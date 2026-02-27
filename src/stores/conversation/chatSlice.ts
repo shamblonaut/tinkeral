@@ -25,6 +25,32 @@ export const createChatSlice: StateCreator<
   isStreaming: false,
   abortController: null,
 
+  setDraft: async (conversationId: string, msg: string) => {
+    set((state) => {
+      const currentConv = state.conversations.find(
+        (c) => c.id === conversationId,
+      );
+      if (!currentConv || currentConv.isTemporary) return {};
+
+      const updatedConv = {
+        ...currentConv,
+        draft: msg,
+        updatedAt: Date.now(),
+      };
+
+      return {
+        conversations: state.conversations.map((c) =>
+          c.id === conversationId ? updatedConv : c,
+        ),
+      };
+    });
+
+    const finalConv = get().conversations.find((c) => c.id === conversationId);
+    if (finalConv) {
+      await PersistenceService.updateConversation(finalConv);
+    }
+  },
+
   sendMessage: async (content: string) => {
     let { activeConversationId, conversations } = get();
 
@@ -76,7 +102,6 @@ export const createChatSlice: StateCreator<
           c.id === activeConversationId ? conversationWithUserMsg : c,
         )
         .sort((a, b) => b.updatedAt - a.updatedAt),
-      error: null,
     }));
 
     await get().executeChat(activeConversationId, userMessage, titleUpdate);
@@ -98,19 +123,6 @@ export const createChatSlice: StateCreator<
       error: null,
       abortController,
     });
-
-    // Delegate persistence to service
-    const wasPersisted = await PersistenceService.saveNewConversation(
-      conversation,
-      titleUpdate,
-    );
-    if (wasPersisted) {
-      set((state) => ({
-        conversations: state.conversations.map((c) =>
-          c.id === conversationId ? { ...c, persisted: true } : c,
-        ),
-      }));
-    }
 
     let assistantMessageId: string | undefined;
     try {
@@ -215,7 +227,24 @@ export const createChatSlice: StateCreator<
               (c) => c.id === conversationId,
             );
             if (finalConv) {
-              await PersistenceService.updateConversation(finalConv);
+              if (finalConv.persisted === false && !finalConv.isTemporary) {
+                // Initial persist on first successful response
+                const wasPersisted =
+                  await PersistenceService.saveNewConversation(
+                    finalConv,
+                    titleUpdate,
+                  );
+                if (wasPersisted) {
+                  set((state) => ({
+                    conversations: state.conversations.map((c) =>
+                      c.id === conversationId ? { ...c, persisted: true } : c,
+                    ),
+                  }));
+                }
+              } else {
+                // Just an update
+                await PersistenceService.updateConversation(finalConv);
+              }
             }
           },
           onError: (error, partialContent) => {
@@ -237,6 +266,13 @@ export const createChatSlice: StateCreator<
             }
             const isAborted =
               error instanceof DOMException && error.name === "AbortError";
+
+            if (!isAborted && !partialContent && userMessage) {
+              void get().setDraft(conversationId, userMessage.content);
+              // Fire and forget deleteMessage to clean up the conversation
+              void get().deleteMessage(userMessage.id);
+            }
+
             set({
               error: isAborted ? null : error,
               isLoading: false,
@@ -248,6 +284,10 @@ export const createChatSlice: StateCreator<
         abortController.signal,
       );
     } catch (error) {
+      if (userMessage) {
+        void get().setDraft(conversationId, userMessage.content);
+        void get().deleteMessage(userMessage.id);
+      }
       set({
         error: (error as Error).message,
         isLoading: false,
@@ -310,7 +350,11 @@ export const createChatSlice: StateCreator<
       ),
     }));
 
-    await get().executeChat(activeConversationId, userMessage);
+    // Instead of executing the chat again, move the message back to input
+    if (userMessage) {
+      void get().setDraft(activeConversationId, userMessage.content);
+    }
+    await PersistenceService.updateConversation(updatedConversation);
   },
 
   editMessage: async (messageId: string, content: string) => {

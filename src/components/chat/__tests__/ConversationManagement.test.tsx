@@ -294,4 +294,39 @@ describe("Conversation Management", () => {
     expect(state.conversations).toHaveLength(2);
     expect(state.activeConversationId).not.toBe(ephemeralId);
   });
+
+  it("should REUSE an ephemeral conversation if it is empty", async () => {
+    const ephemeralId = "ephemeral-1";
+    await act(async () => {
+      useConversationStore.setState({
+        conversations: [
+          createMockConv(ephemeralId, "New Conversation", {
+            persisted: false,
+            messages: [],
+          }),
+        ],
+        activeConversationId: ephemeralId,
+      });
+    });
+
+    const user = userEvent.setup({ delay: null });
+
+    render(
+      <TooltipProvider>
+        <ChatInterface />
+      </TooltipProvider>,
+    );
+
+    const click1 = user.click(
+      screen.getByRole("button", { name: /new conversation/i }),
+    );
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+    await click1;
+
+    const state = useConversationStore.getState();
+    expect(state.conversations).toHaveLength(1);
+    expect(state.activeConversationId).toBe(ephemeralId);
+  });
 });

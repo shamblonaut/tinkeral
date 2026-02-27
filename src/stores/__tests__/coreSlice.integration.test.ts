@@ -135,21 +135,22 @@ describe("CoreSlice", () => {
   });
 
   describe("Draft Conversations (Non-Persisted)", () => {
-    it("should remove ephemeral conversation when creating a new one", async () => {
+    it("should reuse ephemeral conversation when creating a new one", async () => {
       const store = useConversationStore.getState();
       const id1 = await store.createConversation("test-model", createParams);
 
       expect(useConversationStore.getState().conversations.length).toBe(1);
 
-      const id2 = await store.createConversation("test-model", createParams);
+      const id2 = await store.createConversation("new-model", createParams);
 
       const state = useConversationStore.getState();
       expect(state.conversations.length).toBe(1);
-      expect(state.conversations[0].id).toBe(id2);
-      expect(state.conversations.find((c) => c.id === id1)).toBeUndefined();
+      expect(state.conversations[0].id).toBe(id1);
+      expect(state.conversations[0].modelId).toBe("new-model");
+      expect(id1).toBe(id2);
     });
 
-    it("should remove ephemeral conversation when switching to another", async () => {
+    it("should keep ephemeral conversation when switching to another", async () => {
       const store = useConversationStore.getState();
       const pId = await store.createConversation("test-model", createParams);
 
@@ -166,7 +167,7 @@ describe("CoreSlice", () => {
       store.setActiveConversation(pId);
 
       const state = useConversationStore.getState();
-      expect(state.conversations.length).toBe(1);
+      expect(state.conversations.length).toBe(2);
       expect(state.activeConversationId).toBe(pId);
     });
   });

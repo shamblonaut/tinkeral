@@ -7,7 +7,6 @@ import { useSettingsStore } from "@/stores";
 import type { Conversation, ModelParameters } from "@/types";
 
 import type { ConversationCoreState, ConversationState } from "./types";
-import { cleanupEmptyDrafts } from "./utils";
 
 export const createCoreSlice: StateCreator<
   ConversationState,
@@ -61,13 +60,8 @@ export const createCoreSlice: StateCreator<
 
   setActiveConversation: (id: string) => {
     set((state) => {
-      let cleanedConversations = state.conversations;
-      if (state.activeConversationId !== id) {
-        cleanedConversations = cleanupEmptyDrafts(state.conversations, id);
-      }
-
       return {
-        conversations: cleanedConversations,
+        conversations: state.conversations,
         activeConversationId: id,
       };
     });
@@ -79,8 +73,36 @@ export const createCoreSlice: StateCreator<
     systemPrompt?: string,
     options: { isTemporary?: boolean } = {},
   ) => {
-    set({ isLoading: true, error: null });
+    set({ isLoading: true });
     try {
+      // Check for an existing empty conversation of the requested type
+      const existingEmpty = get().conversations.find((c) => {
+        const isEmpty = c.messages.length === 0;
+        const matchesTemporary =
+          Boolean(options.isTemporary) === Boolean(c.isTemporary);
+        // We only reuse non-persisted ones
+        return isEmpty && matchesTemporary && !c.persisted;
+      });
+
+      if (existingEmpty) {
+        set((state) => ({
+          conversations: state.conversations.map((c) =>
+            c.id === existingEmpty.id
+              ? {
+                  ...c,
+                  modelId,
+                  parameters: params,
+                  systemPrompt,
+                  updatedAt: Date.now(),
+                }
+              : c,
+          ),
+          isLoading: false,
+        }));
+        get().setActiveConversation(existingEmpty.id);
+        return existingEmpty.id;
+      }
+
       const id = crypto.randomUUID();
       const newConversation: Conversation = {
         id,
@@ -96,13 +118,8 @@ export const createCoreSlice: StateCreator<
       };
 
       set((state) => {
-        const cleanedConversations = cleanupEmptyDrafts(
-          state.conversations,
-          id,
-        );
-
         return {
-          conversations: [newConversation, ...cleanedConversations],
+          conversations: [newConversation, ...state.conversations],
           activeConversationId: id,
           isLoading: false,
         };
@@ -111,7 +128,7 @@ export const createCoreSlice: StateCreator<
       return id;
     } catch (error) {
       console.error("Failed to create conversation:", error);
-      set({ error: "Failed to create conversation", isLoading: false });
+      set({ isLoading: false });
       throw error;
     }
   },

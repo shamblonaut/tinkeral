@@ -7,7 +7,6 @@ import type { Message } from "@/types/conversation";
 import { describe, expect, it } from "vitest";
 
 import {
-  cleanupEmptyDrafts,
   deleteMessageAndFollowing,
   prepareMessagesForEdit,
   prepareMessagesForRetry,
@@ -22,56 +21,6 @@ const msg = (
   role: "user" | "model",
   content = "text",
 ): Message => ({ id, role, content, timestamp: Date.now() });
-
-const conv = (
-  id: string,
-  opts: { persisted?: boolean; messages?: Message[] } = {},
-) => ({
-  id,
-  title: "Test",
-  modelId: "m1",
-  parameters: { temperature: 0.7, maxTokens: 1024, topP: 0.9 },
-  messages: opts.messages ?? [],
-  createdAt: Date.now(),
-  updatedAt: Date.now(),
-  persisted: opts.persisted ?? true,
-});
-
-// ---------------------------------------------------------------------------
-// cleanupEmptyDrafts
-// ---------------------------------------------------------------------------
-
-describe("cleanupEmptyDrafts", () => {
-  it("should keep persisted conversations", () => {
-    const conversations = [conv("p1"), conv("p2")];
-    expect(cleanupEmptyDrafts(conversations, null)).toHaveLength(2);
-  });
-
-  it("should remove non-persisted empty drafts that are not active", () => {
-    const conversations = [
-      conv("p1", { persisted: true }),
-      conv("draft", { persisted: false, messages: [] }),
-    ];
-    expect(cleanupEmptyDrafts(conversations, "p1")).toHaveLength(1);
-    expect(cleanupEmptyDrafts(conversations, "p1")[0].id).toBe("p1");
-  });
-
-  it("should keep a non-persisted draft if it has messages", () => {
-    const conversations = [
-      conv("p1", { persisted: true }),
-      conv("draft", { persisted: false, messages: [msg("m1", "user")] }),
-    ];
-    expect(cleanupEmptyDrafts(conversations, "p1")).toHaveLength(2);
-  });
-
-  it("should keep a non-persisted empty draft if it is the active conversation", () => {
-    const conversations = [
-      conv("p1", { persisted: true }),
-      conv("draft", { persisted: false, messages: [] }),
-    ];
-    expect(cleanupEmptyDrafts(conversations, "draft")).toHaveLength(2);
-  });
-});
 
 // ---------------------------------------------------------------------------
 // deleteMessageAndFollowing

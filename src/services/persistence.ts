@@ -12,8 +12,11 @@ export class PersistenceService {
       return false;
 
     try {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { persisted, isTemporary, ...conversationData } = conversation;
+      const {
+        persisted: _persisted,
+        isTemporary: _isTemporary,
+        ...conversationData
+      } = conversation;
 
       const persistedConversation = {
         ...conversationData,
