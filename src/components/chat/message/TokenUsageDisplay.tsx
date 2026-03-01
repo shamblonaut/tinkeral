@@ -49,7 +49,7 @@ export const TokenUsageDisplay = memo(function TokenUsageDisplay({
         <span>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1">
-              {!hasInput && "~"}
+              {!hasInput && "*"}
               {usage?.inputTokens ?? Math.ceil(contentLength / 4)}
             </div>
             {!!usage?.cachedTokens && (
@@ -87,7 +87,7 @@ export const TokenUsageDisplay = memo(function TokenUsageDisplay({
         {showSplitTokens ? (
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1">
-              {!hasOutput && "~"}
+              {!hasOutput && "*"}
               {usage?.outputTokens ?? Math.ceil(contentLength / 4)}
             </div>
             {!!usage?.thinkingTokens && (
@@ -103,7 +103,7 @@ export const TokenUsageDisplay = memo(function TokenUsageDisplay({
           </div>
         ) : (
           <>
-            {!usage?.totalTokens && "~"}
+            {!usage?.totalTokens && "*"}
             {usage?.totalTokens ?? Math.ceil(contentLength / 4)}
           </>
         )}

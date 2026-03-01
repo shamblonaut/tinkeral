@@ -47,7 +47,7 @@ export function SystemPromptSection({
           </Popover>
         </div>
         <span className="text-muted-foreground text-xs">
-          ~{Math.ceil(systemPrompt.length / 4)} tokens
+          *{Math.ceil(systemPrompt.length / 4)} tokens
         </span>
       </div>
       <Textarea

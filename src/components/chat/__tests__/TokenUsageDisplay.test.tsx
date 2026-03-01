@@ -52,7 +52,7 @@ describe("TokenUsageDisplay", () => {
       />,
     );
     // 100 chars -> ~25 tokens
-    expect(screen.getByText("~25")).toBeInTheDocument();
+    expect(screen.getByText("*25")).toBeInTheDocument();
   });
 
   it("should render total tokens with ArrowDownUp for model when split tokens are missing", () => {
@@ -85,7 +85,7 @@ describe("TokenUsageDisplay", () => {
   it("should show approximation for model when usage is completely missing", () => {
     render(<TokenUsageDisplay role="model" contentLength={100} />);
     // No split tokens, so it shows approximated total (content length / 4)
-    expect(screen.getByText("~25")).toBeInTheDocument();
+    expect(screen.getByText("*25")).toBeInTheDocument();
     expect(
       screen.getByTitle("Approximate total tokens in this turn"),
     ).toBeInTheDocument();

@@ -94,7 +94,7 @@ export function ConversationItemDetails({
                           : "Approximate count based on message history"
                       }
                     >
-                      {!isExact && "~"}
+                      {!isExact && "*"}
                       {total}
                       {model?.contextWindow && (
                         <span
