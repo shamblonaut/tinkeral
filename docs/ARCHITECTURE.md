@@ -97,8 +97,9 @@ This is a client-side web application that provides an interactive playground fo
 **Three Separate Stores** (separation of concerns):
 
 1. **ConversationStore**: Split into focused slices (`coreSlice`, `chatSlice`, `searchSlice`, `selectionSlice`) under `src/stores/conversation/`
-2. **SettingsStore**: Global settings, API keys, defaults, function definitions
+2. **SettingsStore**: Global settings, API keys, defaults
 3. **UIStore**: Transient UI state (modals, panels, notifications)
+4. **FunctionsStore**: Function definition management (CRUD, persistence) — `src/stores/functions.ts`
 
 **Why Zustand**: Lightweight, excellent TypeScript support, minimal boilerplate, works well with React
 
@@ -304,11 +305,11 @@ BroadcastChannel → notify other tabs
 
 ### Decision: Multiple Zustand Stores vs. Single Store
 
-**Choice**: Three separate stores (Conversation, Settings, UI)
+**Choice**: Four separate stores (Conversation, Settings, UI, Functions)
 
 **Rationale**:
 
-- Separation of concerns (conversation logic separate from UI state)
+- Separation of concerns (conversation logic separate from UI state and function management)
 - Better performance (components subscribe to specific slices)
 - Easier testing (test stores independently)
 - Clearer mental model (each store has one responsibility)
@@ -449,24 +450,28 @@ src/
 ├── components/         # React components (UI layer)
 │   └── chat/
 │       ├── conversation/  # ConversationList, ConversationItem, SearchInput
+│       ├── functions/     # FunctionForm, FunctionList, FunctionPanel, CodeEditor
 │       ├── layout/        # ChatInterface, ConversationSidebar, ChatHeader
-│       ├── message/       # Message, MessageList, ChatInput, TokenUsageDisplay
+│       ├── message/       # Message, MessageList, ChatInput, TokenUsageDisplay,
+│       │                  # FunctionCallDisplay, FunctionResultDisplay
 │       └── settings/      # ChatSettings, ModelSelector, ParameterControl, ModelDetails
+├── config/            # Feature flags
 ├── stores/            # Zustand stores (state layer)
-│   └── conversation/  # Sliced store: coreSlice, chatSlice, searchSlice, selectionSlice
+│   ├── conversation/  # Sliced store: coreSlice, chatSlice, searchSlice, selectionSlice
+│   └── functions.ts   # Function definition management store
 ├── services/          # Business logic (service layer)
-│   ├── api/          # Provider implementations
-│   ├── chat.ts       # Chat service
-│   ├── persistence.ts # Persistence service
-│   └── executor.ts   # Function executor (Planned)
+│   ├── api/          # Provider implementations + function mapping
+│   ├── chat.ts       # Chat service (including function call loop)
+│   ├── executor.ts   # Function executor (Web Worker manager)
+│   └── persistence.ts # Persistence service
 ├── db/               # Database schema (Dexie)
-├── workers/          # Web Workers (Planned)
+├── workers/          # Web Workers (sandboxed function execution)
 ├── types/            # TypeScript definitions
 ├── hooks/            # Custom React hooks
 ├── utils/            # Utility functions
-├── config/           # Configuration & feature flags
 └── lib/
-    └── models/       # Model definitions (google.ts, index.ts)
+    ├── models/       # Model definitions (google.ts, index.ts)
+    └── functionTemplates.ts  # Built-in example functions
 ```
 
 See CODE_ORGANIZATION.md for detailed structure and naming conventions.
@@ -508,7 +513,8 @@ See CODE_ORGANIZATION.md for detailed structure and naming conventions.
 
 ## Related Documentation
 
-- **IMPLEMENTATION_GUIDE.md** - Week-by-week development roadmap
+- **IMPLEMENTATION_GUIDE_MVP.md** - MVP development roadmap (complete)
+- **IMPLEMENTATION_GUIDE_FUNCTION_CALLING.md** - Function calling implementation guide (current focus)
 - **API_DESIGN.md** - Complete TypeScript interfaces and contracts
 - **DATABASE.md** - IndexedDB schema and migration strategy
 - **SECURITY.md** - Security considerations and best practices

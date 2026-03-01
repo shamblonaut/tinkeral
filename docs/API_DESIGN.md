@@ -75,6 +75,10 @@ interface Conversation {
   // State
   isTemporary?: boolean; // If true, not persisted to DB (unless changed)
 
+  // Function calling
+  functionIds?: string[]; // IDs of attached FunctionDefinitions
+  functionCallingMode?: "auto" | "any" | "none"; // How model should use functions
+
   // Optional metadata
   metadata?: {
     totalTokens?: number;
@@ -231,6 +235,7 @@ interface ChatRequest {
   parameters: ModelParameters;
   systemPrompt?: string;
   functions?: FunctionDefinition[];
+  functionCallingMode?: "auto" | "any" | "none"; // Function calling behavior
   stream?: boolean;
 }
 

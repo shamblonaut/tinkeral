@@ -713,28 +713,32 @@ Check: Environment variables? Timezone differences? Race conditions?
 
 Once MVP is complete (all Phase 1-5 milestones done):
 
-### v1.1 - Enhanced Features
+### Current Focus: Function Calling (v1.1)
 
-- Function calling with code editor
-- Advanced error handling
-- Request/response inspection
-- Better mobile experience
+**See [IMPLEMENTATION_GUIDE_FUNCTION_CALLING.md](IMPLEMENTATION_GUIDE_FUNCTION_CALLING.md)** for the detailed implementation guide.
 
-### v1.2 - Polish
+- Function definition management (create, edit, test, delete)
+- Web Worker sandboxed execution
+- CodeMirror code editor integration
+- Provider integration (Google API function calling)
+- Function call/result display in chat
+- Built-in function templates
+
+### Future: Enhanced Features (v1.2)
 
 - Parameter presets
 - Conversation search
 - Cost tracking
+- Request/response inspection
 - Performance optimizations
 
-### v2.0 - Multi-Provider
+### Future: Multi-Provider (v2.0)
 
+- Provider abstraction refactor
 - OpenAI support
 - Anthropic support
 - Provider comparison
 - Vision inputs
-
-See ROADMAP.md for detailed future planning.
 
 ---
 
