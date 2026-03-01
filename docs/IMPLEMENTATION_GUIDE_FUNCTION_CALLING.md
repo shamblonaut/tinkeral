@@ -163,12 +163,12 @@ vite.config.ts    (add worker plugin config if needed)
 
 **Tasks**:
 
-- [ ] Install CodeMirror 6 (`@codemirror/view`, `@codemirror/state`, `@codemirror/lang-javascript`, `@codemirror/theme-one-dark`)
-- [ ] Create `src/components/chat/functions/CodeEditor.tsx` wrapper component
-- [ ] Support JavaScript/TypeScript syntax highlighting
-- [ ] Support light/dark theme (connected to app theme preference)
-- [ ] Add basic editor features: line numbers, bracket matching, auto-indent
-- [ ] Lazy-load CodeMirror (dynamic import) to avoid bundle bloat
+- [x] Install CodeMirror 6 (`@codemirror/view`, `@codemirror/state`, `@codemirror/lang-javascript`, `@codemirror/theme-one-dark`)
+- [x] Create `src/components/chat/functions/CodeEditor.tsx` wrapper component
+- [x] Support JavaScript/TypeScript syntax highlighting
+- [x] Support light/dark theme (connected to app theme preference)
+- [x] Add basic editor features: line numbers, bracket matching, auto-indent
+- [x] Lazy-load CodeMirror (dynamic import) to avoid bundle bloat
 
 **Acceptance Criteria**:
 
