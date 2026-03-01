@@ -7,12 +7,9 @@ import {
   type ComponentPropsWithoutRef,
 } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
-import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
-import {
-  oneDark,
-  oneLight,
-} from "react-syntax-highlighter/dist/esm/styles/prism";
 import remarkGfm from "remark-gfm";
+
+import { oneDark, oneLight, SyntaxHighlighter } from "@/lib/syntaxHighlighter";
 
 import { Button, Textarea } from "@/components/ui";
 import { cn } from "@/lib/utils";

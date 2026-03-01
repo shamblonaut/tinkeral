@@ -14,10 +14,33 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ["react", "react-dom", "zustand", "dexie"],
-          deps: ["lucide-react", "radix-ui", "react-markdown", "remark-gfm"],
-          ai: ["@google/genai"],
+        manualChunks(id) {
+          if (
+            id.includes("react-syntax-highlighter") ||
+            id.includes("refractor") ||
+            id.includes("prismjs")
+          ) {
+            return "highlighter";
+          }
+          if (
+            id.includes("node_modules/react/") ||
+            id.includes("node_modules/react-dom/") ||
+            id.includes("node_modules/zustand/") ||
+            id.includes("node_modules/dexie")
+          ) {
+            return "vendor";
+          }
+          if (
+            id.includes("node_modules/lucide-react") ||
+            id.includes("node_modules/radix-ui") ||
+            id.includes("node_modules/react-markdown") ||
+            id.includes("node_modules/remark-gfm")
+          ) {
+            return "deps";
+          }
+          if (id.includes("node_modules/@google/genai")) {
+            return "ai";
+          }
         },
       },
     },
