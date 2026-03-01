@@ -215,19 +215,36 @@ export function MessageContent({
       className={cn(
         "prose prose-neutral dark:prose-invert relative w-full leading-relaxed wrap-break-word transition-colors duration-200",
         isEditing
-          ? "bg-muted ring-border/50 rounded-xl px-2 py-1 shadow-inner ring-1"
+          ? "bg-background rounded-xl border p-2 shadow-sm"
           : isUser
             ? "bg-primary text-primary-foreground rounded-2xl rounded-tr-sm px-4 py-2 shadow-sm"
             : "bg-muted rounded-2xl rounded-tl-sm px-4 py-2 shadow-sm",
       )}
     >
       {isEditing ? (
-        <div className="flex flex-col gap-2">
+        <div className="flex w-full flex-col gap-2">
           <Textarea
+            ref={(el) => {
+              if (el) {
+                el.style.height = "auto";
+                el.style.height = el.scrollHeight + "px";
+              }
+            }}
             value={editContent}
-            onChange={(e) => onEditContentChange(e.target.value)}
-            className="text-foreground min-h-[80px] w-full resize-none border-none bg-transparent p-2 shadow-none focus-visible:ring-0"
+            onChange={(e) => {
+              e.target.style.height = "auto";
+              e.target.style.height = e.target.scrollHeight + "px";
+              onEditContentChange(e.target.value);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                onSave();
+              }
+            }}
+            className="text-foreground min-h-[40px] w-full resize-none overflow-hidden border-none bg-transparent px-2 py-1 shadow-none focus-visible:ring-0"
             autoFocus
+            rows={2}
           />
           <div className="flex justify-end gap-1.5 p-1">
             <Button

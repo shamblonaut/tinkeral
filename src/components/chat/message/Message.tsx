@@ -120,6 +120,7 @@ export const Message = memo(function Message({
         className={cn(
           "relative flex max-w-full flex-col gap-1 md:max-w-[80%]",
           isUser ? "items-end" : "items-start",
+          isEditing && "w-full",
         )}
       >
         <div className="flex items-center gap-2 px-2">
