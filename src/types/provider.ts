@@ -69,6 +69,15 @@ export interface ModelCapabilities {
 }
 
 /**
+ * Function calling mode — controls how the model uses attached tools.
+ *
+ * - `AUTO`  – Model decides whether to call a function (default).
+ * - `ANY`   – Model must call at least one function.
+ * - `NONE`  – Function declarations are sent for context but calls are disabled.
+ */
+export type FunctionCallingMode = "AUTO" | "ANY" | "NONE";
+
+/**
  * Request to send to LLM provider
  */
 export interface ChatRequest {
@@ -77,6 +86,7 @@ export interface ChatRequest {
   parameters: ModelParameters;
   systemPrompt?: string;
   functions?: FunctionDefinition[];
+  functionCallingMode?: FunctionCallingMode;
   stream?: boolean;
 }
 

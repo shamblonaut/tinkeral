@@ -104,11 +104,9 @@ describe("FunctionExecutor", () => {
       const result = executor.validate(
         "const data = await Promise.resolve(42);\nreturn data;",
       );
-      // Note: `await` at top level is valid inside async function, but
-      // validate uses a regular Function constructor, so this may or may
-      // not produce a syntax error. The key is that basic syntax is checked.
-      // In a regular Function, `await` without `async` is a syntax error.
-      expect(result.valid).toBe(false);
+      // validate() now uses AsyncFunction (matching the worker), so
+      // top-level `await` is valid.
+      expect(result.valid).toBe(true);
     });
 
     it("should reject code with syntax errors", () => {

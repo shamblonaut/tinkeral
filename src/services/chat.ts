@@ -3,17 +3,28 @@ import { GoogleAPIClient } from "@/services/api/google";
 import { RateLimiter } from "@/services/rateLimiter";
 import type {
   FinishReason,
+  FunctionCallingMode,
+  FunctionDefinition,
   Message,
   ModelParameters,
+  ChatRequest as ProviderChatRequest,
   TokenUsage,
 } from "@/types";
 
-export interface ChatRequest {
+/**
+ * Service-level chat request.
+ *
+ * Extends the provider `ChatRequest` semantics but adds `apiKey`
+ * (needed to construct the client) and uses `modelId` for clarity.
+ */
+export interface ChatServiceRequest {
   messages: Message[];
   modelId: string;
   parameters: ModelParameters;
   systemPrompt?: string;
   apiKey: string;
+  functions?: FunctionDefinition[];
+  functionCallingMode?: FunctionCallingMode;
 }
 
 export interface ChatCallbacks {
@@ -29,11 +40,19 @@ export interface ChatMetadata {
 
 export class ChatService {
   static async executeChat(
-    request: ChatRequest,
+    request: ChatServiceRequest,
     callbacks: ChatCallbacks,
     abortSignal?: AbortSignal,
   ): Promise<void> {
-    const { messages, modelId, parameters, systemPrompt, apiKey } = request;
+    const {
+      messages,
+      modelId,
+      parameters,
+      systemPrompt,
+      apiKey,
+      functions,
+      functionCallingMode,
+    } = request;
     const { onChunk, onFinish, onError } = callbacks;
     const rateLimiter = new RateLimiter();
 
@@ -46,15 +65,16 @@ export class ChatService {
         }
 
         const client = await GoogleAPIClient.createClient(apiKey);
-        const stream = client.streamChat(
-          {
-            messages,
-            model: modelId,
-            parameters,
-            systemPrompt,
-          },
-          abortSignal,
-        );
+
+        const providerRequest: ProviderChatRequest = {
+          messages,
+          model: modelId,
+          parameters,
+          systemPrompt,
+          ...(functions?.length ? { functions, functionCallingMode } : {}),
+        };
+
+        const stream = client.streamChat(providerRequest, abortSignal);
 
         const lastMetadata: ChatMetadata = {};
         let lastUpdate = Date.now();

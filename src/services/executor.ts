@@ -166,11 +166,16 @@ export class FunctionExecutor {
   /**
    * Validate function implementation code for syntax errors
    * without executing it. Runs on the main thread.
+   *
+   * Uses AsyncFunction so that top-level `await` (which the worker
+   * supports) is accepted rather than flagged as a syntax error.
    */
   validate(code: string): { valid: boolean; error?: string } {
     try {
-      // Use Function constructor to parse without executing
-      new Function("args", `"use strict";\n${code}`);
+      // Must match the worker which wraps code in an async function
+      const AsyncFunction = Object.getPrototypeOf(async function () {})
+        .constructor as typeof Function;
+      new AsyncFunction("args", `"use strict";\n${code}`);
       return { valid: true };
     } catch (error: unknown) {
       const message =

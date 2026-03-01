@@ -9,7 +9,9 @@ const makeFunction = (overrides = {}) => ({
   description: "A test function",
   parameters: {
     type: "object" as const,
-    properties: { input: { type: "string", description: "Input value" } },
+    properties: {
+      input: { type: "string" as const, description: "Input value" },
+    },
     required: ["input"],
   },
   implementation: "return args.input.toUpperCase();",

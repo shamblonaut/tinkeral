@@ -22,8 +22,12 @@ export type WorkerResponse =
   | { type: "error"; error: { message: string; name: string; stack?: string } }
   | { type: "console"; level: "log" | "warn" | "error"; args: unknown[] };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const workerSelf = self as any;
+/** Typed subset of the DedicatedWorkerGlobalScope APIs used in this file. */
+interface WorkerGlobal {
+  postMessage(message: WorkerResponse): void;
+  onmessage: ((event: MessageEvent<ExecuteMessage>) => void) | null;
+}
+const workerSelf = self as unknown as WorkerGlobal;
 
 /**
  * Block dangerous globals that could be used to escape the sandbox.
