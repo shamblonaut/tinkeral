@@ -121,17 +121,17 @@ src/stores/index.ts        (export new store)
 
 **Tasks**:
 
-- [ ] Create `src/workers/functionExecutor.worker.ts` Web Worker
-- [ ] Implement sandboxed execution environment:
+- [x] Create `src/workers/functionExecutor.worker.ts` Web Worker
+- [x] Implement sandboxed execution environment:
   - Restricted global scope (no `document`, `window`, `fetch` by default)
   - Configurable API whitelist (`allowedAPIs` from `FunctionDefinition`)
   - Timeout enforcement (default 5s, configurable per function)
-- [ ] Create `src/services/executor.ts` manager class:
+- [x] Create `src/services/executor.ts` manager class:
   - `execute(func, args, options)` — run function, return result
   - `validate(code)` — syntax check without execution
   - `terminate()` — kill running worker
-- [ ] Handle structured cloning for data transfer
-- [ ] Write unit tests for executor and worker
+- [x] Handle structured cloning for data transfer
+- [x] Write unit tests for executor and worker
 
 **Acceptance Criteria**:
 
