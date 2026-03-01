@@ -1,7 +1,12 @@
 import type { ProviderError } from "@/services/api/base";
 import { GoogleAPIClient } from "@/services/api/google";
 import { RateLimiter } from "@/services/rateLimiter";
-import type { FinishReason, Message, ModelParameters } from "@/types";
+import type {
+  FinishReason,
+  Message,
+  ModelParameters,
+  TokenUsage,
+} from "@/types";
 
 export interface ChatRequest {
   messages: Message[];
@@ -19,11 +24,7 @@ export interface ChatCallbacks {
 
 export interface ChatMetadata {
   finishReason?: FinishReason;
-  usage?: {
-    inputTokens?: number;
-    outputTokens?: number;
-    totalTokens?: number;
-  };
+  usage?: TokenUsage;
 }
 
 export class ChatService {
@@ -55,7 +56,7 @@ export class ChatService {
           abortSignal,
         );
 
-        let lastMetadata: ChatMetadata = {};
+        const lastMetadata: ChatMetadata = {};
         let lastUpdate = Date.now();
 
         for await (const chunk of stream) {
@@ -65,10 +66,38 @@ export class ChatService {
 
           fullContent += chunk.delta;
 
-          if (chunk.finishReason || chunk.usage) {
-            lastMetadata = {
-              finishReason: chunk.finishReason as FinishReason,
-              usage: chunk.usage,
+          if (chunk.finishReason) {
+            lastMetadata.finishReason = chunk.finishReason as FinishReason;
+          }
+
+          if (chunk.usage) {
+            const lastUsage = lastMetadata.usage || {};
+            lastMetadata.usage = {
+              inputTokens:
+                Math.max(
+                  chunk.usage.inputTokens || 0,
+                  lastUsage.inputTokens || 0,
+                ) || undefined,
+              outputTokens:
+                Math.max(
+                  chunk.usage.outputTokens || 0,
+                  lastUsage.outputTokens || 0,
+                ) || undefined,
+              totalTokens:
+                Math.max(
+                  chunk.usage.totalTokens || 0,
+                  lastUsage.totalTokens || 0,
+                ) || undefined,
+              thinkingTokens:
+                Math.max(
+                  chunk.usage.thinkingTokens || 0,
+                  lastUsage.thinkingTokens || 0,
+                ) || undefined,
+              cachedTokens:
+                Math.max(
+                  chunk.usage.cachedTokens || 0,
+                  lastUsage.cachedTokens || 0,
+                ) || undefined,
             };
           }
 
