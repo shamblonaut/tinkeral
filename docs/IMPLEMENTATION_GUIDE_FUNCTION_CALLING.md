@@ -197,19 +197,19 @@ src/components/chat/functions/CodeEditor.tsx
 
 **Tasks**:
 
-- [ ] Create `src/components/chat/functions/FunctionForm.tsx`
+- [x] Create `src/components/chat/functions/FunctionForm.tsx`
   - Name input (validated: `a-z`, `A-Z`, `0-9`, `_`, `.`, `-`, max 64 chars)
   - Description textarea
   - Parameter schema builder (visual JSON Schema editor)
   - Implementation code editor (CodeMirror)
   - Timeout setting
-- [ ] Create `src/components/chat/functions/ParameterSchemaEditor.tsx`
+- [x] Create `src/components/chat/functions/ParameterSchemaEditor.tsx`
   - Add/remove parameters
   - Set name, type (`string`, `number`, `boolean`, `array`, `object`), description
   - Mark required/optional
   - Nested object support (v1.1 stretch goal — keep flat for now)
-- [ ] Validate form before save (name uniqueness, valid schema, syntax check on implementation)
-- [ ] Connect to function store for create/update
+- [x] Validate form before save (name uniqueness, valid schema, syntax check on implementation)
+- [x] Connect to function store for create/update
 
 **Acceptance Criteria**:
 

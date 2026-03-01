@@ -21,6 +21,8 @@ export interface CodeEditorProps {
   value?: string;
   /** Called whenever the document changes */
   onChange?: (value: string) => void;
+  /** Called when the editor loses focus */
+  onBlur?: () => void;
   /** Placeholder shown when editor is empty */
   placeholder?: string;
   /** Make the editor read-only */
@@ -73,6 +75,7 @@ export const CodeEditorInnerImpl = memo(
     {
       value = "",
       onChange,
+      onBlur,
       placeholder,
       readOnly = false,
       className,
@@ -178,6 +181,12 @@ export const CodeEditorInnerImpl = memo(
     return (
       <div
         ref={containerRef}
+        onBlur={(e) => {
+          // Fire onBlur only when focus truly leaves the editor container
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+            onBlur?.();
+          }
+        }}
         className={cn(
           "overflow-auto rounded-md border",
           "bg-background text-foreground",
