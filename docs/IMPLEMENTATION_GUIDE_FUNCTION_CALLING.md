@@ -61,9 +61,9 @@ Same as MVP — atomic changes, vertical slices, testable milestones, < 400 line
 
 **Tasks**:
 
-- [ ] Create `src/config/features.ts` with feature flag definitions
-- [ ] Add `functionCalling` flag (default: `false` during development, `true` when complete)
-- [ ] Use flags to conditionally render function calling UI throughout the app
+- [x] Create `src/config/features.ts` with feature flag definitions
+- [x] Add `functionCalling` flag (default: `false` during development, `true` when complete)
+- [x] Use flags to conditionally render function calling UI throughout the app
 
 **Acceptance Criteria**:
 
@@ -85,12 +85,12 @@ src/config/features.ts
 
 **Tasks**:
 
-- [ ] Create `src/stores/functions.ts` Zustand store
-- [ ] Implement state: `functions`, `isLoading`, `error`
-- [ ] Implement actions: `loadFunctions`, `createFunction`, `updateFunction`, `deleteFunction`, `getFunction`
-- [ ] Connect to existing Dexie `functions` CRUD operations
-- [ ] Wire function attachment to conversations (add `functionIds: string[]` field to `Conversation` type)
-- [ ] Write unit tests for the store
+- [x] Create `src/stores/functions.ts` Zustand store
+- [x] Implement state: `functions`, `isLoading`, `error`
+- [x] Implement actions: `loadFunctions`, `createFunction`, `updateFunction`, `deleteFunction`, `getFunction`
+- [x] Connect to existing Dexie `functions` CRUD operations
+- [x] Wire function attachment to conversations (add `functionIds: string[]` field to `Conversation` type)
+- [x] Write unit tests for the store
 
 **Acceptance Criteria**:
 

@@ -21,6 +21,7 @@ export interface Conversation {
   persisted?: boolean;
   isTemporary?: boolean;
   draft?: string;
+  functionIds?: string[];
 }
 
 export interface AppSettings {
