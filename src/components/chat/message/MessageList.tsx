@@ -1,3 +1,4 @@
+import { ArrowDown } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Message } from "@/components/chat";
@@ -16,6 +17,7 @@ export function MessageList({
   className,
 }: MessageListProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when messages change
   // Track if user is at bottom to sticky scroll
@@ -40,13 +42,35 @@ export function MessageList({
     }
   }, []);
 
-  // Auto-scroll to bottom when messages change IF we were already at bottom
+  // Use ResizeObserver on the content container to detect height changes
+  // Only auto-scroll if the user was already at the bottom
   useEffect(() => {
     const viewport = viewportRef.current;
-    if (viewport && shouldAutoScroll) {
+    const content = contentRef.current;
+    if (!viewport || !content) return;
+
+    // We only create one observer that lives as long as the component mounts
+    const observer = new ResizeObserver(() => {
+      // If we are currently autoscrolling, maintain the bottom
+      if (shouldAutoScroll) {
+        viewport.scrollTop = viewport.scrollHeight;
+      }
+    });
+
+    observer.observe(content);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [shouldAutoScroll]);
+
+  const scrollToBottom = () => {
+    const viewport = viewportRef.current;
+    if (viewport) {
       viewport.scrollTop = viewport.scrollHeight;
+      setShouldAutoScroll(true);
     }
-  }, [messages, isStreaming, shouldAutoScroll]);
+  };
 
   if (messages.length === 0) {
     return (
@@ -61,16 +85,28 @@ export function MessageList({
   }
 
   return (
-    <ScrollArea viewportRef={viewportRef} className={className}>
-      <div className="flex flex-col py-4">
-        {messages.map((message, index) => (
-          <Message
-            key={message.id}
-            message={message}
-            isStreaming={isStreaming && index === messages.length - 1}
-          />
-        ))}
-      </div>
-    </ScrollArea>
+    <div className="group relative flex h-full flex-1 flex-col overflow-hidden">
+      <ScrollArea viewportRef={viewportRef} className={className}>
+        <div ref={contentRef} className="flex flex-col py-4">
+          {messages.map((message, index) => (
+            <Message
+              key={message.id}
+              message={message}
+              isStreaming={isStreaming && index === messages.length - 1}
+            />
+          ))}
+        </div>
+      </ScrollArea>
+
+      {!shouldAutoScroll && (
+        <button
+          onClick={scrollToBottom}
+          className="bg-background text-foreground hover:bg-muted focus:ring-ring absolute right-8 bottom-6 z-10 flex h-8 w-8 items-center justify-center rounded-full border shadow-sm transition-all focus:ring-2 focus:ring-offset-2 focus:outline-none"
+          aria-label="Scroll to bottom"
+        >
+          <ArrowDown className="h-4 w-4" />
+        </button>
+      )}
+    </div>
   );
 }
