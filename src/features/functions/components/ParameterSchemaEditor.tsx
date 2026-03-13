@@ -56,11 +56,9 @@ export const ParameterSchemaEditor = memo(function ParameterSchemaEditor({
       if (prev.some((row) => !row.name.trim())) {
         return prev;
       }
-      const next = [...prev, emptyRow()];
-      onChange(rowsToSchema(next));
-      return next;
+      return [...prev, emptyRow()];
     });
-  }, [onChange]);
+  }, []);
 
   const handleRemove = useCallback(
     (id: string) => {

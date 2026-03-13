@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import type { JSONSchema } from "@/types";
@@ -163,6 +164,19 @@ describe("ParameterSchemaEditor", () => {
 
   // ── Add parameter ─────────────────────────────────────────────────────────
   describe("adding a parameter", () => {
+    it("keeps the new row visible in a controlled parent after clicking add", () => {
+      function ControlledEditor() {
+        const [schema, setSchema] = useState<JSONSchema>(emptySchema());
+        return <ParameterSchemaEditor schema={schema} onChange={setSchema} />;
+      }
+
+      render(<ControlledEditor />);
+
+      fireEvent.click(screen.getByRole("button", { name: /add parameter/i }));
+
+      expect(screen.getByPlaceholderText("param_name")).toBeInTheDocument();
+    });
+
     it("calls onChange when 'Add Parameter' is clicked and a name is typed", () => {
       const onChange = vi.fn();
       render(

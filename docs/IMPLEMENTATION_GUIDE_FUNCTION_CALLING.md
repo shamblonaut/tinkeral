@@ -283,13 +283,13 @@ src/config/features.ts                           (functionCalling: true)
 
 **Tasks**:
 
-- [ ] Create `src/components/chat/functions/FunctionTestRunner.tsx`
+- [x] Create `src/components/chat/functions/FunctionTestRunner.tsx`
   - Input fields generated from parameter schema
   - "Run" button to execute function via executor service
   - Output display (result or error)
   - Execution time display
-- [ ] Integrate into `FunctionForm` as a "Test" tab/section
-- [ ] Show console output from worker (via message passing)
+- [x] Integrate into `FunctionForm` as a "Test" tab/section
+- [x] Show console output from worker (via message passing)
 
 **Acceptance Criteria**:
 
@@ -305,6 +305,69 @@ src/config/features.ts                           (functionCalling: true)
 
 ```
 src/components/chat/functions/FunctionTestRunner.tsx
+```
+
+---
+
+#### Milestone 2.4: Function Templates & Library
+
+**Tasks**:
+
+- [x] Create `src/lib/functionTemplates.ts` with built-in example functions:
+  - `getCurrentWeather(location)` — returns mock weather data
+  - `calculateExpression(expression)` — evaluates math expressions
+  - `searchDatabase(query)` — returns mock search results
+  - `formatDate(date, format)` — date formatting utility
+- [x] Add "Templates" section to `FunctionSidebarList`
+- [x] One-click import of template functions to the store
+- [x] Include helpful comments in template implementations to guide users
+
+**Acceptance Criteria**:
+
+- User can browse pre-built function templates
+- One-click import creates a new function from the template
+- Templates serve as learning examples and get users started quickly
+- All templates work correctly when ran in the test runner
+
+**Estimated Time**: 1 day
+
+**Files to Create**:
+
+```
+src/lib/functionTemplates.ts
+```
+
+**Files to Modify**:
+
+```
+src/features/functions/components/FunctionSidebarList.tsx  (add templates section)
+```
+
+---
+
+#### Milestone 2.5: Import/Export Integration
+
+**Tasks**:
+
+- [ ] Update `exportData()` in `src/services/importExport.ts` to include functions
+- [ ] Update `importData()` to handle functions (merge gracefully, don't overwrite if not needed)
+- [ ] Validate imported function definitions with Zod schema or manual checks
+- [ ] Handle situations where conversations reference deleted or missing functions gracefully
+
+**Acceptance Criteria**:
+
+- Exported JSON data includes all local function definitions
+- Importing JSON merges functions robustly
+- Malformed function definitions are rejected cleanly with a user-friendly error
+- Missing functions referenced by conversations degrade gracefully
+
+**Estimated Time**: 1 day
+
+**Files to Modify**:
+
+```
+src/services/importExport.ts
+src/types/schema.ts
 ```
 
 ---
@@ -565,69 +628,7 @@ src/components/chat/message/MessageList.tsx
 
 ---
 
-#### Milestone 5.1: Example Functions & Templates
-
-**Tasks**:
-
-- [ ] Create `src/lib/functionTemplates.ts` with built-in example functions:
-  - `getCurrentWeather(location)` — returns mock weather data
-  - `calculateExpression(expression)` — evaluates math expressions
-  - `searchDatabase(query)` — returns mock search results
-  - `formatDate(date, format)` — date formatting utility
-- [ ] Add "Templates" section to `FunctionPanel`
-- [ ] One-click import of template functions
-- [ ] Include helpful comments in template implementations
-
-**Acceptance Criteria**:
-
-- User can browse pre-built function templates
-- One-click import creates a new function from template
-- Templates serve as learning examples
-- All templates work correctly when tested
-
-**Estimated Time**: 1 day
-
-**Files to Create**:
-
-```
-src/lib/functionTemplates.ts
-```
-
-**Files to Modify**:
-
-```
-src/components/chat/functions/FunctionPanel.tsx  (add templates section)
-```
-
----
-
-#### Milestone 5.2: Import/Export Updates
-
-**Tasks**:
-
-- [ ] Update `exportData()` to include functions
-- [ ] Update `importData()` to handle functions (merge, not overwrite)
-- [ ] Validate imported function definitions with Zod schema
-- [ ] Handle conversations with function references to missing functions
-
-**Acceptance Criteria**:
-
-- Export includes all function definitions
-- Import merges functions (doesn't delete existing)
-- Invalid function definitions are rejected with clear error
-- Conversations referencing deleted functions degrade gracefully
-
-**Estimated Time**: 1 day
-
-**Files to Modify**:
-
-```
-src/services/importExport.ts
-```
-
----
-
-#### Milestone 5.3: Integration Tests
+#### Milestone 5.1: Integration Tests
 
 **Tasks**:
 

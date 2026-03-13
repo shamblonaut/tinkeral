@@ -29,6 +29,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui";
 import { useDebounce } from "@/hooks";
+import { functionTemplates } from "@/lib/functionTemplates";
 import { cn, formatRelativeTime, formatSmartDate } from "@/lib/utils";
 import { useFunctionsStore } from "@/stores/functions";
 import { useUIStore } from "@/stores/ui";
@@ -49,6 +50,52 @@ interface FunctionListItemProps {
   onDelete: (id: string, e: React.MouseEvent) => void;
   onRename: (id: string, nextName: string) => Promise<void>;
   onDuplicate: (id: string) => Promise<void>;
+}
+
+interface TemplateListItemProps {
+  template: Omit<FunctionDefinition, "id" | "createdAt" | "updatedAt">;
+  onImport: (
+    template: Omit<FunctionDefinition, "id" | "createdAt" | "updatedAt">,
+  ) => Promise<void>;
+}
+
+function TemplateListItem({ template, onImport }: TemplateListItemProps) {
+  const [isImporting, setIsImporting] = useState(false);
+
+  const handleImport = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsImporting(true);
+    await onImport(template);
+    setIsImporting(false);
+  };
+
+  return (
+    <div className="group hover:bg-muted/50 text-muted-foreground hover:text-foreground relative flex cursor-pointer flex-col gap-1 rounded-lg p-3 transition-colors">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Code2 className="h-4 w-4 shrink-0" />
+          <span className="truncate text-sm font-medium">{template.name}</span>
+        </div>
+        <Button
+          variant="secondary"
+          size="sm"
+          className="h-6 px-2 text-[10px]"
+          onClick={handleImport}
+          disabled={isImporting}
+        >
+          {isImporting ? (
+            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+          ) : (
+            <Plus className="mr-1 h-3 w-3" />
+          )}
+          Import
+        </Button>
+      </div>
+      <div className="truncate pl-6 text-[11px] opacity-70">
+        {template.description}
+      </div>
+    </div>
+  );
 }
 
 function FunctionListItem({
@@ -388,6 +435,31 @@ export function FunctionSidebarList({
     [createFunction, functions],
   );
 
+  const handleImportTemplate = useCallback(
+    async (
+      template: Omit<FunctionDefinition, "id" | "createdAt" | "updatedAt">,
+    ) => {
+      let nextName = template.name;
+      let copyIndex = 2;
+
+      while (functions.some((fn) => fn.name === nextName)) {
+        nextName = `${template.name} ${copyIndex}`;
+        copyIndex += 1;
+      }
+
+      try {
+        await createFunction({
+          ...template,
+          name: nextName,
+        });
+        toast.success(`Template ${template.name} imported.`);
+      } catch {
+        toast.error("Failed to import template.");
+      }
+    },
+    [createFunction, functions],
+  );
+
   const handleDelete = useCallback((id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setFunctionToDelete(id);
@@ -583,6 +655,21 @@ export function FunctionSidebarList({
                 onDuplicate={handleDuplicate}
               />
             ))}
+
+          {!isSearching && !searchQuery && (
+            <div className="mt-4 flex flex-col gap-1">
+              <div className="text-muted-foreground px-2 py-1 text-xs font-semibold tracking-wider uppercase">
+                Templates
+              </div>
+              {functionTemplates.map((template) => (
+                <TemplateListItem
+                  key={template.name}
+                  template={template}
+                  onImport={handleImportTemplate}
+                />
+              ))}
+            </div>
+          )}
         </div>
       </ScrollArea>
 

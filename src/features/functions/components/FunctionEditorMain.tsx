@@ -1,4 +1,12 @@
-import { Button, ScrollArea, Separator } from "@/components/ui";
+import {
+  Button,
+  ScrollArea,
+  Separator,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui";
 import { cn } from "@/lib/utils";
 
 import { useFunctionEditor } from "../hooks";
@@ -8,6 +16,7 @@ import {
   NameField,
   TimeoutField,
 } from "./FunctionSettingsFields";
+import { FunctionTestRunner } from "./FunctionTestRunner";
 import { ParameterSchemaEditor } from "./ParameterSchemaEditor";
 
 /**
@@ -23,10 +32,10 @@ export function FunctionEditorMain() {
     schema,
     setSchema,
     timeout,
+    errors,
     setTimeoutValue,
     implementation,
     setImplementation,
-    errors,
     editorRef,
     isSaving,
     isEditMode,
@@ -114,27 +123,54 @@ export function FunctionEditorMain() {
 
               <div className="space-y-2 md:hidden">
                 <Separator />
-                <h4 className="text-xs font-semibold">Implementation</h4>
-                <div className="text-muted-foreground text-xs">
-                  <code className="font-mono">args</code> — parameter object ·{" "}
-                  <code className="font-mono">await</code> supported · return
-                  any JSON-serialisable value
-                </div>
-                <div className="relative h-64 overflow-hidden rounded-md border">
-                  <CodeEditor
-                    ref={editorRef}
-                    value={implementation}
-                    onChange={setImplementation}
-                    onBlur={() =>
-                      handleImplementationBlur(
-                        editorRef.current?.getValue() ?? implementation,
-                      )
-                    }
-                    placeholder="// Implementation of the function"
-                    className="absolute inset-0 h-full w-full"
-                    readOnly={isSaving}
-                  />
-                </div>
+                <Tabs defaultValue="implementation" className="h-full">
+                  <TabsList className="w-full">
+                    <TabsTrigger value="implementation">
+                      Implementation
+                    </TabsTrigger>
+                    <TabsTrigger value="test">Test</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent
+                    value="implementation"
+                    className="space-y-2 pt-3"
+                  >
+                    <h4 className="text-xs font-semibold">Implementation</h4>
+                    <div className="text-muted-foreground text-xs">
+                      <code className="font-mono">args</code> — parameter object
+                      · <code className="font-mono">await</code> supported ·
+                      return any JSON-serialisable value
+                    </div>
+                    <div className="relative h-64 overflow-hidden rounded-md border">
+                      <CodeEditor
+                        ref={editorRef}
+                        value={implementation}
+                        onChange={setImplementation}
+                        onBlur={() =>
+                          handleImplementationBlur(
+                            editorRef.current?.getValue() ?? implementation,
+                          )
+                        }
+                        placeholder="// Implementation of the function"
+                        className="absolute inset-0 h-full w-full"
+                        readOnly={isSaving}
+                      />
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent
+                    value="test"
+                    className="h-112 min-h-0 rounded-md border pt-0"
+                  >
+                    <FunctionTestRunner
+                      name={name}
+                      schema={schema}
+                      implementation={implementation}
+                      timeout={timeout}
+                      disabled={isSaving}
+                    />
+                  </TabsContent>
+                </Tabs>
               </div>
             </div>
           </ScrollArea>
@@ -167,29 +203,56 @@ export function FunctionEditorMain() {
         </div>
 
         <div className="hidden min-h-0 flex-col md:flex">
-          <div className="space-y-2 border-b px-4 py-3">
-            <h4 className="text-xs font-semibold">Implementation</h4>
-            <div className="text-muted-foreground text-xs">
-              <code className="font-mono">args</code> — parameter object ·{" "}
-              <code className="font-mono">await</code> supported · return any
-              JSON-serialisable value
+          <Tabs defaultValue="implementation" className="h-full">
+            <div className="space-y-2 border-b px-4 py-3">
+              <div className="flex items-center justify-between gap-2">
+                <h4 className="text-xs font-semibold">Function Workspace</h4>
+                <TabsList>
+                  <TabsTrigger value="implementation">
+                    Implementation
+                  </TabsTrigger>
+                  <TabsTrigger value="test">Test</TabsTrigger>
+                </TabsList>
+              </div>
+              <div className="text-muted-foreground text-xs">
+                <code className="font-mono">args</code> — parameter object ·{" "}
+                <code className="font-mono">await</code> supported · return any
+                JSON-serialisable value
+              </div>
             </div>
-          </div>
-          <div className="relative min-h-75 flex-1 overflow-hidden">
-            <CodeEditor
-              ref={editorRef}
-              value={implementation}
-              onChange={setImplementation}
-              onBlur={() =>
-                handleImplementationBlur(
-                  editorRef.current?.getValue() ?? implementation,
-                )
-              }
-              placeholder="// Implementation of the function"
-              className="absolute inset-0 h-full w-full"
-              readOnly={isSaving}
-            />
-          </div>
+
+            <TabsContent
+              value="implementation"
+              className="relative min-h-75 flex-1 overflow-hidden"
+            >
+              <CodeEditor
+                ref={editorRef}
+                value={implementation}
+                onChange={setImplementation}
+                onBlur={() =>
+                  handleImplementationBlur(
+                    editorRef.current?.getValue() ?? implementation,
+                  )
+                }
+                placeholder="// Implementation of the function"
+                className="absolute inset-0 h-full w-full"
+                readOnly={isSaving}
+              />
+            </TabsContent>
+
+            <TabsContent
+              value="test"
+              className="min-h-0 flex-1 overflow-hidden"
+            >
+              <FunctionTestRunner
+                name={name}
+                schema={schema}
+                implementation={implementation}
+                timeout={timeout}
+                disabled={isSaving}
+              />
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
 
