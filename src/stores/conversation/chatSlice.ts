@@ -1,11 +1,15 @@
 import type { StateCreator } from "zustand";
 
+import { functions as functionsDb } from "@/db";
 import { DEFAULT_MODEL_ID, getModelDefaultParameters } from "@/lib/models";
 import { ChatService, type ChatMetadata } from "@/services/chat";
 import { PersistenceService } from "@/services/persistence";
 import { useSettingsStore } from "@/stores";
 import {
   DEFAULT_PARAMETERS,
+  type FunctionCall,
+  type FunctionDefinition,
+  type FunctionResult,
   type Message,
   type ModelParameters,
 } from "@/types";
@@ -15,6 +19,39 @@ import {
   prepareMessagesForEdit,
   prepareMessagesForRetry,
 } from "./utils";
+
+function insertBeforeMessageById(
+  messages: Message[],
+  referenceMessageId: string,
+  messageToInsert: Message,
+): Message[] {
+  const index = messages.findIndex((message) => message.id === referenceMessageId);
+  if (index === -1) {
+    return [...messages, messageToInsert];
+  }
+
+  return [
+    ...messages.slice(0, index),
+    messageToInsert,
+    ...messages.slice(index),
+  ];
+}
+
+async function loadAttachedFunctions(
+  functionIds: string[] | undefined,
+): Promise<FunctionDefinition[]> {
+  if (!functionIds?.length) {
+    return [];
+  }
+
+  const loadedFunctions = await Promise.all(
+    functionIds.map((functionId) => functionsDb.get(functionId)),
+  );
+
+  return loadedFunctions.filter(
+    (functionDef): functionDef is FunctionDefinition => Boolean(functionDef),
+  );
+}
 
 export const createChatSlice: StateCreator<
   ConversationState,
@@ -131,6 +168,9 @@ export const createChatSlice: StateCreator<
 
       const apiKey = settings.apiKeys["google"];
       if (!apiKey) throw new Error("API key not found for Google provider");
+      const attachedFunctions = await loadAttachedFunctions(
+        conversation.functionIds,
+      );
 
       assistantMessageId = crypto.randomUUID();
       const assistantMessage: Message = {
@@ -156,6 +196,9 @@ export const createChatSlice: StateCreator<
           parameters: conversation.parameters,
           systemPrompt: conversation.systemPrompt,
           apiKey,
+          ...(attachedFunctions.length
+            ? { functions: attachedFunctions }
+            : {}),
         },
         {
           onChunk: (content: string) => {
@@ -163,12 +206,64 @@ export const createChatSlice: StateCreator<
               conversations: state.conversations.map((c) =>
                 c.id === conversationId
                   ? {
-                      ...c,
-                      messages: c.messages.map((m) =>
-                        m.id === assistantMessageId ? { ...m, content } : m,
-                      ),
-                    }
+                    ...c,
+                    messages: c.messages.map((m) =>
+                      m.id === assistantMessageId ? { ...m, content } : m,
+                    ),
+                  }
                   : c,
+              ),
+            }));
+          },
+          onFunctionCall: (functionCall: FunctionCall) => {
+            const functionCallMessage: Message = {
+              id: crypto.randomUUID(),
+              role: "model",
+              content: "",
+              timestamp: Date.now(),
+              functionCall,
+              metadata: {
+                model: conversation.modelId,
+                finishReason: "function_call",
+              },
+            };
+
+            set((state: ConversationState) => ({
+              conversations: state.conversations.map((currentConversation) =>
+                currentConversation.id === conversationId
+                  ? {
+                    ...currentConversation,
+                    messages: insertBeforeMessageById(
+                      currentConversation.messages,
+                      assistantMessageId!,
+                      functionCallMessage,
+                    ),
+                  }
+                  : currentConversation,
+              ),
+            }));
+          },
+          onFunctionResult: (functionResult: FunctionResult) => {
+            const functionResultMessage: Message = {
+              id: crypto.randomUUID(),
+              role: "user",
+              content: "",
+              timestamp: Date.now(),
+              functionResult,
+            };
+
+            set((state: ConversationState) => ({
+              conversations: state.conversations.map((currentConversation) =>
+                currentConversation.id === conversationId
+                  ? {
+                    ...currentConversation,
+                    messages: insertBeforeMessageById(
+                      currentConversation.messages,
+                      assistantMessageId!,
+                      functionResultMessage,
+                    ),
+                  }
+                  : currentConversation,
               ),
             }));
           },
@@ -207,13 +302,13 @@ export const createChatSlice: StateCreator<
                 conversations: state.conversations.map((c) =>
                   c.id === conversationId
                     ? {
-                        ...c,
-                        messages: updatedMessages,
-                        metadata: {
-                          ...c.metadata,
-                          totalTokens: lastMetadata.usage?.totalTokens,
-                        },
-                      }
+                      ...c,
+                      messages: updatedMessages,
+                      metadata: {
+                        ...c.metadata,
+                        totalTokens: lastMetadata.usage?.totalTokens,
+                      },
+                    }
                     : c,
                 ),
                 isLoading: false,
@@ -253,13 +348,13 @@ export const createChatSlice: StateCreator<
                 conversations: state.conversations.map((c) =>
                   c.id === conversationId
                     ? {
-                        ...c,
-                        messages: c.messages.map((m) =>
-                          m.id === assistantMessageId
-                            ? { ...m, content: partialContent }
-                            : m,
-                        ),
-                      }
+                      ...c,
+                      messages: c.messages.map((m) =>
+                        m.id === assistantMessageId
+                          ? { ...m, content: partialContent }
+                          : m,
+                      ),
+                    }
                     : c,
                 ),
               }));

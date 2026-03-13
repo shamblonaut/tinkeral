@@ -29,7 +29,7 @@ export function prepareMessagesForRetry(
   if (currentMessage.role === "model") {
     // Find the user message before this one
     for (let i = index - 1; i >= 0; i--) {
-      if (messages[i].role === "user") {
+      if (messages[i].role === "user" && !messages[i].functionResult) {
         userMessage = messages[i];
         break;
       }

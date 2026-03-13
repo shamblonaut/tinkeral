@@ -20,7 +20,8 @@ const msg = (
   id: string,
   role: "user" | "model",
   content = "text",
-): Message => ({ id, role, content, timestamp: Date.now() });
+  overrides: Partial<Message> = {},
+): Message => ({ id, role, content, timestamp: Date.now(), ...overrides });
 
 // ---------------------------------------------------------------------------
 // deleteMessageAndFollowing
@@ -91,6 +92,28 @@ describe("prepareMessagesForRetry", () => {
     // Model message is first in the array — no user before it
     const result = prepareMessagesForRetry([msg("m1", "model")], "m1");
     expect(result).toBeNull();
+  });
+
+  it("should skip function-result user messages when retrying a model message", () => {
+    const messagesWithFunctionTurns = [
+      msg("m1", "user", "Original question"),
+      msg("m2", "model", "", {
+        functionCall: { name: "get_weather", arguments: { city: "Tokyo" } },
+      }),
+      msg("m3", "user", "", {
+        functionResult: { name: "get_weather", result: { temp: 22 } },
+      }),
+      msg("m4", "model", "Final answer"),
+    ];
+
+    const result = prepareMessagesForRetry(messagesWithFunctionTurns, "m4");
+    expect(result).not.toBeNull();
+    expect(result!.userMessage?.id).toBe("m1");
+    expect(result!.updatedMessages.map((message) => message.id)).toEqual([
+      "m1",
+      "m2",
+      "m3",
+    ]);
   });
 });
 

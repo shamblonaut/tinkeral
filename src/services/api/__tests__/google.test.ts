@@ -16,7 +16,9 @@ const mocks = vi.hoisted(() => {
 });
 
 // Mock the Google GenAI SDK
-vi.mock("@google/genai", () => {
+vi.mock("@google/genai", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@google/genai")>();
+
   // Mock implementation of GoogleGenAI class
   const GoogleGenAI = vi.fn(function () {
     return {
@@ -40,6 +42,7 @@ vi.mock("@google/genai", () => {
   };
 
   return {
+    ...actual,
     GoogleGenAI,
     ApiError,
   };
@@ -124,6 +127,24 @@ describe("GoogleAPIClient", () => {
   });
 
   describe("Chat", () => {
+    const functionDefinition = {
+      id: "fn-1",
+      name: "get_weather",
+      description: "Get weather data",
+      parameters: {
+        type: "object" as const,
+        properties: {
+          city: {
+            type: "string" as const,
+          },
+        },
+        required: ["city"],
+      },
+      implementation: "return { city: args.city };",
+      createdAt: 1,
+      updatedAt: 1,
+    };
+
     const mockRequest: ChatRequest = {
       messages: [{ id: "1", role: "user", content: "Hello", timestamp: 1 }],
       model: "gemini-pro",
@@ -206,9 +227,139 @@ describe("GoogleAPIClient", () => {
         }),
       );
     });
+
+    it("chat should include function tools when functions are provided", async () => {
+      const requestWithFunctions: ChatRequest = {
+        ...mockRequest,
+        functions: [functionDefinition],
+        functionCallingMode: "ANY",
+      };
+
+      mocks.mockGenerateContent.mockResolvedValue({ text: "ok" });
+
+      await client.chat(requestWithFunctions);
+
+      expect(mocks.mockGenerateContent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          config: expect.objectContaining({
+            tools: [
+              {
+                functionDeclarations: [
+                  expect.objectContaining({ name: "get_weather" }),
+                ],
+              },
+            ],
+            toolConfig: expect.objectContaining({
+              functionCallingConfig: expect.objectContaining({ mode: "ANY" }),
+            }),
+          }),
+        }),
+      );
+    });
+
+    it("chat should map function calls and set function_call finish reason", async () => {
+      mocks.mockGenerateContent.mockResolvedValue({
+        text: "",
+        functionCalls: [
+          {
+            name: "get_weather",
+            args: { city: "Tokyo" },
+          },
+        ],
+        candidates: [{ finishReason: "STOP" }],
+      });
+
+      const response = await client.chat(mockRequest);
+
+      expect(response.finishReason).toBe("function_call");
+      expect(response.message.metadata?.finishReason).toBe("function_call");
+      expect(response.message.functionCall).toEqual({
+        name: "get_weather",
+        arguments: { city: "Tokyo" },
+      });
+      expect(response.message.content).toBe("");
+    });
+
+    it("chat should send function call/result messages as structured parts", async () => {
+      const requestWithToolTurns: ChatRequest = {
+        ...mockRequest,
+        messages: [
+          {
+            id: "m1",
+            role: "model",
+            content: "",
+            timestamp: 1,
+            functionCall: {
+              name: "get_weather",
+              arguments: { city: "Tokyo" },
+            },
+          },
+          {
+            id: "m2",
+            role: "user",
+            content: "",
+            timestamp: 2,
+            functionResult: {
+              name: "get_weather",
+              result: { temp: 22 },
+            },
+          },
+        ],
+      };
+
+      mocks.mockGenerateContent.mockResolvedValue({ text: "ok" });
+
+      await client.chat(requestWithToolTurns);
+
+      expect(mocks.mockGenerateContent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          contents: [
+            expect.objectContaining({
+              role: "model",
+              parts: [
+                expect.objectContaining({
+                  functionCall: expect.objectContaining({
+                    name: "get_weather",
+                    args: { city: "Tokyo" },
+                  }),
+                }),
+              ],
+            }),
+            expect.objectContaining({
+              role: "user",
+              parts: [
+                expect.objectContaining({
+                  functionResponse: expect.objectContaining({
+                    name: "get_weather",
+                  }),
+                }),
+              ],
+            }),
+          ],
+        }),
+      );
+    });
   });
 
   describe("Streaming Chat", () => {
+    const functionDefinition = {
+      id: "fn-1",
+      name: "get_weather",
+      description: "Get weather data",
+      parameters: {
+        type: "object" as const,
+        properties: {
+          city: {
+            type: "string" as const,
+          },
+        },
+        required: ["city"],
+      },
+      implementation: "return { city: args.city };",
+      createdAt: 1,
+      updatedAt: 1,
+    };
+
     const mockRequest: ChatRequest = {
       messages: [{ id: "1", role: "user", content: "Hello", timestamp: 1 }],
       model: "gemini-pro",
@@ -263,6 +414,79 @@ describe("GoogleAPIClient", () => {
       await expect(generator.next()).rejects.toMatchObject({
         message: expect.stringContaining("Stream Error"),
       });
+    });
+
+    it("streamChat should include function tools when functions are provided", async () => {
+      const requestWithFunctions: ChatRequest = {
+        ...mockRequest,
+        functions: [functionDefinition],
+        functionCallingMode: "NONE",
+      };
+
+      const mockStream = {
+        async *[Symbol.asyncIterator]() {
+          yield { text: "ok", candidates: [{ finishReason: "STOP" }] };
+        },
+      };
+
+      mocks.mockGenerateContentStream.mockResolvedValue(mockStream);
+
+      for await (const chunk of client.streamChat(requestWithFunctions)) {
+        expect(chunk.delta).toBeDefined();
+      }
+
+      expect(mocks.mockGenerateContentStream).toHaveBeenCalledWith(
+        expect.objectContaining({
+          config: expect.objectContaining({
+            tools: [
+              {
+                functionDeclarations: [
+                  expect.objectContaining({ name: "get_weather" }),
+                ],
+              },
+            ],
+            toolConfig: expect.objectContaining({
+              functionCallingConfig: expect.objectContaining({ mode: "NONE" }),
+            }),
+          }),
+        }),
+      );
+    });
+
+    it("streamChat should yield functionCall and preserve text in same chunk", async () => {
+      const mockStream = {
+        async *[Symbol.asyncIterator]() {
+          yield {
+            text: "Calling tool...",
+            functionCalls: [
+              {
+                name: "get_weather",
+                args: { city: "Paris" },
+              },
+            ],
+            candidates: [{ finishReason: "STOP" }],
+          };
+        },
+      };
+
+      mocks.mockGenerateContentStream.mockResolvedValue(mockStream);
+
+      const chunks = [];
+      for await (const chunk of client.streamChat(mockRequest)) {
+        chunks.push(chunk);
+      }
+
+      expect(chunks).toHaveLength(1);
+      expect(chunks[0]).toEqual(
+        expect.objectContaining({
+          delta: "Calling tool...",
+          finishReason: "function_call",
+          functionCall: {
+            name: "get_weather",
+            arguments: { city: "Paris" },
+          },
+        }),
+      );
     });
   });
 

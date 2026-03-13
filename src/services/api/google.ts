@@ -1,9 +1,11 @@
 import {
   ApiError,
   FinishReason as APIFinishReason,
+  type FunctionCall as APIFunctionCall,
   GoogleGenAI,
   type Content,
   type GenerateContentConfig,
+  type GenerateContentResponse,
 } from "@google/genai";
 
 import { getModelById, getUnknownModel, KNOWN_MODELS } from "@/lib/models";
@@ -12,12 +14,18 @@ import type {
   ChatResponse,
   ErrorType,
   FinishReason,
+  FunctionCall,
   LLMProvider,
   Message,
   ModelInfo,
   StreamChunk,
 } from "@/types";
 import { ProviderError } from "./base";
+import {
+  mapFunctionCallingModeToGoogleToolConfig,
+  mapFunctionResultToGoogleResponse,
+  mapFunctionsToGoogleTools,
+} from "./functionMapping";
 
 export class GoogleAPIClient implements LLMProvider {
   readonly id = "google";
@@ -87,18 +95,7 @@ export class GoogleAPIClient implements LLMProvider {
 
       const client = this.getClient();
       const contents = this.mapMessagesToContent(request.messages);
-
-      const config: GenerateContentConfig = {
-        maxOutputTokens: request.parameters.maxTokens,
-        temperature: request.parameters.temperature,
-        topP: request.parameters.topP,
-        topK: request.parameters.topK,
-        stopSequences: request.parameters.stopSequences,
-      };
-
-      if (request.systemPrompt?.trim()) {
-        config.systemInstruction = request.systemPrompt;
-      }
+      const config = this.buildGenerateContentConfig(request);
 
       // Create a race between the API call and the abort signal
       const responsePromise = client.models.generateContent({
@@ -120,8 +117,14 @@ export class GoogleAPIClient implements LLMProvider {
           // Use Promise.race to allow abortion
           const response = await Promise.race([responsePromise, abortPromise]);
 
+          const functionCall = this.getMappedFunctionCall(response);
+          const finishReason = this.mapFinishReasonWithFunctionCall(
+            response.candidates?.[0]?.finishReason,
+            functionCall,
+          );
+
           // Handle result as usual
-          if (!response || !response.text) {
+          if (!response || (!response.text && !functionCall)) {
             throw new Error("Empty response from Google API");
           }
 
@@ -131,27 +134,24 @@ export class GoogleAPIClient implements LLMProvider {
               role: "model",
               content: response.text || "",
               timestamp: Date.now(),
+              functionCall,
               metadata: {
                 model: request.model,
-                finishReason: this.mapFinishReason(
-                  response.candidates?.[0]?.finishReason,
-                ),
+                finishReason,
                 usage: response.usageMetadata
                   ? {
-                      inputTokens: response.usageMetadata.promptTokenCount,
-                      outputTokens: response.usageMetadata.candidatesTokenCount,
-                      totalTokens: response.usageMetadata.totalTokenCount,
-                      thinkingTokens: response.usageMetadata.thoughtsTokenCount,
-                      cachedTokens:
-                        response.usageMetadata.cachedContentTokenCount,
-                    }
+                    inputTokens: response.usageMetadata.promptTokenCount,
+                    outputTokens: response.usageMetadata.candidatesTokenCount,
+                    totalTokens: response.usageMetadata.totalTokenCount,
+                    thinkingTokens: response.usageMetadata.thoughtsTokenCount,
+                    cachedTokens:
+                      response.usageMetadata.cachedContentTokenCount,
+                  }
                   : undefined,
               },
             },
             model: request.model,
-            finishReason: this.mapFinishReason(
-              response.candidates?.[0]?.finishReason,
-            ),
+            finishReason,
           };
         } finally {
           if (abortHandler) {
@@ -161,8 +161,13 @@ export class GoogleAPIClient implements LLMProvider {
       }
 
       const response = await responsePromise;
+      const functionCall = this.getMappedFunctionCall(response);
+      const finishReason = this.mapFinishReasonWithFunctionCall(
+        response.candidates?.[0]?.finishReason,
+        functionCall,
+      );
 
-      if (!response || !response.text) {
+      if (!response || (!response.text && !functionCall)) {
         throw new Error("Empty response from Google API");
       }
 
@@ -172,29 +177,26 @@ export class GoogleAPIClient implements LLMProvider {
           role: "model",
           content: response.text || "",
           timestamp: Date.now(),
+          functionCall,
           metadata: {
             model: request.model,
-            finishReason: this.mapFinishReason(
-              response.candidates?.[0]?.finishReason,
-            ),
+            finishReason,
             usage: response.usageMetadata
               ? {
-                  inputTokens: response.usageMetadata.promptTokenCount || 0,
-                  outputTokens:
-                    response.usageMetadata.candidatesTokenCount || 0,
-                  totalTokens: response.usageMetadata.totalTokenCount || 0,
-                  thinkingTokens:
-                    response.usageMetadata.thoughtsTokenCount || 0,
-                  cachedTokens:
-                    response.usageMetadata.cachedContentTokenCount || 0,
-                }
+                inputTokens: response.usageMetadata.promptTokenCount || 0,
+                outputTokens:
+                  response.usageMetadata.candidatesTokenCount || 0,
+                totalTokens: response.usageMetadata.totalTokenCount || 0,
+                thinkingTokens:
+                  response.usageMetadata.thoughtsTokenCount || 0,
+                cachedTokens:
+                  response.usageMetadata.cachedContentTokenCount || 0,
+              }
               : undefined,
           },
         },
         model: request.model,
-        finishReason: this.mapFinishReason(
-          response.candidates?.[0]?.finishReason,
-        ),
+        finishReason,
       };
     } catch (error) {
       throw this.normalizeError(error);
@@ -212,18 +214,7 @@ export class GoogleAPIClient implements LLMProvider {
 
       const client = this.getClient();
       const contents = this.mapMessagesToContent(request.messages);
-
-      const config: GenerateContentConfig = {
-        maxOutputTokens: request.parameters.maxTokens,
-        temperature: request.parameters.temperature,
-        topP: request.parameters.topP,
-        topK: request.parameters.topK,
-        stopSequences: request.parameters.stopSequences,
-      };
-
-      if (request.systemPrompt?.trim()) {
-        config.systemInstruction = request.systemPrompt;
-      }
+      const config = this.buildGenerateContentConfig(request);
 
       const streamingResp = await client.models.generateContentStream({
         model: request.model,
@@ -236,19 +227,23 @@ export class GoogleAPIClient implements LLMProvider {
           throw new DOMException("Aborted", "AbortError");
         }
 
+        const functionCall = this.getMappedFunctionCall(chunk);
+
         yield {
           delta: chunk.text || "",
-          finishReason: this.mapFinishReason(
+          finishReason: this.mapFinishReasonWithFunctionCall(
             chunk.candidates?.[0]?.finishReason,
+            functionCall,
           ),
+          functionCall,
           usage: chunk.usageMetadata
             ? {
-                inputTokens: chunk.usageMetadata.promptTokenCount || 0,
-                outputTokens: chunk.usageMetadata.candidatesTokenCount || 0,
-                totalTokens: chunk.usageMetadata.totalTokenCount || 0,
-                thinkingTokens: chunk.usageMetadata.thoughtsTokenCount || 0,
-                cachedTokens: chunk.usageMetadata.cachedContentTokenCount || 0,
-              }
+              inputTokens: chunk.usageMetadata.promptTokenCount || 0,
+              outputTokens: chunk.usageMetadata.candidatesTokenCount || 0,
+              totalTokens: chunk.usageMetadata.totalTokenCount || 0,
+              thinkingTokens: chunk.usageMetadata.thoughtsTokenCount || 0,
+              cachedTokens: chunk.usageMetadata.cachedContentTokenCount || 0,
+            }
             : undefined,
         };
       }
@@ -341,11 +336,61 @@ export class GoogleAPIClient implements LLMProvider {
 
   private mapMessagesToContent(messages: Message[]): Content[] {
     return messages
-      .map((m) => ({
-        role: m.role === "model" ? "model" : "user",
-        parts: [{ text: m.content }],
-      }))
-      .filter((m) => m.parts[0].text.trim() !== "");
+      .map((message) => {
+        const parts: NonNullable<Content["parts"]> = [];
+
+        if (message.functionCall?.name) {
+          parts.push({
+            functionCall: {
+              name: message.functionCall.name,
+              args: message.functionCall.arguments,
+            },
+          });
+        }
+
+        if (message.functionResult?.name) {
+          parts.push({
+            functionResponse: mapFunctionResultToGoogleResponse(
+              message.functionResult,
+            ),
+          });
+        }
+
+        if (!parts.length && message.content.trim()) {
+          parts.push({ text: message.content });
+        }
+
+        return {
+          role: message.role === "model" ? "model" : "user",
+          parts,
+        };
+      })
+      .filter((message) => message.parts.length > 0);
+  }
+
+  private buildGenerateContentConfig(
+    request: ChatRequest,
+  ): GenerateContentConfig {
+    const config: GenerateContentConfig = {
+      maxOutputTokens: request.parameters.maxTokens,
+      temperature: request.parameters.temperature,
+      topP: request.parameters.topP,
+      topK: request.parameters.topK,
+      stopSequences: request.parameters.stopSequences,
+    };
+
+    if (request.systemPrompt?.trim()) {
+      config.systemInstruction = request.systemPrompt;
+    }
+
+    if (request.functions?.length) {
+      config.tools = mapFunctionsToGoogleTools(request.functions);
+      config.toolConfig = mapFunctionCallingModeToGoogleToolConfig(
+        request.functionCallingMode,
+      );
+    }
+
+    return config;
   }
 
   private mapFinishReason(reason: APIFinishReason | undefined): FinishReason {
@@ -361,6 +406,44 @@ export class GoogleAPIClient implements LLMProvider {
       default:
         return "unknown";
     }
+  }
+
+  private mapFinishReasonWithFunctionCall(
+    reason: APIFinishReason | undefined,
+    functionCall?: FunctionCall,
+  ): FinishReason {
+    if (functionCall?.name) {
+      return "function_call";
+    }
+
+    return this.mapFinishReason(reason);
+  }
+
+  private getMappedFunctionCall(
+    response: GenerateContentResponse,
+  ): FunctionCall | undefined {
+    const functionCall = this.getFirstFunctionCall(response);
+
+    if (!functionCall || !functionCall.name) {
+      return undefined;
+    }
+
+    return {
+      name: functionCall.name,
+      arguments: functionCall.args || {},
+    };
+  }
+
+  private getFirstFunctionCall(
+    response: GenerateContentResponse,
+  ): APIFunctionCall | undefined {
+    if (response.functionCalls?.length) {
+      return response.functionCalls[0];
+    }
+
+    return response.candidates?.[0]?.content?.parts?.find((part) =>
+      Boolean(part.functionCall)
+    )?.functionCall;
   }
 
   private getNestedErrorMessage(message: string): {

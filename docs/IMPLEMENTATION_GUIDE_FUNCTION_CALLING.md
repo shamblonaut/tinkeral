@@ -382,14 +382,14 @@ src/types/schema.ts
 
 **Tasks**:
 
-- [ ] Create `src/services/api/functionMapping.ts`
+- [x] Create `src/services/api/functionMapping.ts`
   - Map `FunctionDefinition` → Google SDK `FunctionDeclaration`
   - Map `JSONSchema` → Google SDK `Schema` format
   - Map `FunctionResult` → Google SDK `FunctionResponse`
-- [ ] Update `GoogleAPIClient.chat()` to include `tools` in config when functions are provided
-- [ ] Update `GoogleAPIClient.streamChat()` to include `tools` in config
-- [ ] Add function calling mode support (`AUTO`, `ANY`, `NONE`) to `ChatRequest`
-- [ ] Write unit tests for all mapping functions
+- [x] Update `GoogleAPIClient.chat()` to include `tools` in config when functions are provided
+- [x] Update `GoogleAPIClient.streamChat()` to include `tools` in config
+- [x] Add function calling mode support (`AUTO`, `ANY`, `NONE`) to `ChatRequest`
+- [x] Write unit tests for all mapping functions
 
 **Acceptance Criteria**:
 
@@ -420,11 +420,11 @@ src/types/provider.ts               (add functionCallingMode to ChatRequest)
 
 **Tasks**:
 
-- [ ] Update `GoogleAPIClient.streamChat()` to detect `functionCall` parts in chunks
-- [ ] Yield `StreamChunk` with `functionCall` data when model requests a function call
-- [ ] Handle `finishReason: "function_call"` to signal the model wants tool use
-- [ ] Update `GoogleAPIClient.chat()` similarly for non-streaming
-- [ ] Map Google's `FunctionCall` (with `args`) to our `FunctionCall` (with `arguments`)
+- [x] Update `GoogleAPIClient.streamChat()` to detect `functionCall` parts in chunks
+- [x] Yield `StreamChunk` with `functionCall` data when model requests a function call
+- [x] Handle `finishReason: "function_call"` to signal the model wants tool use
+- [x] Update `GoogleAPIClient.chat()` similarly for non-streaming
+- [x] Map Google's `FunctionCall` (with `args`) to our `FunctionCall` (with `arguments`)
 
 **Acceptance Criteria**:
 
@@ -447,18 +447,18 @@ src/services/api/google.ts
 
 **Tasks**:
 
-- [ ] Update `ChatService.executeChat()` to detect function call finish reason
-- [ ] When function call detected:
+- [x] Update `ChatService.executeChat()` to detect function call finish reason
+- [x] When function call detected:
   1. Pause streaming
   2. Look up `FunctionDefinition` by name from the attached functions
   3. Execute function via `FunctionExecutor`
   4. Create `FunctionResult` message
   5. Send function result back to API as next turn
   6. Resume streaming with model's final response
-- [ ] Handle multi-turn function calls (model may call multiple functions sequentially)
-- [ ] Handle execution errors gracefully (send error as function result)
-- [ ] Add new callbacks: `onFunctionCall`, `onFunctionResult` to `ChatCallbacks`
-- [ ] Update `ChatRequest` in chat service to accept functions
+- [x] Handle multi-turn function calls (model may call multiple functions sequentially)
+- [x] Handle execution errors gracefully (send error as function result)
+- [x] Add new callbacks: `onFunctionCall`, `onFunctionResult` to `ChatCallbacks`
+- [x] Update `ChatRequest` in chat service to accept functions
 
 **Acceptance Criteria**:
 
@@ -483,12 +483,12 @@ src/services/chat.ts
 
 **Tasks**:
 
-- [ ] Update `chatSlice.sendMessage()` to include attached functions in chat request
-- [ ] Add function call messages to conversation (role: `"model"`, with `functionCall` field)
-- [ ] Add function result messages to conversation (role: `"user"`, with `functionResult` field, auto-generated)
-- [ ] Update `chatSlice.executeChat()` to handle new `onFunctionCall` and `onFunctionResult` callbacks
-- [ ] Persist function call/result messages to IndexedDB
-- [ ] Handle function attachment per conversation (load attached function definitions)
+- [x] Update `chatSlice.sendMessage()` to include attached functions in chat request
+- [x] Add function call messages to conversation (role: `"model"`, with `functionCall` field)
+- [x] Add function result messages to conversation (role: `"user"`, with `functionResult` field, auto-generated)
+- [x] Update `chatSlice.executeChat()` to handle new `onFunctionCall` and `onFunctionResult` callbacks
+- [x] Persist function call/result messages to IndexedDB
+- [x] Handle function attachment per conversation (load attached function definitions)
 
 **Acceptance Criteria**:
 

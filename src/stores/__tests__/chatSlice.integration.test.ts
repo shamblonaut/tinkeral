@@ -31,6 +31,7 @@ describe("ChatSlice", () => {
   beforeEach(async () => {
     // Clear database and store state before each test
     await db.conversations.clear();
+    await db.functions.clear();
     vi.useFakeTimers({
       toFake: [
         "setTimeout",
@@ -196,7 +197,7 @@ describe("ChatSlice", () => {
   });
 
   it("should abort generation", async () => {
-    let resolveStream: () => void = () => {};
+    let resolveStream: () => void = () => { };
     const streamTrigger = new Promise<void>((r) => {
       resolveStream = r;
     });
@@ -266,28 +267,28 @@ describe("ChatSlice", () => {
       conversations: s.conversations.map((c) =>
         c.id === id
           ? {
-              ...c,
-              messages: [
-                {
-                  id: "msg-1",
-                  role: "user" as const,
-                  content: "Hi",
-                  timestamp: 1,
-                },
-                {
-                  id: "msg-2",
-                  role: "model" as const,
-                  content: "Hello",
-                  timestamp: 2,
-                },
-                {
-                  id: "msg-3",
-                  role: "user" as const,
-                  content: "How are you?",
-                  timestamp: 3,
-                },
-              ],
-            }
+            ...c,
+            messages: [
+              {
+                id: "msg-1",
+                role: "user" as const,
+                content: "Hi",
+                timestamp: 1,
+              },
+              {
+                id: "msg-2",
+                role: "model" as const,
+                content: "Hello",
+                timestamp: 2,
+              },
+              {
+                id: "msg-3",
+                role: "user" as const,
+                content: "How are you?",
+                timestamp: 3,
+              },
+            ],
+          }
           : c,
       ),
     }));
@@ -336,22 +337,22 @@ describe("ChatSlice", () => {
       conversations: s.conversations.map((c) =>
         c.id === id
           ? {
-              ...c,
-              messages: [
-                {
-                  id: "msg-1",
-                  role: "user" as const,
-                  content: "Hi",
-                  timestamp: 1,
-                },
-                {
-                  id: "msg-2",
-                  role: "model" as const,
-                  content: "Hello",
-                  timestamp: 2,
-                },
-              ],
-            }
+            ...c,
+            messages: [
+              {
+                id: "msg-1",
+                role: "user" as const,
+                content: "Hi",
+                timestamp: 1,
+              },
+              {
+                id: "msg-2",
+                role: "model" as const,
+                content: "Hello",
+                timestamp: 2,
+              },
+            ],
+          }
           : c,
       ),
     }));
@@ -397,22 +398,22 @@ describe("ChatSlice", () => {
       conversations: s.conversations.map((c) =>
         c.id === id
           ? {
-              ...c,
-              messages: [
-                {
-                  id: "msg-1",
-                  role: "user" as const,
-                  content: "Hi",
-                  timestamp: 1,
-                },
-                {
-                  id: "msg-2",
-                  role: "model" as const,
-                  content: "Hello",
-                  timestamp: 2,
-                },
-              ],
-            }
+            ...c,
+            messages: [
+              {
+                id: "msg-1",
+                role: "user" as const,
+                content: "Hi",
+                timestamp: 1,
+              },
+              {
+                id: "msg-2",
+                role: "model" as const,
+                content: "Hello",
+                timestamp: 2,
+              },
+            ],
+          }
           : c,
       ),
     }));
@@ -466,22 +467,22 @@ describe("ChatSlice", () => {
       conversations: s.conversations.map((c) =>
         c.id === id
           ? {
-              ...c,
-              messages: [
-                {
-                  id: "msg-1",
-                  role: "user" as const,
-                  content: "Hi",
-                  timestamp: 1,
-                },
-                {
-                  id: "msg-2",
-                  role: "model" as const,
-                  content: "Hello",
-                  timestamp: 2,
-                },
-              ],
-            }
+            ...c,
+            messages: [
+              {
+                id: "msg-1",
+                role: "user" as const,
+                content: "Hi",
+                timestamp: 1,
+              },
+              {
+                id: "msg-2",
+                role: "model" as const,
+                content: "Hello",
+                timestamp: 2,
+              },
+            ],
+          }
           : c,
       ),
     }));
@@ -611,28 +612,28 @@ describe("ChatSlice", () => {
       conversations: s.conversations.map((c) =>
         c.id === id
           ? {
-              ...c,
-              messages: [
-                {
-                  id: "m1",
-                  role: "user" as const,
-                  content: "Hi",
-                  timestamp: 1,
-                },
-                {
-                  id: "m2",
-                  role: "model" as const,
-                  content: "Hello",
-                  timestamp: 2,
-                },
-                {
-                  id: "m3",
-                  role: "user" as const,
-                  content: "More",
-                  timestamp: 3,
-                },
-              ],
-            }
+            ...c,
+            messages: [
+              {
+                id: "m1",
+                role: "user" as const,
+                content: "Hi",
+                timestamp: 1,
+              },
+              {
+                id: "m2",
+                role: "model" as const,
+                content: "Hello",
+                timestamp: 2,
+              },
+              {
+                id: "m3",
+                role: "user" as const,
+                content: "More",
+                timestamp: 3,
+              },
+            ],
+          }
           : c,
       ),
     }));
@@ -705,28 +706,28 @@ describe("ChatSlice", () => {
       conversations: s.conversations.map((c) =>
         c.id === id
           ? {
-              ...c,
-              messages: [
-                {
-                  id: "m1",
-                  role: "user" as const,
-                  content: "First",
-                  timestamp: 1,
-                },
-                {
-                  id: "m2",
-                  role: "model" as const,
-                  content: "Original",
-                  timestamp: 2,
-                },
-                {
-                  id: "m3",
-                  role: "user" as const,
-                  content: "Third",
-                  timestamp: 3,
-                },
-              ],
-            }
+            ...c,
+            messages: [
+              {
+                id: "m1",
+                role: "user" as const,
+                content: "First",
+                timestamp: 1,
+              },
+              {
+                id: "m2",
+                role: "model" as const,
+                content: "Original",
+                timestamp: 2,
+              },
+              {
+                id: "m3",
+                role: "user" as const,
+                content: "Third",
+                timestamp: 3,
+              },
+            ],
+          }
           : c,
       ),
     }));
@@ -767,5 +768,122 @@ describe("ChatSlice", () => {
       "This is a very long message that exce...",
     );
     expect(conversation?.title?.length).toBe(40);
+  });
+
+  it("should pass attached functions and persist function call/result messages", async () => {
+    vi.useRealTimers();
+    try {
+      const attachedFunction = {
+        id: "func-weather",
+        name: "get_weather",
+        description: "Get weather information",
+        parameters: {
+          type: "object" as const,
+          properties: {
+            city: { type: "string" as const },
+          },
+          required: ["city"],
+        },
+        implementation: "return { temp: 22 };",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      };
+
+      await db.functions.add(attachedFunction);
+
+      const mockStreamChat = vi
+        .fn()
+        .mockImplementationOnce(async function* () {
+          yield {
+            delta: "",
+            finishReason: "function_call" as FinishReason,
+            functionCall: {
+              name: "unknown_function",
+              arguments: { city: "Tokyo" },
+            },
+            usage: { inputTokens: 5, outputTokens: 3, totalTokens: 8 },
+          };
+        })
+        .mockImplementationOnce(async function* () {
+          yield {
+            delta: "Function run completed.",
+            finishReason: "stop" as FinishReason,
+            usage: { inputTokens: 7, outputTokens: 4, totalTokens: 11 },
+          };
+        });
+
+      vi.mocked(GoogleAPIClient.createClient).mockResolvedValue({
+        streamChat: mockStreamChat,
+      } as unknown as GoogleAPIClient);
+
+      const store = useConversationStore.getState();
+      const id = await store.createConversation("test-model", {
+        temperature: 0.7,
+        maxTokens: 100,
+        topP: 0.9,
+      });
+      store.setActiveConversation(id);
+
+      useConversationStore.setState((state) => ({
+        conversations: state.conversations.map((conversation) =>
+          conversation.id === id
+            ? { ...conversation, functionIds: [attachedFunction.id] }
+            : conversation,
+        ),
+      }));
+
+      await store.sendMessage("Use tools");
+
+      const firstRequest = mockStreamChat.mock.calls[0]?.[0] as {
+        functions?: Array<{ name: string }>;
+      };
+      expect(firstRequest.functions?.map((f) => f.name)).toEqual([
+        "get_weather",
+      ]);
+
+      const finalConversation = useConversationStore
+        .getState()
+        .conversations.find((conversation) => conversation.id === id);
+
+      const functionCallMessage = finalConversation?.messages.find(
+        (message) => message.functionCall?.name === "unknown_function",
+      );
+      const functionResultMessage = finalConversation?.messages.find(
+        (message) => message.functionResult?.name === "unknown_function",
+      );
+
+      expect(functionCallMessage?.role).toBe("model");
+      expect(functionResultMessage?.role).toBe("user");
+      expect(
+        finalConversation?.messages[finalConversation.messages.length - 1],
+      ).toMatchObject({
+        role: "model",
+        content: "Function run completed.",
+      });
+
+      const persistedConversation = await conversations.get(id);
+      const persistedFunctionCallMessage = persistedConversation?.messages.find(
+        (message) => message.functionCall?.name === "unknown_function",
+      );
+      const persistedFunctionResultMessage =
+        persistedConversation?.messages.find(
+          (message) => message.functionResult?.name === "unknown_function",
+        );
+
+      expect(persistedFunctionCallMessage).toBeDefined();
+      expect(persistedFunctionResultMessage).toBeDefined();
+    } finally {
+      vi.useFakeTimers({
+        toFake: [
+          "setTimeout",
+          "clearTimeout",
+          "setInterval",
+          "clearInterval",
+          "Date",
+          "setImmediate",
+          "clearImmediate",
+        ],
+      });
+    }
   });
 });
