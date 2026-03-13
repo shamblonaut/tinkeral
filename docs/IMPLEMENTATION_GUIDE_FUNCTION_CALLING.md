@@ -518,17 +518,17 @@ src/stores/conversation/types.ts
 
 **Tasks**:
 
-- [ ] Create `src/components/chat/message/FunctionCallDisplay.tsx`
+- [x] Create `src/components/chat/message/FunctionCallDisplay.tsx`
   - Shows function name and arguments in a styled card
   - Expandable/collapsible argument details
   - Visual indicator (icon, color) to distinguish from text messages
-- [ ] Create `src/components/chat/message/FunctionResultDisplay.tsx`
+- [x] Create `src/components/chat/message/FunctionResultDisplay.tsx`
   - Shows function name and result
   - Format result as JSON with syntax highlighting
   - Show error state if function failed
   - Show execution time
-- [ ] Update `Message` component to render function call/result variants
-- [ ] Style function messages distinctly from user/model text messages
+- [x] Update `Message` component to render function call/result variants
+- [x] Style function messages distinctly from user/model text messages
 
 **Acceptance Criteria**:
 

@@ -16,6 +16,7 @@ export interface FunctionResult {
   name: string;
   result: unknown;
   error?: string;
+  executionTime?: number;
 }
 
 export interface TokenUsage {

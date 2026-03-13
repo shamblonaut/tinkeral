@@ -127,6 +127,7 @@ describe("ChatService function call loop", () => {
         expect(onFunctionResult).toHaveBeenCalledWith({
             name: "get_weather",
             result: { temp: 22, condition: "sunny" },
+            executionTime: 5,
         });
 
         expect(onFinish).toHaveBeenCalledWith("It's sunny in Tokyo.", {

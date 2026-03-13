@@ -254,12 +254,14 @@ export class ChatService {
         name: functionCall.name,
         result: null,
         error: execution.error?.message || "Function execution failed",
+        executionTime: execution.executionTime,
       };
     }
 
     return {
       name: functionCall.name,
       result: execution.data,
+      executionTime: execution.executionTime,
     };
   }
 

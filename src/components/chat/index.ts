@@ -13,6 +13,8 @@ export * from "./conversation/SearchInput";
 
 // message
 export * from "./message/ChatInput";
+export * from "./message/FunctionCallDisplay";
+export * from "./message/FunctionResultDisplay";
 export * from "./message/Message";
 export * from "./message/MessageActions";
 export * from "./message/MessageContent";

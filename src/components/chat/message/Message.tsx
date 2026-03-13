@@ -3,6 +3,8 @@ import { memo, useCallback, useState } from "react";
 import { toast } from "sonner";
 
 import {
+  FunctionCallDisplay,
+  FunctionResultDisplay,
   MessageActions,
   MessageContent,
   TokenUsageDisplay,
@@ -32,6 +34,9 @@ export const Message = memo(function Message({
   message,
   isStreaming,
 }: MessageProps) {
+  const isFunctionCallMessage = Boolean(message.functionCall);
+  const isFunctionResultMessage = Boolean(message.functionResult);
+  const isFunctionMessage = isFunctionCallMessage || isFunctionResultMessage;
   const isUser = message.role === "user";
   const isSystem = message.role === "system";
 
@@ -95,7 +100,7 @@ export const Message = memo(function Message({
     <div
       className={cn(
         "bg-background group relative flex w-full gap-4 p-4 transition-colors",
-        isUser ? "flex-row-reverse" : "flex-row",
+        isUser && !isFunctionMessage ? "flex-row-reverse" : "flex-row",
       )}
     >
       <Avatar className="hidden h-8 w-8 shrink-0 md:block">
@@ -119,12 +124,12 @@ export const Message = memo(function Message({
       <div
         className={cn(
           "relative flex max-w-full flex-col gap-1 md:max-w-[80%]",
-          isUser ? "items-end" : "items-start",
+          isUser && !isFunctionMessage ? "items-end" : "items-start",
           isEditing && "w-full",
         )}
       >
         <div className="flex items-center gap-2 px-2">
-          {isUser ? (
+          {isUser && !isFunctionMessage ? (
             <>
               <TokenUsageDisplay
                 usage={message.metadata?.usage}
@@ -153,24 +158,33 @@ export const Message = memo(function Message({
               <TokenUsageDisplay
                 usage={message.metadata?.usage}
                 role={message.role}
-                contentLength={message.content.length}
+                contentLength={
+                  message.content.length +
+                  (message.functionCall || message.functionResult ? 1 : 0)
+                }
               />
             </>
           )}
         </div>
 
-        <MessageContent
-          content={message.content}
-          isUser={isUser}
-          isEditing={isEditing}
-          isStreaming={isStreaming}
-          editContent={editContent}
-          onEditContentChange={setEditContent}
-          onSave={handleSave}
-          onCancel={handleCancel}
-        />
+        {message.functionCall ? (
+          <FunctionCallDisplay functionCall={message.functionCall} />
+        ) : message.functionResult ? (
+          <FunctionResultDisplay functionResult={message.functionResult} />
+        ) : (
+          <MessageContent
+            content={message.content}
+            isUser={isUser}
+            isEditing={isEditing}
+            isStreaming={isStreaming}
+            editContent={editContent}
+            onEditContentChange={setEditContent}
+            onSave={handleSave}
+            onCancel={handleCancel}
+          />
+        )}
 
-        {!isEditing && !isStreaming && (
+        {!isEditing && !isStreaming && !isFunctionMessage && (
           <div className="flex h-8 items-center pt-1">
             <MessageActions
               isUser={isUser}
