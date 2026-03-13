@@ -349,10 +349,10 @@ src/features/functions/components/FunctionSidebarList.tsx  (add templates sectio
 
 **Tasks**:
 
-- [ ] Update `exportData()` in `src/services/importExport.ts` to include functions
-- [ ] Update `importData()` to handle functions (merge gracefully, don't overwrite if not needed)
-- [ ] Validate imported function definitions with Zod schema or manual checks
-- [ ] Handle situations where conversations reference deleted or missing functions gracefully
+- [x] Update `exportData()` in `src/services/importExport.ts` to include functions
+- [x] Update `importData()` to handle functions (merge gracefully, don't overwrite if not needed)
+- [x] Validate imported function definitions with Zod schema or manual checks
+- [x] Handle situations where conversations reference deleted or missing functions gracefully
 
 **Acceptance Criteria**:
 
