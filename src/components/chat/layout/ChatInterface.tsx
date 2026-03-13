@@ -1,5 +1,5 @@
 import { WifiOff, Zap } from "lucide-react";
-import { useEffect } from "react";
+import { useCallback, useEffect } from "react";
 import { toast } from "sonner";
 
 import {
@@ -10,8 +10,15 @@ import {
   MessageList,
 } from "@/components/chat";
 import { SettingsModal } from "@/components/chat/settings/SettingsModal";
+import features from "@/config/features";
+import {
+  FunctionEditorMain,
+  FunctionEditorProvider,
+  FunctionSidebar,
+} from "@/features/functions";
 import { DEFAULT_MODEL_ID, getModelDefaultParameters } from "@/lib/models";
 import { useConversationStore, useSettingsStore, useUIStore } from "@/stores";
+import { useFunctionsStore } from "@/stores/functions";
 
 export function ChatInterface() {
   const {
@@ -25,10 +32,14 @@ export function ChatInterface() {
   } = useConversationStore();
 
   const {
+    platformView,
+    setPlatformView,
     toggleChatSettings,
     isChatSettingsOpen,
     isSidebarOpen,
     toggleSidebar,
+    selectedFunctionId,
+    selectFunction,
   } = useUIStore();
 
   const conversation = conversations.find(
@@ -36,7 +47,12 @@ export function ChatInterface() {
   );
   const messages = conversation?.messages || [];
 
-  // Handle errors
+  const selectedFn = useFunctionsStore((state) =>
+    selectedFunctionId
+      ? state.functions.find((f) => f.id === selectedFunctionId)
+      : undefined,
+  );
+
   useEffect(() => {
     if (error) {
       const message =
@@ -47,8 +63,6 @@ export function ChatInterface() {
     }
   }, [error]);
 
-  // Auto-create new conversation if none selected
-  // This handles cases like deleting the last conversation
   useEffect(() => {
     if (!activeConversationId && !isLoading) {
       const createNew = async () => {
@@ -65,58 +79,96 @@ export function ChatInterface() {
 
   const handleSend = (content: string) => {
     sendMessage(content).catch((err: unknown) => {
-      // Error handling is done via store error state, but we can also log here
       console.error("SendMessage failed", err);
     });
   };
 
+  const handleFunctionSave = useCallback(
+    (savedId: string) => {
+      selectFunction(savedId);
+    },
+    [selectFunction],
+  );
+
+  useEffect(() => {
+    if (!features.functionCalling && platformView === "functions") {
+      setPlatformView("chat");
+    }
+  }, [platformView, setPlatformView]);
+
   return (
     <div className="bg-background flex h-svh flex-col md:flex-row">
-      <ConversationSidebar />
+      {platformView === "chat" ? <ConversationSidebar /> : <FunctionSidebar />}
 
       <div className="flex flex-1 flex-col overflow-hidden">
         <ChatHeader
+          platformView={platformView}
+          setPlatformView={setPlatformView}
+          showFunctionsView={features.functionCalling}
           isSidebarOpen={isSidebarOpen}
           toggleSidebar={toggleSidebar}
-          isChatSettingsOpen={isChatSettingsOpen}
-          toggleChatSettings={toggleChatSettings}
+          isSettingsOpen={isChatSettingsOpen}
+          toggleSettings={toggleChatSettings}
+          showSettingsToggle={platformView === "chat"}
         />
 
-        {conversation?.isTemporary && (
-          <div className="bg-muted/50 flex items-center justify-center gap-2 border-b py-1 text-xs text-amber-500">
-            <Zap className="h-3 w-3" />
-            <span className="font-medium">Temporary Chat</span>
-          </div>
+        {platformView === "chat" && (
+          <>
+            {conversation?.isTemporary && (
+              <div className="bg-muted/50 flex items-center justify-center gap-2 border-b py-1 text-xs text-amber-500">
+                <Zap className="h-3 w-3" />
+                <span className="font-medium">Temporary Chat</span>
+              </div>
+            )}
+
+            {!navigator.onLine && (
+              <div className="bg-destructive/10 text-destructive flex items-center justify-center gap-2 border-b py-1 text-xs">
+                <WifiOff className="h-3 w-3" />
+                <span className="font-medium">
+                  You are currently offline. Some features may not work.
+                </span>
+              </div>
+            )}
+          </>
         )}
 
-        {!navigator.onLine && (
-          <div className="bg-destructive/10 text-destructive flex items-center justify-center gap-2 border-b py-1 text-xs">
-            <WifiOff className="h-3 w-3" />
-            <span className="font-medium">
-              You are currently offline. Some features may not work.
-            </span>
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="flex min-h-0 flex-1 overflow-hidden">
+            {platformView === "chat" ? (
+              <div className="flex min-h-0 flex-1 overflow-hidden">
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                  <div className="flex-1 overflow-hidden">
+                    <MessageList
+                      messages={messages}
+                      isStreaming={isStreaming}
+                      className="h-full px-4"
+                    />
+                  </div>
+                  <ChatInput
+                    onSend={handleSend}
+                    disabled={isLoading || isStreaming}
+                    isStreaming={isStreaming}
+                    onStop={abortGeneration}
+                  />
+                </div>
+                <ChatSettings />
+              </div>
+            ) : (
+              <FunctionEditorProvider
+                key={selectedFunctionId ?? "__new__"}
+                initialValues={selectedFn}
+                onSave={handleFunctionSave}
+                onCancel={() => selectFunction(null)}
+              >
+                <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                  <FunctionEditorMain />
+                </div>
+              </FunctionEditorProvider>
+            )}
           </div>
-        )}
-
-        <div className="flex flex-1 overflow-hidden">
-          <div className="flex flex-1 flex-col overflow-hidden">
-            <div className="flex-1 overflow-hidden">
-              <MessageList
-                messages={messages}
-                isStreaming={isStreaming}
-                className="h-full px-4"
-              />
-            </div>
-            <ChatInput
-              onSend={handleSend}
-              disabled={isLoading || isStreaming}
-              isStreaming={isStreaming}
-              onStop={abortGeneration}
-            />
-          </div>
-          <ChatSettings />
         </div>
       </div>
+
       <SettingsModal />
     </div>
   );

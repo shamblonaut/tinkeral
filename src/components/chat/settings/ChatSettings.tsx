@@ -153,7 +153,7 @@ export function ChatSettings() {
   if (isDesktop) {
     if (!isChatSettingsOpen) return null;
     return (
-      <div className="bg-background flex h-full w-80 shrink-0 flex-col overflow-auto border-l transition-all duration-300 ease-in-out">
+      <div className="bg-background flex h-full min-h-0 w-80 shrink-0 flex-col border-l transition-all duration-300 ease-in-out">
         <div className="flex items-center justify-between border-b p-4">
           <h2 className="text-sm font-semibold">Chat Settings</h2>
           <Button
@@ -166,7 +166,7 @@ export function ChatSettings() {
             <span className="sr-only">Close settings</span>
           </Button>
         </div>
-        <ScrollArea className="flex-1">{Content}</ScrollArea>
+        <ScrollArea className="min-h-0 flex-1">{Content}</ScrollArea>
       </div>
     );
   }

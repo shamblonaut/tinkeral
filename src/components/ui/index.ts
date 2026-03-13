@@ -2,6 +2,7 @@
 export * from "./avatar";
 export * from "./button";
 export * from "./card";
+export * from "./checkbox";
 export * from "./command";
 export * from "./dialog";
 export * from "./drawer";
@@ -11,6 +12,7 @@ export * from "./item";
 export * from "./label";
 export * from "./popover";
 export * from "./scroll-area";
+export * from "./select";
 export * from "./separator";
 export * from "./sheet";
 export * from "./slider";

@@ -12,35 +12,10 @@ import {
 } from "react";
 
 import { cn } from "@/lib/utils";
+import type { CodeEditorHandle, CodeEditorProps } from "../types";
 
 // Lazy-loaded CodeMirror core — only fetched when CodeEditor mounts
 const LazyEditorInner = lazy(() => import("./CodeEditorInner"));
-
-export interface CodeEditorProps {
-  /** Initial document content */
-  value?: string;
-  /** Called whenever the document changes */
-  onChange?: (value: string) => void;
-  /** Called when the editor loses focus */
-  onBlur?: () => void;
-  /** Placeholder shown when editor is empty */
-  placeholder?: string;
-  /** Make the editor read-only */
-  readOnly?: boolean;
-  /** Additional CSS class names for the wrapper */
-  className?: string;
-  /** Minimum height in px (default: 150) */
-  minHeight?: number;
-  /** Maximum height in px (default: 400) */
-  maxHeight?: number;
-}
-
-export interface CodeEditorHandle {
-  /** Get the current document text */
-  getValue: () => string;
-  /** Focus the editor */
-  focus: () => void;
-}
 
 /**
  * A lazily-loaded CodeMirror 6 editor for JavaScript/TypeScript code.
@@ -72,16 +47,7 @@ export default CodeEditor;
 /** @internal Exported as the default from CodeEditorInner.tsx */
 export const CodeEditorInnerImpl = memo(
   forwardRef<CodeEditorHandle, CodeEditorProps>(function CodeEditorInner(
-    {
-      value = "",
-      onChange,
-      onBlur,
-      placeholder,
-      readOnly = false,
-      className,
-      minHeight = 150,
-      maxHeight = 400,
-    },
+    { value = "", onChange, onBlur, placeholder, readOnly = false, className },
     ref,
   ) {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -187,16 +153,7 @@ export const CodeEditorInnerImpl = memo(
             onBlur?.();
           }
         }}
-        className={cn(
-          "overflow-auto rounded-md border",
-          "bg-background text-foreground",
-          "focus-within:ring-ring focus-within:ring-2 focus-within:ring-offset-1",
-          className,
-        )}
-        style={{
-          minHeight: `${minHeight}px`,
-          maxHeight: `${maxHeight}px`,
-        }}
+        className={cn("bg-background text-foreground overflow-auto", className)}
       />
     );
   }),
@@ -211,7 +168,7 @@ function CodeEditorSkeleton({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        "flex items-center justify-center rounded-md border",
+        "flex items-center justify-center",
         "bg-muted/30 text-muted-foreground",
         className,
       )}
@@ -237,29 +194,67 @@ interface CompartmentRefs {
 
 async function loadCodeMirror() {
   const [
-    { basicSetup },
-    { EditorView },
+    {
+      EditorView,
+      crosshairCursor,
+      drawSelection,
+      dropCursor,
+      highlightActiveLine,
+      highlightActiveLineGutter,
+      highlightSpecialChars,
+      keymap,
+      lineNumbers,
+      placeholder: placeholderExt,
+    },
     { EditorState, Compartment },
+    { acceptCompletion, autocompletion, closeBrackets },
+    { defaultKeymap, history, historyKeymap },
+    { bracketMatching, defaultHighlightStyle, syntaxHighlighting },
     { javascript },
     { oneDark },
-    { placeholder: placeholderExt },
   ] = await Promise.all([
-    import("codemirror"),
     import("@codemirror/view"),
     import("@codemirror/state"),
+    import("@codemirror/autocomplete"),
+    import("@codemirror/commands"),
+    import("@codemirror/language"),
     import("@codemirror/lang-javascript"),
     import("@codemirror/theme-one-dark"),
-    import("@codemirror/view"),
   ]);
   return {
-    basicSetup,
     EditorView,
+    crosshairCursor,
+    drawSelection,
+    dropCursor,
+    highlightActiveLine,
+    highlightActiveLineGutter,
+    highlightSpecialChars,
+    keymap,
+    lineNumbers,
+    placeholderExt,
     EditorState,
     Compartment,
+    acceptCompletion,
+    autocompletion,
+    closeBrackets,
+    defaultKeymap,
+    history,
+    historyKeymap,
+    bracketMatching,
+    defaultHighlightStyle,
+    syntaxHighlighting,
     javascript,
     oneDark,
-    placeholderExt,
   };
+}
+
+let codeMirrorModulesPromise: ReturnType<typeof loadCodeMirror> | null = null;
+
+async function getCodeMirrorModules() {
+  if (!codeMirrorModulesPromise) {
+    codeMirrorModulesPromise = loadCodeMirror();
+  }
+  return codeMirrorModulesPromise;
 }
 
 interface CreateEditorOpts {
@@ -279,13 +274,33 @@ async function createEditor({
   placeholder,
   onUpdate,
 }: CreateEditorOpts) {
-  const cm = await loadCodeMirror();
+  const cm = await getCodeMirrorModules();
 
   const themeCompartment = new cm.Compartment();
   const readOnlyCompartment = new cm.Compartment();
 
   const extensions = [
-    cm.basicSetup,
+    cm.lineNumbers(),
+    cm.highlightActiveLineGutter(),
+    cm.highlightSpecialChars(),
+    cm.history(),
+    cm.drawSelection(),
+    cm.dropCursor(),
+    cm.EditorState.allowMultipleSelections.of(true),
+    cm.syntaxHighlighting(cm.defaultHighlightStyle, { fallback: true }),
+    cm.bracketMatching(),
+    cm.closeBrackets(),
+    cm.autocompletion(),
+    cm.highlightActiveLine(),
+    cm.crosshairCursor(),
+    cm.keymap.of([
+      {
+        key: "Tab",
+        run: cm.acceptCompletion,
+      },
+      ...cm.defaultKeymap,
+      ...cm.historyKeymap,
+    ]),
     cm.javascript({ jsx: true, typescript: true }),
     themeCompartment.of(isDark ? cm.oneDark : []),
     readOnlyCompartment.of(cm.EditorState.readOnly.of(readOnly)),
@@ -302,8 +317,7 @@ async function createEditor({
       },
       ".cm-scroller": {
         overflow: "auto",
-        fontFamily:
-          "ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace",
+        fontFamily: "'JetBrains Mono', Consolas, ui-monospace, monospace",
       },
       ".cm-gutters": {
         border: "none",
@@ -334,9 +348,9 @@ async function reconfigureTheme(
   compartments: CompartmentRefs,
   isDark: boolean,
 ) {
-  const { oneDark } = await import("@codemirror/theme-one-dark");
+  const cm = await getCodeMirrorModules();
   view.dispatch({
-    effects: compartments.theme.reconfigure(isDark ? oneDark : []),
+    effects: compartments.theme.reconfigure(isDark ? cm.oneDark : []),
   });
 }
 
@@ -345,10 +359,10 @@ async function reconfigureReadOnly(
   compartments: CompartmentRefs,
   readOnly: boolean,
 ) {
-  const { EditorState } = await import("@codemirror/state");
+  const cm = await getCodeMirrorModules();
   view.dispatch({
     effects: compartments.readOnly.reconfigure(
-      EditorState.readOnly.of(readOnly),
+      cm.EditorState.readOnly.of(readOnly),
     ),
   });
 }

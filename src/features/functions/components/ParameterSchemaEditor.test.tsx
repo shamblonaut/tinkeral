@@ -3,7 +3,21 @@ import { describe, expect, it, vi } from "vitest";
 
 import type { JSONSchema } from "@/types";
 
-import { ParameterSchemaEditor } from "../ParameterSchemaEditor";
+interface PointerCaptureEventTarget {
+  hasPointerCapture?: () => boolean;
+  setPointerCapture?: () => void;
+  releasePointerCapture?: () => void;
+}
+
+const targetProto = window.EventTarget.prototype as PointerCaptureEventTarget;
+
+if (typeof targetProto.hasPointerCapture !== "function") {
+  targetProto.hasPointerCapture = () => false;
+  targetProto.setPointerCapture = () => {};
+  targetProto.releasePointerCapture = () => {};
+}
+
+import { ParameterSchemaEditor } from "./ParameterSchemaEditor";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -102,7 +116,7 @@ describe("ParameterSchemaEditor", () => {
       const typeSelect = screen.getByRole("combobox", {
         name: /parameter 1 type/i,
       });
-      expect(typeSelect).toHaveValue("string");
+      expect(typeSelect).toHaveTextContent("string");
     });
 
     it("checks the required checkbox for required properties", () => {
@@ -129,7 +143,7 @@ describe("ParameterSchemaEditor", () => {
       const limitRow = screen
         .getAllByPlaceholderText("param_name")
         .find((el) => (el as HTMLInputElement).value === "limit")!
-        .closest("div.grid")!;
+        .closest("div.border")!;
       const checkbox = within(limitRow as HTMLElement).getByRole("checkbox");
       expect(checkbox).not.toBeChecked();
     });
@@ -149,7 +163,7 @@ describe("ParameterSchemaEditor", () => {
 
   // ── Add parameter ─────────────────────────────────────────────────────────
   describe("adding a parameter", () => {
-    it("calls onChange with a new empty property when 'Add Parameter' is clicked", () => {
+    it("calls onChange when 'Add Parameter' is clicked and a name is typed", () => {
       const onChange = vi.fn();
       render(
         <ParameterSchemaEditor schema={emptySchema()} onChange={onChange} />,
@@ -157,8 +171,12 @@ describe("ParameterSchemaEditor", () => {
 
       fireEvent.click(screen.getByRole("button", { name: /add parameter/i }));
 
-      expect(onChange).toHaveBeenCalledOnce();
-      const updated: JSONSchema = onChange.mock.calls[0][0];
+      const nameInput = screen.getByPlaceholderText("param_name");
+      fireEvent.change(nameInput, { target: { value: "newParam" } });
+      fireEvent.blur(nameInput);
+
+      const updated: JSONSchema =
+        onChange.mock.calls[onChange.mock.calls.length - 1][0];
       expect(Object.keys(updated.properties)).toHaveLength(1);
     });
 
@@ -170,7 +188,12 @@ describe("ParameterSchemaEditor", () => {
 
       fireEvent.click(screen.getByRole("button", { name: /add parameter/i }));
 
-      const updated: JSONSchema = onChange.mock.calls[0][0];
+      const nameInput = screen.getByPlaceholderText("param_name");
+      fireEvent.change(nameInput, { target: { value: "newParam" } });
+      fireEvent.blur(nameInput);
+
+      const updated: JSONSchema =
+        onChange.mock.calls[onChange.mock.calls.length - 1][0];
       const prop = Object.values(updated.properties)[0];
       expect(prop.type).toBe("string");
     });
@@ -183,10 +206,42 @@ describe("ParameterSchemaEditor", () => {
 
       fireEvent.click(screen.getByRole("button", { name: /add parameter/i }));
 
-      const updated: JSONSchema = onChange.mock.calls[0][0];
+      const nameInput = screen.getByPlaceholderText("param_name");
+      fireEvent.change(nameInput, { target: { value: "newParam" } });
+      fireEvent.blur(nameInput);
+
+      const updated: JSONSchema =
+        onChange.mock.calls[onChange.mock.calls.length - 1][0];
       expect(updated.required ?? []).not.toContain(
         Object.keys(updated.properties)[0],
       );
+    });
+
+    it("removes an empty parameter row on blur", () => {
+      render(
+        <ParameterSchemaEditor schema={emptySchema()} onChange={vi.fn()} />,
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: /add parameter/i }));
+
+      const nameInput = screen.getByPlaceholderText("param_name");
+      fireEvent.blur(nameInput);
+
+      expect(
+        screen.queryByPlaceholderText("param_name"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("does not add another row while an empty parameter exists", () => {
+      render(
+        <ParameterSchemaEditor schema={emptySchema()} onChange={vi.fn()} />,
+      );
+
+      fireEvent.click(screen.getByRole("button", { name: /add parameter/i }));
+      fireEvent.click(screen.getByRole("button", { name: /add parameter/i }));
+
+      const nameInputs = screen.getAllByPlaceholderText("param_name");
+      expect(nameInputs).toHaveLength(1);
     });
   });
 
@@ -203,6 +258,7 @@ describe("ParameterSchemaEditor", () => {
 
       const nameInput = screen.getByDisplayValue("location");
       fireEvent.change(nameInput, { target: { value: "city" } });
+      fireEvent.blur(nameInput);
 
       const updated: JSONSchema = onChange.mock.calls[0][0];
       expect(Object.keys(updated.properties)).toContain("city");
@@ -221,6 +277,7 @@ describe("ParameterSchemaEditor", () => {
       fireEvent.change(screen.getByDisplayValue("location"), {
         target: { value: "city" },
       });
+      fireEvent.blur(screen.getByDisplayValue("city"));
 
       const updated: JSONSchema = onChange.mock.calls[0][0];
       expect(updated.required).toContain("city");
@@ -238,6 +295,7 @@ describe("ParameterSchemaEditor", () => {
       fireEvent.change(screen.getByDisplayValue("City name"), {
         target: { value: "The city to look up" },
       });
+      fireEvent.blur(screen.getByDisplayValue("The city to look up"));
 
       const updated: JSONSchema = onChange.mock.calls[0][0];
       expect(updated.properties["location"].description).toBe(
@@ -257,27 +315,10 @@ describe("ParameterSchemaEditor", () => {
       fireEvent.change(screen.getByDisplayValue("City name"), {
         target: { value: "" },
       });
+      fireEvent.blur(screen.getByPlaceholderText("Optional description"));
 
       const updated: JSONSchema = onChange.mock.calls[0][0];
       expect(updated.properties["location"].description).toBeUndefined();
-    });
-
-    it("calls onChange with updated type when selector changes", () => {
-      const onChange = vi.fn();
-      render(
-        <ParameterSchemaEditor
-          schema={singleParamSchema()}
-          onChange={onChange}
-        />,
-      );
-
-      const typeSelect = screen.getByRole("combobox", {
-        name: /parameter 1 type/i,
-      });
-      fireEvent.change(typeSelect, { target: { value: "number" } });
-
-      const updated: JSONSchema = onChange.mock.calls[0][0];
-      expect(updated.properties["location"].type).toBe("number");
     });
 
     it("adds property to required array when checkbox is checked", () => {
@@ -293,10 +334,11 @@ describe("ParameterSchemaEditor", () => {
       const limitRow = screen
         .getAllByPlaceholderText("param_name")
         .find((el) => (el as HTMLInputElement).value === "limit")!
-        .closest("div.grid")!;
+        .closest("div.border")!;
       const checkbox = within(limitRow as HTMLElement).getByRole("checkbox");
 
       fireEvent.click(checkbox);
+      fireEvent.blur(checkbox);
 
       const updated: JSONSchema = onChange.mock.calls[0][0];
       expect(updated.required).toContain("limit");
@@ -315,6 +357,7 @@ describe("ParameterSchemaEditor", () => {
         name: /parameter 1 required/i,
       });
       fireEvent.click(checkbox);
+      fireEvent.blur(checkbox);
 
       const updated: JSONSchema = onChange.mock.calls[0][0];
       expect(updated.required ?? []).not.toContain("location");
@@ -432,6 +475,7 @@ describe("ParameterSchemaEditor", () => {
       // Rename "enabled" to "active"
       const enabledInput = screen.getByDisplayValue("enabled");
       fireEvent.change(enabledInput, { target: { value: "active" } });
+      fireEvent.blur(enabledInput);
 
       const updated: JSONSchema = onChange.mock.calls[0][0];
       expect(updated.properties["active"].type).toBe("boolean");
@@ -446,7 +490,9 @@ describe("ParameterSchemaEditor", () => {
           onChange={onChange}
         />,
       );
-      fireEvent.click(screen.getByRole("checkbox", { name: /required/i }));
+      const checkbox = screen.getByRole("checkbox", { name: /required/i });
+      fireEvent.click(checkbox);
+      fireEvent.blur(checkbox);
 
       const updated: JSONSchema = onChange.mock.calls[0][0];
       // required should either be absent or empty

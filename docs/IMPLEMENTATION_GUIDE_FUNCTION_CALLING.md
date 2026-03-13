@@ -197,19 +197,18 @@ src/components/chat/functions/CodeEditor.tsx
 
 **Tasks**:
 
-- [x] Create `src/components/chat/functions/FunctionForm.tsx`
-  - Name input (validated: `a-z`, `A-Z`, `0-9`, `_`, `.`, `-`, max 64 chars)
-  - Description textarea
-  - Parameter schema builder (visual JSON Schema editor)
-  - Implementation code editor (CodeMirror)
-  - Timeout setting
-- [x] Create `src/components/chat/functions/ParameterSchemaEditor.tsx`
-  - Add/remove parameters
-  - Set name, type (`string`, `number`, `boolean`, `array`, `object`), description
-  - Mark required/optional
-  - Nested object support (v1.1 stretch goal — keep flat for now)
-- [x] Validate form before save (name uniqueness, valid schema, syntax check on implementation)
-- [x] Connect to function store for create/update
+- [x] Create function editor flow under `src/features/functions/`:
+  - `FunctionEditorProvider` for draft state + validation + save/reset actions
+  - `FunctionEditorMain` for editor layout and save/reset controls
+  - `FunctionSettingsFields` for name/description/timeout controls
+  - `ParameterSchemaEditor` + `ParameterRow` for visual schema editing
+  - `CodeEditor` (CodeMirror) for implementation editing
+- [x] Support field validation and blur-based checks:
+  - Name format + uniqueness
+  - Parameter schema validity
+  - Implementation syntax validation on blur
+  - Timeout bounds validation
+- [x] Connect to function store for create/update persistence
 
 **Acceptance Criteria**:
 
@@ -224,8 +223,11 @@ src/components/chat/functions/CodeEditor.tsx
 **Files to Create**:
 
 ```
-src/components/chat/functions/FunctionForm.tsx
-src/components/chat/functions/ParameterSchemaEditor.tsx
+src/features/functions/providers/FunctionEditorProvider.tsx
+src/features/functions/components/FunctionEditorMain.tsx
+src/features/functions/components/FunctionSettingsFields.tsx
+src/features/functions/components/ParameterSchemaEditor.tsx
+src/features/functions/components/ParameterRow.tsx
 ```
 
 ---
@@ -234,17 +236,18 @@ src/components/chat/functions/ParameterSchemaEditor.tsx
 
 **Tasks**:
 
-- [ ] Create `src/components/chat/functions/FunctionList.tsx`
-  - Lists all saved functions with name, description, parameter count
-  - Edit button → opens FunctionForm in edit mode
-  - Delete button → confirmation dialog
-  - "New Function" button
-- [ ] Create `src/components/chat/functions/FunctionPanel.tsx`
-  - Container component for function management
-  - Tab or section within the chat settings area
-  - Responsive: side panel on desktop, sheet/drawer on mobile
-- [ ] Add "Functions" tab to `ChatSettings` or `SettingsModal`
-- [ ] Wire up to function store
+- [x] Create `FunctionSidebarList` with management actions:
+  - List all saved functions with name, description metadata, and parameter count
+  - Search/filter functions
+  - New Function action
+  - Rename, duplicate, and delete actions
+  - Bulk select + bulk delete with confirmation
+- [x] Create `FunctionSidebar` container for desktop/mobile sidebar behavior
+- [x] Add `Functions` platform toggle in `ChatHeader`
+- [x] Integrate in `ChatInterface`:
+  - `platformView = "functions"` shows function sidebar + function editor workflow
+  - `platformView = "chat"` preserves chat workflow
+- [x] Wire list/editor actions to function store and UI store (`selectedFunctionId`)
 
 **Acceptance Criteria**:
 
@@ -256,18 +259,22 @@ src/components/chat/functions/ParameterSchemaEditor.tsx
 
 **Estimated Time**: 2 days
 
-**Files to Create**:
+**Files Created**:
 
 ```
-src/components/chat/functions/FunctionList.tsx
-src/components/chat/functions/FunctionPanel.tsx
-src/components/chat/functions/index.ts
+src/features/functions/components/FunctionSidebar.tsx
+src/features/functions/components/FunctionSidebarList.tsx
+src/features/functions/components/FunctionEditorMain.tsx
+src/features/functions/providers/FunctionEditorProvider.tsx
 ```
 
-**Files to Modify**:
+**Files Modified**:
 
 ```
-src/components/chat/settings/ChatSettings.tsx    (add Functions tab/section)
+src/components/chat/layout/ChatHeader.tsx        (Functions toggle button)
+src/components/chat/layout/ChatInterface.tsx     (platform view integration)
+src/stores/ui.ts                                 (platform view + selected function state)
+src/config/features.ts                           (functionCalling: true)
 ```
 
 ---

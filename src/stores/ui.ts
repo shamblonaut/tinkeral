@@ -7,13 +7,19 @@ export interface Toast {
   message: string;
   duration?: number;
 }
+
+export type PlatformView = "chat" | "functions";
+
 interface UIState {
+  platformView: PlatformView;
   isSidebarOpen: boolean;
   isChatSettingsOpen: boolean;
   activeModal: string | null;
   toasts: Toast[];
 
-  // Actions
+  selectedFunctionId: string | null;
+
+  setPlatformView: (view: PlatformView) => void;
   toggleSidebar: () => void;
   setSidebarOpen: (isOpen: boolean) => void;
   toggleChatSettings: () => void;
@@ -22,16 +28,22 @@ interface UIState {
   closeModal: () => void;
   addToast: (toast: Omit<Toast, "id">) => void;
   removeToast: (id: string) => void;
+  selectFunction: (id: string | null) => void;
 }
 
 export const useUIStore = create<UIState>()(
   persist(
     (set, get) => ({
+      platformView: "chat",
       isSidebarOpen: true,
       isChatSettingsOpen:
         typeof window !== "undefined" ? window.innerWidth >= 768 : true,
       activeModal: null,
       toasts: [],
+
+      selectedFunctionId: null,
+
+      setPlatformView: (view: PlatformView) => set({ platformView: view }),
       toggleSidebar: () =>
         set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
       setSidebarOpen: (isOpen: boolean) => set({ isSidebarOpen: isOpen }),
@@ -58,10 +70,12 @@ export const useUIStore = create<UIState>()(
           toasts: state.toasts.filter((t) => t.id !== id),
         }));
       },
+      selectFunction: (id: string | null) => set({ selectedFunctionId: id }),
     }),
     {
       name: "ui-storage",
       partialize: (state) => ({
+        platformView: state.platformView,
         isSidebarOpen: state.isSidebarOpen,
       }),
     },

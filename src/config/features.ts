@@ -5,7 +5,7 @@
  * - `debugMode`: Enabled in development, disabled in production.
  */
 const features = {
-  functionCalling: false,
+  functionCalling: true,
   debugMode: import.meta.env.DEV,
 } as const;
 

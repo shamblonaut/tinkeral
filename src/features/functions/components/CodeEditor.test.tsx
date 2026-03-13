@@ -8,7 +8,7 @@ import React, {
 } from "react";
 import { describe, expect, it, vi } from "vitest";
 
-import type { CodeEditorHandle, CodeEditorProps } from "../CodeEditor";
+import type { CodeEditorHandle, CodeEditorProps } from "../types";
 
 // ---------------------------------------------------------------------------
 // Mocks
@@ -57,7 +57,7 @@ const lazyPromise = new Promise<{ default: typeof StubInner }>((resolve) => {
   resolveLazy = resolve;
 });
 
-vi.mock("../CodeEditorInner", () => lazyPromise);
+vi.mock("./CodeEditorInner", () => lazyPromise);
 
 vi.mock("next-themes", async (importOriginal) => {
   const actual = await importOriginal<typeof import("next-themes")>();
@@ -74,7 +74,7 @@ function Wrapper({ children }: { children: ReactNode }) {
 // ---------------------------------------------------------------------------
 // Re-import CodeEditor after mocks are in place
 // ---------------------------------------------------------------------------
-const { default: CodeEditor } = await import("../CodeEditor");
+const { default: CodeEditor } = await import("./CodeEditor");
 
 // ---------------------------------------------------------------------------
 // Tests

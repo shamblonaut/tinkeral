@@ -1,20 +1,29 @@
-import { PanelLeft, Settings2 } from "lucide-react";
+import { Braces, MessageSquareText, PanelLeft, Settings2 } from "lucide-react";
 
 import { Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
+import type { PlatformView } from "@/stores/ui";
 
 interface ChatHeaderProps {
+  platformView: PlatformView;
+  setPlatformView: (view: PlatformView) => void;
+  showFunctionsView?: boolean;
   isSidebarOpen: boolean;
   toggleSidebar: () => void;
-  isChatSettingsOpen: boolean;
-  toggleChatSettings: () => void;
+  isSettingsOpen: boolean;
+  toggleSettings: () => void;
+  showSettingsToggle?: boolean;
 }
 
 export function ChatHeader({
+  platformView,
+  setPlatformView,
+  showFunctionsView = true,
   isSidebarOpen,
   toggleSidebar,
-  isChatSettingsOpen,
-  toggleChatSettings,
+  isSettingsOpen,
+  toggleSettings,
+  showSettingsToggle = true,
 }: ChatHeaderProps) {
   return (
     <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b px-4">
@@ -35,20 +44,52 @@ export function ChatHeader({
           <span>🧩</span>
           <span className="text-2xl font-bold">Tinkeral</span>
         </h1>
+
+        <div className="bg-muted flex items-center gap-1 rounded-md p-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn(
+              "h-7 gap-1.5 px-2 text-xs",
+              platformView === "chat" && "bg-background text-foreground",
+            )}
+            onClick={() => setPlatformView("chat")}
+          >
+            <MessageSquareText className="h-3.5 w-3.5" />
+            Chat
+          </Button>
+          {showFunctionsView && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn(
+                "h-7 gap-1.5 px-2 text-xs",
+                platformView === "functions" && "bg-background text-foreground",
+              )}
+              onClick={() => setPlatformView("functions")}
+            >
+              <Braces className="h-3.5 w-3.5" />
+              Functions
+            </Button>
+          )}
+        </div>
       </div>
       <div className="flex items-center gap-2">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={toggleChatSettings}
-          className={cn(
-            "h-8 w-8",
-            isChatSettingsOpen && "bg-accent text-accent-foreground",
-          )}
-        >
-          <Settings2 className="h-4 w-4" />
-          <span className="sr-only">Toggle chat settings</span>
-        </Button>
+        {showSettingsToggle && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleSettings}
+            className={cn(
+              "h-8 w-8",
+              isSettingsOpen && "bg-accent text-accent-foreground",
+            )}
+            title="Toggle settings"
+          >
+            <Settings2 className="h-4 w-4" />
+            <span className="sr-only">Toggle settings</span>
+          </Button>
+        )}
       </div>
     </header>
   );
