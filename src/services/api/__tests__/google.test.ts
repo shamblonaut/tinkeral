@@ -280,14 +280,44 @@ describe("GoogleAPIClient", () => {
       expect(response.message.content).toBe("");
     });
 
-    it("chat should send function call/result messages as structured parts", async () => {
+    it("chat should capture both text and function call from a single candidate", async () => {
+      mocks.mockGenerateContent.mockResolvedValue({
+        text: "I am calling the tool.",
+        candidates: [
+          {
+            content: {
+              parts: [
+                { text: "I am calling the tool." },
+                {
+                  functionCall: {
+                    name: "get_weather",
+                    args: { city: "London" },
+                  },
+                },
+              ],
+            },
+            finishReason: "STOP",
+          },
+        ],
+      });
+
+      const response = await client.chat(mockRequest);
+
+      expect(response.message.content).toBe("I am calling the tool.");
+      expect(response.message.functionCall).toEqual({
+        name: "get_weather",
+        arguments: { city: "London" },
+      });
+    });
+
+    it("chat should send message content and function call/result as structured parts", async () => {
       const requestWithToolTurns: ChatRequest = {
         ...mockRequest,
         messages: [
           {
             id: "m1",
             role: "model",
-            content: "",
+            content: "I will check the weather for you.",
             timestamp: 1,
             functionCall: {
               name: "get_weather",
@@ -316,25 +346,59 @@ describe("GoogleAPIClient", () => {
           contents: [
             expect.objectContaining({
               role: "model",
-              parts: [
+              parts: expect.arrayContaining([
+                expect.objectContaining({
+                  text: "I will check the weather for you.",
+                }),
                 expect.objectContaining({
                   functionCall: expect.objectContaining({
                     name: "get_weather",
-                    args: { city: "Tokyo" },
                   }),
                 }),
-              ],
+              ]),
             }),
             expect.objectContaining({
               role: "user",
-              parts: [
+              parts: expect.arrayContaining([
                 expect.objectContaining({
                   functionResponse: expect.objectContaining({
                     name: "get_weather",
                   }),
                 }),
-              ],
+              ]),
             }),
+          ],
+        }),
+      );
+    });
+
+    it("should merge consecutive messages of the same role", async () => {
+      const requestWithConsecutiveRoles: ChatRequest = {
+        messages: [
+          { id: "1", role: "user", content: "Message 1", timestamp: 1 },
+          { id: "2", role: "user", content: "Message 2", timestamp: 2 },
+          { id: "3", role: "model", content: "Response 1", timestamp: 3 },
+          { id: "4", role: "model", content: "Response 2", timestamp: 4 },
+        ],
+        model: "gemini-pro",
+        parameters: DEFAULT_PARAMETERS,
+      };
+
+      mocks.mockGenerateContent.mockResolvedValue({ text: "ok" });
+
+      await client.chat(requestWithConsecutiveRoles);
+
+      expect(mocks.mockGenerateContent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          contents: [
+            {
+              role: "user",
+              parts: [{ text: "Message 1" }, { text: "Message 2" }],
+            },
+            {
+              role: "model",
+              parts: [{ text: "Response 1" }, { text: "Response 2" }],
+            },
           ],
         }),
       );

@@ -176,7 +176,7 @@ export class ChatService {
               {
                 id: crypto.randomUUID(),
                 role: "model",
-                content: "",
+                content: turnContent,
                 timestamp: Date.now(),
                 functionCall: turnFunctionCall,
                 metadata: {
@@ -201,7 +201,6 @@ export class ChatService {
 
         await onFinish(fullContent, lastMetadata);
       } catch (error) {
-        // Don't retry if aborted
         if (
           abortSignal?.aborted ||
           (error instanceof DOMException && error.name === "AbortError")
@@ -212,7 +211,6 @@ export class ChatService {
 
         const delay = rateLimiter.getRetryDelay(error);
         if (delay !== null) {
-          console.warn(`Chat attempt failed, retrying in ${delay}ms...`, error);
           await new Promise((resolve) => setTimeout(resolve, delay));
           return attempt();
         }

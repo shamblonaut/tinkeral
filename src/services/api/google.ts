@@ -335,37 +335,50 @@ export class GoogleAPIClient implements LLMProvider {
   }
 
   private mapMessagesToContent(messages: Message[]): Content[] {
-    return messages
-      .map((message) => {
-        const parts: NonNullable<Content["parts"]> = [];
+    const contents: Content[] = [];
 
-        if (message.functionCall?.name) {
-          parts.push({
-            functionCall: {
-              name: message.functionCall.name,
-              args: message.functionCall.arguments,
-            },
-          });
-        }
+    for (const message of messages) {
+      const role = message.role === "model" ? "model" : "user";
+      const parts: NonNullable<Content["parts"]> = [];
 
-        if (message.functionResult?.name) {
-          parts.push({
-            functionResponse: mapFunctionResultToGoogleResponse(
-              message.functionResult,
-            ),
-          });
-        }
+      if (message.content?.trim()) {
+        parts.push({ text: message.content });
+      }
 
-        if (!parts.length && message.content.trim()) {
-          parts.push({ text: message.content });
-        }
+      if (message.functionCall?.name) {
+        parts.push({
+          functionCall: {
+            name: message.functionCall.name,
+            args: message.functionCall.arguments,
+          },
+        });
+      }
 
-        return {
-          role: message.role === "model" ? "model" : "user",
+      if (message.functionResult?.name) {
+        parts.push({
+          functionResponse: mapFunctionResultToGoogleResponse(
+            message.functionResult,
+          ),
+        });
+      }
+
+      if (parts.length === 0) {
+        continue;
+      }
+
+      const lastContent = contents[contents.length - 1];
+      if (lastContent && lastContent.role === role && lastContent.parts) {
+        // Merge with last message if role is the same
+        lastContent.parts.push(...parts);
+      } else {
+        contents.push({
+          role,
           parts,
-        };
-      })
-      .filter((message) => message.parts.length > 0);
+        });
+      }
+    }
+
+    return contents;
   }
 
   private buildGenerateContentConfig(

@@ -28,7 +28,8 @@ interface FunctionCallDisplayProps {
 
 function safeFormatJson(value: unknown): string {
   try {
-    return JSON.stringify(value, null, 2);
+    const result = JSON.stringify(value, null, 2);
+    return result ?? String(value);
   } catch {
     return String(value);
   }
