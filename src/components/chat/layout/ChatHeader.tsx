@@ -28,8 +28,8 @@ export function ChatHeader({
   showSettingsToggle = true,
 }: ChatHeaderProps) {
   return (
-    <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b px-4">
-      <div className="flex items-center gap-4">
+    <header className="flex h-14 shrink-0 items-center justify-between gap-1 border-b px-3 md:gap-2 md:px-4">
+      <div className="flex items-center gap-2 md:gap-4">
         <Button
           variant="ghost"
           size="icon"
@@ -43,8 +43,8 @@ export function ChatHeader({
           <span className="sr-only">Toggle sidebar</span>
         </Button>
         <h1 className="flex items-center gap-2">
-          <span>🧩</span>
-          <span className="text-2xl font-bold">Tinkeral</span>
+          <span className="text-xl">🧩</span>
+          <span className="hidden text-2xl font-bold md:block">Tinkeral</span>
         </h1>
 
         <div className="bg-muted flex items-center gap-1 rounded-md p-1">
@@ -58,7 +58,7 @@ export function ChatHeader({
             onClick={() => setPlatformView("chat")}
           >
             <MessageSquareText className="h-3.5 w-3.5" />
-            Chat
+            <span className="hidden md:inline">Chat</span>
           </Button>
           {showFunctionsView && (
             <Button
@@ -71,7 +71,7 @@ export function ChatHeader({
               onClick={() => setPlatformView("functions")}
             >
               <Braces className="h-3.5 w-3.5" />
-              Functions
+              <span className="hidden md:inline">Functions</span>
             </Button>
           )}
         </div>
