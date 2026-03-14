@@ -168,6 +168,7 @@ export class ChatService {
               turnFunctionCall,
               functions,
               executor,
+              abortSignal,
             );
             await onFunctionResult?.(functionResult);
 
@@ -229,6 +230,7 @@ export class ChatService {
     functionCall: FunctionCall,
     functions: FunctionDefinition[] | undefined,
     executor: FunctionExecutor,
+    abortSignal?: AbortSignal,
   ): Promise<FunctionResult> {
     const functionDefinition = functions?.find(
       (func) => func.name === functionCall.name,
@@ -242,10 +244,38 @@ export class ChatService {
       };
     }
 
-    const execution = await executor.execute(
+    if (abortSignal?.aborted) {
+      executor.terminate();
+      throw new DOMException("Aborted", "AbortError");
+    }
+
+    const executionPromise = executor.execute(
       functionDefinition,
       functionCall.arguments,
     );
+
+    let execution: Awaited<typeof executionPromise>;
+    if (!abortSignal) {
+      execution = await executionPromise;
+    } else {
+      execution = await new Promise<Awaited<typeof executionPromise>>(
+        (resolve, reject) => {
+          const handleAbort = () => {
+            executor.terminate();
+            reject(new DOMException("Aborted", "AbortError"));
+          };
+
+          abortSignal.addEventListener("abort", handleAbort, { once: true });
+
+          executionPromise
+            .then(resolve)
+            .catch(reject)
+            .finally(() => {
+              abortSignal.removeEventListener("abort", handleAbort);
+            });
+        },
+      );
+    }
 
     if (!execution.success) {
       return {

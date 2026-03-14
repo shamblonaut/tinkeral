@@ -1,5 +1,5 @@
 import { ArrowDown } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Message } from "@/components/chat";
 import { ScrollArea } from "@/components/ui";
@@ -9,6 +9,17 @@ interface MessageListProps {
   messages: MessageType[];
   isStreaming: boolean;
   className?: string;
+}
+
+interface MessageRenderItem {
+  message: MessageType;
+  pairedFunctionResult?: MessageType["functionResult"];
+  functionCallStatus?:
+    | "requested"
+    | "executing"
+    | "completed"
+    | "failed"
+    | "cancelled";
 }
 
 export function MessageList({
@@ -72,6 +83,68 @@ export function MessageList({
     }
   };
 
+  const functionCallStatusByMessageId = useMemo(() => {
+    const statuses: Record<
+      string,
+      "requested" | "executing" | "completed" | "failed" | "cancelled"
+    > = {};
+
+    messages.forEach((message, index) => {
+      const functionCall = message.functionCall;
+      if (!functionCall) {
+        return;
+      }
+
+      const pairedResult = messages
+        .slice(index + 1)
+        .find(
+          (candidate) => candidate.functionResult?.name === functionCall.name,
+        )?.functionResult;
+
+      if (pairedResult) {
+        statuses[message.id] = pairedResult.error ? "failed" : "completed";
+        return;
+      }
+
+      statuses[message.id] = isStreaming ? "executing" : "cancelled";
+    });
+
+    return statuses;
+  }, [isStreaming, messages]);
+
+  const renderedMessages = useMemo(() => {
+    const items: MessageRenderItem[] = [];
+
+    for (let index = 0; index < messages.length; index += 1) {
+      const message = messages[index];
+
+      if (message.functionCall) {
+        const nextMessage = messages[index + 1];
+        const pairedFunctionResult =
+          nextMessage?.functionResult &&
+          nextMessage.functionResult.name === message.functionCall.name
+            ? nextMessage.functionResult
+            : undefined;
+
+        items.push({
+          message,
+          pairedFunctionResult,
+          functionCallStatus: functionCallStatusByMessageId[message.id],
+        });
+
+        if (pairedFunctionResult) {
+          index += 1;
+        }
+
+        continue;
+      }
+
+      items.push({ message });
+    }
+
+    return items;
+  }, [functionCallStatusByMessageId, messages]);
+
   if (messages.length === 0) {
     return (
       <div className="text-muted-foreground flex h-full flex-col items-center justify-center p-8 text-center">
@@ -88,11 +161,13 @@ export function MessageList({
     <div className="group relative flex h-full flex-1 flex-col overflow-hidden">
       <ScrollArea viewportRef={viewportRef} className={className}>
         <div ref={contentRef} className="flex flex-col py-4">
-          {messages.map((message, index) => (
+          {renderedMessages.map((item, index) => (
             <Message
-              key={message.id}
-              message={message}
-              isStreaming={isStreaming && index === messages.length - 1}
+              key={item.message.id}
+              message={item.message}
+              pairedFunctionResult={item.pairedFunctionResult}
+              isStreaming={isStreaming && index === renderedMessages.length - 1}
+              functionCallStatus={item.functionCallStatus}
             />
           ))}
         </div>

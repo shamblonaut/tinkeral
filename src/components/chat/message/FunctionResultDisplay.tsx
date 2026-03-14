@@ -3,6 +3,7 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronUp,
+  Clock3,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useMemo, useState } from "react";
@@ -30,6 +31,8 @@ export function FunctionResultDisplay({
   const { resolvedTheme } = useTheme();
   const [isExpanded, setIsExpanded] = useState(false);
   const hasError = Boolean(functionResult.error);
+  const isTimeout =
+    hasError && /timed out|timeout/i.test(functionResult.error || "");
   const formattedResult = useMemo(
     () => safeFormatJson(functionResult.result),
     [functionResult.result],
@@ -42,7 +45,7 @@ export function FunctionResultDisplay({
         "w-full rounded-xl border p-3 shadow-sm",
         hasError
           ? "border-destructive/40 bg-destructive/5"
-          : "border-primary/30 bg-primary/5",
+          : "border-primary/30 bg-primary/5 animate-in fade-in",
       )}
     >
       <div className="mb-2 flex items-center justify-between gap-2">
@@ -68,8 +71,14 @@ export function FunctionResultDisplay({
               : "bg-primary/10 text-primary",
           )}
         >
-          {hasError ? "Error" : "Success"}
+          {isTimeout ? "Timed out" : hasError ? "Error" : "Success"}
         </span>
+        {isTimeout && (
+          <span className="bg-destructive/10 text-destructive inline-flex items-center gap-1 rounded-md px-2 py-1">
+            <Clock3 className="h-3.5 w-3.5" />
+            Timeout
+          </span>
+        )}
         {typeof functionResult.executionTime === "number" && (
           <span className="bg-background border-border/60 rounded-md border px-2 py-1">
             {functionResult.executionTime.toFixed(0)} ms

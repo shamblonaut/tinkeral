@@ -597,11 +597,11 @@ src/components/chat/layout/ChatHeader.tsx        (add function indicator)
 
 **Tasks**:
 
-- [ ] Show "Executing function..." indicator during function execution
-- [ ] Show execution progress/status in the message area
-- [ ] Add "Cancel" button to abort function execution
-- [ ] Handle timeout visually (show timeout error inline)
-- [ ] Animate function call → execution → result flow
+- [x] Show "Executing function..." indicator during function execution
+- [x] Show execution progress/status in the message area
+- [x] Add "Cancel" button to abort function execution
+- [x] Handle timeout visually (show timeout error inline)
+- [x] Animate function call → execution → result flow
 
 **Acceptance Criteria**:
 

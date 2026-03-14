@@ -28,11 +28,20 @@ import type { Message as MessageType } from "@/types";
 interface MessageProps {
   message: MessageType;
   isStreaming?: boolean;
+  pairedFunctionResult?: MessageType["functionResult"];
+  functionCallStatus?:
+    | "requested"
+    | "executing"
+    | "completed"
+    | "failed"
+    | "cancelled";
 }
 
 export const Message = memo(function Message({
   message,
   isStreaming,
+  pairedFunctionResult,
+  functionCallStatus,
 }: MessageProps) {
   const isFunctionCallMessage = Boolean(message.functionCall);
   const isFunctionResultMessage = Boolean(message.functionResult);
@@ -45,7 +54,8 @@ export const Message = memo(function Message({
   const [editContent, setEditContent] = useState(message.content);
   const [isCopied, setIsCopied] = useState(false);
 
-  const { deleteMessage, retryMessage, editMessage } = useConversationStore();
+  const { deleteMessage, retryMessage, editMessage, abortGeneration } =
+    useConversationStore();
 
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(message.content);
@@ -168,7 +178,14 @@ export const Message = memo(function Message({
         </div>
 
         {message.functionCall ? (
-          <FunctionCallDisplay functionCall={message.functionCall} />
+          <FunctionCallDisplay
+            functionCall={message.functionCall}
+            functionResult={pairedFunctionResult}
+            status={functionCallStatus}
+            onCancel={
+              functionCallStatus === "executing" ? abortGeneration : undefined
+            }
+          />
         ) : message.functionResult ? (
           <FunctionResultDisplay functionResult={message.functionResult} />
         ) : (
