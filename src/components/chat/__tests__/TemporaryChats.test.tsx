@@ -149,7 +149,7 @@ describe("Temporary Chats", () => {
       mockModels.length,
     );
 
-    const combo = screen.getByRole("combobox");
+    const combo = screen.getAllByRole("combobox")[0];
     const click1 = user.click(combo);
     await act(async () => {
       await vi.runAllTimersAsync();
@@ -228,7 +228,7 @@ describe("Temporary Chats", () => {
       mockModels.length,
     );
 
-    const combo = screen.getByRole("combobox");
+    const combo = screen.getAllByRole("combobox")[0];
     const click1 = user.click(combo);
     await act(async () => {
       await vi.runAllTimersAsync();

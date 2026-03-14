@@ -197,7 +197,7 @@ describe("ChatSlice", () => {
   });
 
   it("should abort generation", async () => {
-    let resolveStream: () => void = () => { };
+    let resolveStream: () => void = () => {};
     const streamTrigger = new Promise<void>((r) => {
       resolveStream = r;
     });
@@ -267,28 +267,28 @@ describe("ChatSlice", () => {
       conversations: s.conversations.map((c) =>
         c.id === id
           ? {
-            ...c,
-            messages: [
-              {
-                id: "msg-1",
-                role: "user" as const,
-                content: "Hi",
-                timestamp: 1,
-              },
-              {
-                id: "msg-2",
-                role: "model" as const,
-                content: "Hello",
-                timestamp: 2,
-              },
-              {
-                id: "msg-3",
-                role: "user" as const,
-                content: "How are you?",
-                timestamp: 3,
-              },
-            ],
-          }
+              ...c,
+              messages: [
+                {
+                  id: "msg-1",
+                  role: "user" as const,
+                  content: "Hi",
+                  timestamp: 1,
+                },
+                {
+                  id: "msg-2",
+                  role: "model" as const,
+                  content: "Hello",
+                  timestamp: 2,
+                },
+                {
+                  id: "msg-3",
+                  role: "user" as const,
+                  content: "How are you?",
+                  timestamp: 3,
+                },
+              ],
+            }
           : c,
       ),
     }));
@@ -337,22 +337,22 @@ describe("ChatSlice", () => {
       conversations: s.conversations.map((c) =>
         c.id === id
           ? {
-            ...c,
-            messages: [
-              {
-                id: "msg-1",
-                role: "user" as const,
-                content: "Hi",
-                timestamp: 1,
-              },
-              {
-                id: "msg-2",
-                role: "model" as const,
-                content: "Hello",
-                timestamp: 2,
-              },
-            ],
-          }
+              ...c,
+              messages: [
+                {
+                  id: "msg-1",
+                  role: "user" as const,
+                  content: "Hi",
+                  timestamp: 1,
+                },
+                {
+                  id: "msg-2",
+                  role: "model" as const,
+                  content: "Hello",
+                  timestamp: 2,
+                },
+              ],
+            }
           : c,
       ),
     }));
@@ -398,22 +398,22 @@ describe("ChatSlice", () => {
       conversations: s.conversations.map((c) =>
         c.id === id
           ? {
-            ...c,
-            messages: [
-              {
-                id: "msg-1",
-                role: "user" as const,
-                content: "Hi",
-                timestamp: 1,
-              },
-              {
-                id: "msg-2",
-                role: "model" as const,
-                content: "Hello",
-                timestamp: 2,
-              },
-            ],
-          }
+              ...c,
+              messages: [
+                {
+                  id: "msg-1",
+                  role: "user" as const,
+                  content: "Hi",
+                  timestamp: 1,
+                },
+                {
+                  id: "msg-2",
+                  role: "model" as const,
+                  content: "Hello",
+                  timestamp: 2,
+                },
+              ],
+            }
           : c,
       ),
     }));
@@ -467,22 +467,22 @@ describe("ChatSlice", () => {
       conversations: s.conversations.map((c) =>
         c.id === id
           ? {
-            ...c,
-            messages: [
-              {
-                id: "msg-1",
-                role: "user" as const,
-                content: "Hi",
-                timestamp: 1,
-              },
-              {
-                id: "msg-2",
-                role: "model" as const,
-                content: "Hello",
-                timestamp: 2,
-              },
-            ],
-          }
+              ...c,
+              messages: [
+                {
+                  id: "msg-1",
+                  role: "user" as const,
+                  content: "Hi",
+                  timestamp: 1,
+                },
+                {
+                  id: "msg-2",
+                  role: "model" as const,
+                  content: "Hello",
+                  timestamp: 2,
+                },
+              ],
+            }
           : c,
       ),
     }));
@@ -612,28 +612,28 @@ describe("ChatSlice", () => {
       conversations: s.conversations.map((c) =>
         c.id === id
           ? {
-            ...c,
-            messages: [
-              {
-                id: "m1",
-                role: "user" as const,
-                content: "Hi",
-                timestamp: 1,
-              },
-              {
-                id: "m2",
-                role: "model" as const,
-                content: "Hello",
-                timestamp: 2,
-              },
-              {
-                id: "m3",
-                role: "user" as const,
-                content: "More",
-                timestamp: 3,
-              },
-            ],
-          }
+              ...c,
+              messages: [
+                {
+                  id: "m1",
+                  role: "user" as const,
+                  content: "Hi",
+                  timestamp: 1,
+                },
+                {
+                  id: "m2",
+                  role: "model" as const,
+                  content: "Hello",
+                  timestamp: 2,
+                },
+                {
+                  id: "m3",
+                  role: "user" as const,
+                  content: "More",
+                  timestamp: 3,
+                },
+              ],
+            }
           : c,
       ),
     }));
@@ -706,28 +706,28 @@ describe("ChatSlice", () => {
       conversations: s.conversations.map((c) =>
         c.id === id
           ? {
-            ...c,
-            messages: [
-              {
-                id: "m1",
-                role: "user" as const,
-                content: "First",
-                timestamp: 1,
-              },
-              {
-                id: "m2",
-                role: "model" as const,
-                content: "Original",
-                timestamp: 2,
-              },
-              {
-                id: "m3",
-                role: "user" as const,
-                content: "Third",
-                timestamp: 3,
-              },
-            ],
-          }
+              ...c,
+              messages: [
+                {
+                  id: "m1",
+                  role: "user" as const,
+                  content: "First",
+                  timestamp: 1,
+                },
+                {
+                  id: "m2",
+                  role: "model" as const,
+                  content: "Original",
+                  timestamp: 2,
+                },
+                {
+                  id: "m3",
+                  role: "user" as const,
+                  content: "Third",
+                  timestamp: 3,
+                },
+              ],
+            }
           : c,
       ),
     }));

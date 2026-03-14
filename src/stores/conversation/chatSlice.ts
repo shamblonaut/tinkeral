@@ -8,6 +8,7 @@ import { useSettingsStore } from "@/stores";
 import {
   DEFAULT_PARAMETERS,
   type FunctionCall,
+  type FunctionCallingMode,
   type FunctionDefinition,
   type FunctionResult,
   type Message,
@@ -25,7 +26,9 @@ function insertBeforeMessageById(
   referenceMessageId: string,
   messageToInsert: Message,
 ): Message[] {
-  const index = messages.findIndex((message) => message.id === referenceMessageId);
+  const index = messages.findIndex(
+    (message) => message.id === referenceMessageId,
+  );
   if (index === -1) {
     return [...messages, messageToInsert];
   }
@@ -197,7 +200,10 @@ export const createChatSlice: StateCreator<
           systemPrompt: conversation.systemPrompt,
           apiKey,
           ...(attachedFunctions.length
-            ? { functions: attachedFunctions }
+            ? {
+                functions: attachedFunctions,
+                functionCallingMode: conversation.functionCallingMode,
+              }
             : {}),
         },
         {
@@ -206,11 +212,11 @@ export const createChatSlice: StateCreator<
               conversations: state.conversations.map((c) =>
                 c.id === conversationId
                   ? {
-                    ...c,
-                    messages: c.messages.map((m) =>
-                      m.id === assistantMessageId ? { ...m, content } : m,
-                    ),
-                  }
+                      ...c,
+                      messages: c.messages.map((m) =>
+                        m.id === assistantMessageId ? { ...m, content } : m,
+                      ),
+                    }
                   : c,
               ),
             }));
@@ -232,13 +238,13 @@ export const createChatSlice: StateCreator<
               conversations: state.conversations.map((currentConversation) =>
                 currentConversation.id === conversationId
                   ? {
-                    ...currentConversation,
-                    messages: insertBeforeMessageById(
-                      currentConversation.messages,
-                      assistantMessageId!,
-                      functionCallMessage,
-                    ),
-                  }
+                      ...currentConversation,
+                      messages: insertBeforeMessageById(
+                        currentConversation.messages,
+                        assistantMessageId!,
+                        functionCallMessage,
+                      ),
+                    }
                   : currentConversation,
               ),
             }));
@@ -256,13 +262,13 @@ export const createChatSlice: StateCreator<
               conversations: state.conversations.map((currentConversation) =>
                 currentConversation.id === conversationId
                   ? {
-                    ...currentConversation,
-                    messages: insertBeforeMessageById(
-                      currentConversation.messages,
-                      assistantMessageId!,
-                      functionResultMessage,
-                    ),
-                  }
+                      ...currentConversation,
+                      messages: insertBeforeMessageById(
+                        currentConversation.messages,
+                        assistantMessageId!,
+                        functionResultMessage,
+                      ),
+                    }
                   : currentConversation,
               ),
             }));
@@ -302,13 +308,13 @@ export const createChatSlice: StateCreator<
                 conversations: state.conversations.map((c) =>
                   c.id === conversationId
                     ? {
-                      ...c,
-                      messages: updatedMessages,
-                      metadata: {
-                        ...c.metadata,
-                        totalTokens: lastMetadata.usage?.totalTokens,
-                      },
-                    }
+                        ...c,
+                        messages: updatedMessages,
+                        metadata: {
+                          ...c.metadata,
+                          totalTokens: lastMetadata.usage?.totalTokens,
+                        },
+                      }
                     : c,
                 ),
                 isLoading: false,
@@ -348,13 +354,13 @@ export const createChatSlice: StateCreator<
                 conversations: state.conversations.map((c) =>
                   c.id === conversationId
                     ? {
-                      ...c,
-                      messages: c.messages.map((m) =>
-                        m.id === assistantMessageId
-                          ? { ...m, content: partialContent }
-                          : m,
-                      ),
-                    }
+                        ...c,
+                        messages: c.messages.map((m) =>
+                          m.id === assistantMessageId
+                            ? { ...m, content: partialContent }
+                            : m,
+                        ),
+                      }
                     : c,
                 ),
               }));
@@ -617,6 +623,77 @@ export const createChatSlice: StateCreator<
     );
     if (finalConv) {
       await PersistenceService.updateConversation(finalConv);
+    }
+  },
+
+  toggleFunctionAttachment: async (functionId: string) => {
+    const { activeConversationId } = get();
+    if (!activeConversationId) return;
+
+    set((state) => {
+      const currentConv = state.conversations.find(
+        (c) => c.id === activeConversationId,
+      );
+      if (!currentConv) return {};
+
+      const currentFunctionIds = currentConv.functionIds || [];
+      const nextFunctionIds = currentFunctionIds.includes(functionId)
+        ? currentFunctionIds.filter((id) => id !== functionId)
+        : [...currentFunctionIds, functionId];
+
+      const updatedConv = {
+        ...currentConv,
+        functionIds: nextFunctionIds,
+        updatedAt: Date.now(),
+      };
+
+      return {
+        conversations: state.conversations.map((c) =>
+          c.id === activeConversationId ? updatedConv : c,
+        ),
+      };
+    });
+
+    const finalConv = get().conversations.find(
+      (c) => c.id === activeConversationId,
+    );
+    if (finalConv) {
+      await PersistenceService.updateConversation(finalConv, {
+        functionIds: finalConv.functionIds,
+      });
+    }
+  },
+
+  setFunctionCallingMode: async (mode: FunctionCallingMode) => {
+    const { activeConversationId } = get();
+    if (!activeConversationId) return;
+
+    set((state) => {
+      const currentConv = state.conversations.find(
+        (c) => c.id === activeConversationId,
+      );
+      if (!currentConv) return {};
+
+      const updatedConv = {
+        ...currentConv,
+        functionCallingMode: mode,
+        updatedAt: Date.now(),
+      };
+
+      return {
+        conversations: state.conversations.map((c) =>
+          c.id === activeConversationId ? updatedConv : c,
+        ),
+      };
+    });
+
+    const finalConv = get().conversations.find(
+      (c) => c.id === activeConversationId,
+    );
+    if (finalConv) {
+      await PersistenceService.updateConversation(finalConv, {
+        functionCallingMode: finalConv.functionCallingMode,
+      });
     }
   },
 });

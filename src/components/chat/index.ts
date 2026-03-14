@@ -21,6 +21,9 @@ export * from "./message/MessageContent";
 export * from "./message/MessageList";
 export * from "./message/TokenUsageDisplay";
 
+// functions
+export * from "./functions/FunctionAttachmentBar";
+
 // layout
 export * from "./layout/ChatHeader";
 export * from "./layout/ChatInterface";

@@ -1,4 +1,5 @@
 import { RotateCcw, X } from "lucide-react";
+import { useEffect } from "react";
 
 import {
   ModelSelector,
@@ -7,16 +8,25 @@ import {
 } from "@/components/chat";
 import {
   Button,
+  Checkbox,
   Drawer,
   DrawerContent,
   DrawerDescription,
   DrawerHeader,
   DrawerTitle,
   ScrollArea,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui";
+import features from "@/config/features";
 import { useMediaQuery } from "@/hooks";
 import { getModelDefaultParameters } from "@/lib/models";
 import { useConversationStore, useUIStore } from "@/stores";
+import { useFunctionsStore } from "@/stores/functions";
+import type { FunctionCallingMode } from "@/types";
 import { DEFAULT_PARAMETERS } from "@/types";
 
 export function ChatSettings() {
@@ -47,8 +57,32 @@ export function ChatSettings() {
   const setSystemPrompt = useConversationStore(
     (state) => state.setSystemPrompt,
   );
+  const toggleFunctionAttachment = useConversationStore(
+    (state) => state.toggleFunctionAttachment,
+  );
+  const setFunctionCallingMode = useConversationStore(
+    (state) => state.setFunctionCallingMode,
+  );
+  const {
+    functions,
+    loadFunctions,
+    isLoading: isLoadingFunctions,
+  } = useFunctionsStore();
+  const setPlatformView = useUIStore((state) => state.setPlatformView);
+  const selectFunction = useUIStore((state) => state.selectFunction);
+
+  useEffect(() => {
+    if (features.functionCalling) {
+      void loadFunctions();
+    }
+  }, [loadFunctions]);
 
   const maxOutputTokens = activeModel?.contextWindow.output || 8192;
+  const supportsFunctionCalling =
+    activeModel?.capabilities.functionCalling ?? false;
+  const attachedFunctionIds = conversation?.functionIds || [];
+  const functionCallingMode: FunctionCallingMode =
+    conversation?.functionCallingMode || "AUTO";
 
   const handleParamChange = (key: string, value: number) => {
     setParameters({ [key]: value });
@@ -147,6 +181,104 @@ export function ChatSettings() {
           disabled={isDisabled}
         />
       </div>
+
+      {features.functionCalling && (
+        <>
+          <div className="bg-border h-px" />
+
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-muted-foreground text-sm font-semibold tracking-wider uppercase">
+                Functions
+              </h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => {
+                  selectFunction(null);
+                  setPlatformView("functions");
+                }}
+              >
+                New
+              </Button>
+            </div>
+
+            <div className="space-y-2">
+              <label
+                htmlFor="function-calling-mode"
+                className="text-muted-foreground text-xs font-medium"
+              >
+                Function Calling Mode
+              </label>
+              <Select
+                value={functionCallingMode}
+                onValueChange={(value) =>
+                  void setFunctionCallingMode(value as FunctionCallingMode)
+                }
+                disabled={isDisabled || !supportsFunctionCalling}
+              >
+                <SelectTrigger id="function-calling-mode" className="w-full">
+                  <SelectValue placeholder="Select mode" />
+                </SelectTrigger>
+                <SelectContent align="end">
+                  <SelectItem value="AUTO">Auto</SelectItem>
+                  <SelectItem value="ANY">Required</SelectItem>
+                  <SelectItem value="NONE">None</SelectItem>
+                </SelectContent>
+              </Select>
+              {!supportsFunctionCalling && (
+                <p className="text-muted-foreground text-xs">
+                  The selected model does not support function calling.
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-muted-foreground text-xs font-medium">
+                Attached Functions
+              </p>
+
+              <div className="max-h-56 space-y-2 overflow-auto rounded-md border p-2">
+                {isLoadingFunctions ? (
+                  <p className="text-muted-foreground text-xs">Loading…</p>
+                ) : functions.length === 0 ? (
+                  <p className="text-muted-foreground text-xs">
+                    No functions available yet.
+                  </p>
+                ) : (
+                  functions.map((fn) => {
+                    const isChecked = attachedFunctionIds.includes(fn.id);
+                    return (
+                      <label
+                        key={fn.id}
+                        className="hover:bg-muted/60 flex cursor-pointer items-start gap-2 rounded px-2 py-1.5"
+                      >
+                        <Checkbox
+                          checked={isChecked}
+                          onCheckedChange={() =>
+                            void toggleFunctionAttachment(fn.id)
+                          }
+                          disabled={isDisabled || !supportsFunctionCalling}
+                          className="mt-0.5"
+                        />
+                        <span className="min-w-0 text-xs">
+                          <span className="block truncate font-medium">
+                            {fn.name}
+                          </span>
+                          <span className="text-muted-foreground block truncate text-[10px]">
+                            {fn.description || "No description"}
+                          </span>
+                        </span>
+                      </label>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 

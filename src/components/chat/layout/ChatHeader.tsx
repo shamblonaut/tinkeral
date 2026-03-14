@@ -8,6 +8,7 @@ interface ChatHeaderProps {
   platformView: PlatformView;
   setPlatformView: (view: PlatformView) => void;
   showFunctionsView?: boolean;
+  attachedFunctionCount?: number;
   isSidebarOpen: boolean;
   toggleSidebar: () => void;
   isSettingsOpen: boolean;
@@ -19,6 +20,7 @@ export function ChatHeader({
   platformView,
   setPlatformView,
   showFunctionsView = true,
+  attachedFunctionCount = 0,
   isSidebarOpen,
   toggleSidebar,
   isSettingsOpen,
@@ -75,6 +77,12 @@ export function ChatHeader({
         </div>
       </div>
       <div className="flex items-center gap-2">
+        {showFunctionsView && platformView === "chat" && (
+          <div className="text-muted-foreground flex items-center gap-1 rounded-md border px-2 py-1 text-xs">
+            <Braces className="h-3.5 w-3.5" />
+            <span>{attachedFunctionCount}</span>
+          </div>
+        )}
         {showSettingsToggle && (
           <Button
             variant="ghost"

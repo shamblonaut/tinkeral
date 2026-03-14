@@ -558,16 +558,16 @@ src/components/chat/message/Message.tsx     (render new display components)
 
 **Tasks**:
 
-- [ ] Create `src/components/chat/functions/FunctionAttachmentBar.tsx`
+- [x] Create `src/components/chat/functions/FunctionAttachmentBar.tsx`
   - Shows which functions are attached to the current conversation
   - Toggle functions on/off per conversation
   - Quick link to create new function
   - Badge count in chat header
-- [ ] Add function attachment controls to `ChatSettings` panel
+- [x] Add function attachment controls to `ChatSettings` panel
   - Checklist of available functions to attach
   - Function calling mode selector (`Auto`, `Required`, `None`)
-- [ ] Update `ChatHeader` to show function count indicator
-- [ ] Connect to conversation store (function IDs per conversation)
+- [x] Update `ChatHeader` to show function count indicator
+- [x] Connect to conversation store (function IDs per conversation)
 
 **Acceptance Criteria**:
 

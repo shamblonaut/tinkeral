@@ -1,8 +1,8 @@
 import {
   ApiError,
   FinishReason as APIFinishReason,
-  type FunctionCall as APIFunctionCall,
   GoogleGenAI,
+  type FunctionCall as APIFunctionCall,
   type Content,
   type GenerateContentConfig,
   type GenerateContentResponse,
@@ -140,13 +140,13 @@ export class GoogleAPIClient implements LLMProvider {
                 finishReason,
                 usage: response.usageMetadata
                   ? {
-                    inputTokens: response.usageMetadata.promptTokenCount,
-                    outputTokens: response.usageMetadata.candidatesTokenCount,
-                    totalTokens: response.usageMetadata.totalTokenCount,
-                    thinkingTokens: response.usageMetadata.thoughtsTokenCount,
-                    cachedTokens:
-                      response.usageMetadata.cachedContentTokenCount,
-                  }
+                      inputTokens: response.usageMetadata.promptTokenCount,
+                      outputTokens: response.usageMetadata.candidatesTokenCount,
+                      totalTokens: response.usageMetadata.totalTokenCount,
+                      thinkingTokens: response.usageMetadata.thoughtsTokenCount,
+                      cachedTokens:
+                        response.usageMetadata.cachedContentTokenCount,
+                    }
                   : undefined,
               },
             },
@@ -183,15 +183,15 @@ export class GoogleAPIClient implements LLMProvider {
             finishReason,
             usage: response.usageMetadata
               ? {
-                inputTokens: response.usageMetadata.promptTokenCount || 0,
-                outputTokens:
-                  response.usageMetadata.candidatesTokenCount || 0,
-                totalTokens: response.usageMetadata.totalTokenCount || 0,
-                thinkingTokens:
-                  response.usageMetadata.thoughtsTokenCount || 0,
-                cachedTokens:
-                  response.usageMetadata.cachedContentTokenCount || 0,
-              }
+                  inputTokens: response.usageMetadata.promptTokenCount || 0,
+                  outputTokens:
+                    response.usageMetadata.candidatesTokenCount || 0,
+                  totalTokens: response.usageMetadata.totalTokenCount || 0,
+                  thinkingTokens:
+                    response.usageMetadata.thoughtsTokenCount || 0,
+                  cachedTokens:
+                    response.usageMetadata.cachedContentTokenCount || 0,
+                }
               : undefined,
           },
         },
@@ -238,12 +238,12 @@ export class GoogleAPIClient implements LLMProvider {
           functionCall,
           usage: chunk.usageMetadata
             ? {
-              inputTokens: chunk.usageMetadata.promptTokenCount || 0,
-              outputTokens: chunk.usageMetadata.candidatesTokenCount || 0,
-              totalTokens: chunk.usageMetadata.totalTokenCount || 0,
-              thinkingTokens: chunk.usageMetadata.thoughtsTokenCount || 0,
-              cachedTokens: chunk.usageMetadata.cachedContentTokenCount || 0,
-            }
+                inputTokens: chunk.usageMetadata.promptTokenCount || 0,
+                outputTokens: chunk.usageMetadata.candidatesTokenCount || 0,
+                totalTokens: chunk.usageMetadata.totalTokenCount || 0,
+                thinkingTokens: chunk.usageMetadata.thoughtsTokenCount || 0,
+                cachedTokens: chunk.usageMetadata.cachedContentTokenCount || 0,
+              }
             : undefined,
         };
       }
@@ -442,7 +442,7 @@ export class GoogleAPIClient implements LLMProvider {
     }
 
     return response.candidates?.[0]?.content?.parts?.find((part) =>
-      Boolean(part.functionCall)
+      Boolean(part.functionCall),
     )?.functionCall;
   }
 

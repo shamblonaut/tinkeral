@@ -1,6 +1,7 @@
 import type { ProviderError } from "@/services/api/base";
 import type {
   Conversation,
+  FunctionCallingMode,
   Message,
   ModelInfo,
   ModelParameters,
@@ -52,6 +53,8 @@ export interface ConversationChatState {
     mode?: "merge" | "replace",
   ) => Promise<void>;
   setSystemPrompt: (systemPrompt: string) => Promise<void>;
+  toggleFunctionAttachment: (functionId: string) => Promise<void>;
+  setFunctionCallingMode: (mode: FunctionCallingMode) => Promise<void>;
 }
 
 export interface ConversationSearchState {

@@ -1,4 +1,5 @@
 import type {
+  FunctionCallingMode,
   JSONSchema,
   Message,
   ModelParameters,
@@ -22,6 +23,7 @@ export interface Conversation {
   isTemporary?: boolean;
   draft?: string;
   functionIds?: string[];
+  functionCallingMode?: FunctionCallingMode;
 }
 
 export interface AppSettings {

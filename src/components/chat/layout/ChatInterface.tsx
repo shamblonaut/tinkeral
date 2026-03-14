@@ -7,6 +7,7 @@ import {
   ChatInput,
   ChatSettings,
   ConversationSidebar,
+  FunctionAttachmentBar,
   MessageList,
 } from "@/components/chat";
 import { SettingsModal } from "@/components/chat/settings/SettingsModal";
@@ -46,6 +47,7 @@ export function ChatInterface() {
     (c: { id: string }) => c.id === activeConversationId,
   );
   const messages = conversation?.messages || [];
+  const attachedFunctionCount = conversation?.functionIds?.length || 0;
 
   const selectedFn = useFunctionsStore((state) =>
     selectedFunctionId
@@ -105,6 +107,7 @@ export function ChatInterface() {
           platformView={platformView}
           setPlatformView={setPlatformView}
           showFunctionsView={features.functionCalling}
+          attachedFunctionCount={attachedFunctionCount}
           isSidebarOpen={isSidebarOpen}
           toggleSidebar={toggleSidebar}
           isSettingsOpen={isChatSettingsOpen}
@@ -129,6 +132,8 @@ export function ChatInterface() {
                 </span>
               </div>
             )}
+
+            {features.functionCalling && <FunctionAttachmentBar />}
           </>
         )}
 

@@ -35,9 +35,7 @@ export interface ChatCallbacks {
   onFinish: (finalContent: string, metadata: ChatMetadata) => void;
   onError: (error: string | ProviderError, partialContent?: string) => void;
   onFunctionCall?: (functionCall: FunctionCall) => void | Promise<void>;
-  onFunctionResult?: (
-    functionResult: FunctionResult,
-  ) => void | Promise<void>;
+  onFunctionResult?: (functionResult: FunctionResult) => void | Promise<void>;
 }
 
 export interface ChatMetadata {
@@ -265,7 +263,9 @@ export class ChatService {
     };
   }
 
-  private static serializeFunctionResult(functionResult: FunctionResult): string {
+  private static serializeFunctionResult(
+    functionResult: FunctionResult,
+  ): string {
     return JSON.stringify(
       {
         name: functionResult.name,
