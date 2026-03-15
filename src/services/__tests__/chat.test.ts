@@ -77,6 +77,7 @@ describe("ChatService function call loop", () => {
           delta: "",
           finishReason: "function_call",
           functionCall: {
+            id: "call-999",
             name: "get_weather",
             arguments: { city: "Tokyo" },
           },
@@ -120,11 +121,13 @@ describe("ChatService function call loop", () => {
     expect(mocks.mockStreamChat).toHaveBeenCalledTimes(2);
 
     expect(onFunctionCall).toHaveBeenCalledWith({
+      id: "call-999",
       name: "get_weather",
       arguments: { city: "Tokyo" },
     });
 
     expect(onFunctionResult).toHaveBeenCalledWith({
+      id: "call-999",
       name: "get_weather",
       result: { temp: 22, condition: "sunny" },
       executionTime: 5,

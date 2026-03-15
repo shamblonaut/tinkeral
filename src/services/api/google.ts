@@ -349,9 +349,17 @@ export class GoogleAPIClient implements LLMProvider {
       }
 
       if (message.functionCall?.name) {
-        const functionCall: { name: string; args?: Record<string, unknown> } = {
+        const functionCall: {
+          id?: string;
+          name: string;
+          args?: Record<string, unknown>;
+        } = {
           name: message.functionCall.name,
         };
+
+        if (message.functionCall.id) {
+          functionCall.id = message.functionCall.id;
+        }
 
         if (Object.keys(message.functionCall.arguments || {}).length > 0) {
           functionCall.args = message.functionCall.arguments;
@@ -448,6 +456,7 @@ export class GoogleAPIClient implements LLMProvider {
     }
 
     return {
+      id: functionCall.id,
       name: functionCall.name,
       arguments: functionCall.args || {},
     };

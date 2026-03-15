@@ -262,6 +262,7 @@ describe("GoogleAPIClient", () => {
         text: "",
         functionCalls: [
           {
+            id: "call-123",
             name: "get_weather",
             args: { city: "Tokyo" },
           },
@@ -274,6 +275,7 @@ describe("GoogleAPIClient", () => {
       expect(response.finishReason).toBe("function_call");
       expect(response.message.metadata?.finishReason).toBe("function_call");
       expect(response.message.functionCall).toEqual({
+        id: "call-123",
         name: "get_weather",
         arguments: { city: "Tokyo" },
       });
@@ -290,6 +292,7 @@ describe("GoogleAPIClient", () => {
                 { text: "I am calling the tool." },
                 {
                   functionCall: {
+                    id: "call-xyz",
                     name: "get_weather",
                     args: { city: "London" },
                   },
@@ -305,6 +308,7 @@ describe("GoogleAPIClient", () => {
 
       expect(response.message.content).toBe("I am calling the tool.");
       expect(response.message.functionCall).toEqual({
+        id: "call-xyz",
         name: "get_weather",
         arguments: { city: "London" },
       });
@@ -320,6 +324,7 @@ describe("GoogleAPIClient", () => {
             content: "I will check the weather for you.",
             timestamp: 1,
             functionCall: {
+              id: "call-1",
               name: "get_weather",
               arguments: { city: "Tokyo" },
             },
@@ -330,6 +335,7 @@ describe("GoogleAPIClient", () => {
             content: "",
             timestamp: 2,
             functionResult: {
+              id: "call-1",
               name: "get_weather",
               result: { temp: 22 },
             },
@@ -352,6 +358,7 @@ describe("GoogleAPIClient", () => {
                 }),
                 expect.objectContaining({
                   functionCall: expect.objectContaining({
+                    id: "call-1",
                     name: "get_weather",
                   }),
                 }),
@@ -362,6 +369,7 @@ describe("GoogleAPIClient", () => {
               parts: expect.arrayContaining([
                 expect.objectContaining({
                   functionResponse: expect.objectContaining({
+                    id: "call-1",
                     name: "get_weather",
                   }),
                 }),

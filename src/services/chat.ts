@@ -1,4 +1,4 @@
-import type { ProviderError } from "@/services/api/base";
+import { ProviderError } from "@/services/api/base";
 import { GoogleAPIClient } from "@/services/api/google";
 import { FunctionExecutor } from "@/services/executor";
 import { RateLimiter } from "@/services/rateLimiter";
@@ -111,6 +111,7 @@ export class ChatService {
             if (chunk.functionCall?.name) {
               const isNewFunctionCall = !turnFunctionCall;
               turnFunctionCall = {
+                id: chunk.functionCall.id,
                 name: chunk.functionCall.name,
                 arguments: chunk.functionCall.arguments || {},
               };
@@ -206,6 +207,16 @@ export class ChatService {
           shouldContinueFunctionLoop = false;
         }
 
+        if (!fullContent && workingMessages.length > messages.length) {
+          throw new ProviderError({
+            type: "unknown",
+            provider: "google",
+            message:
+              "Model failed to provide a final response after function calls.",
+            retriable: false,
+          });
+        }
+
         await onFinish(fullContent, lastMetadata);
       } catch (error) {
         if (
@@ -243,6 +254,7 @@ export class ChatService {
 
     if (!functionDefinition) {
       return {
+        id: functionCall.id,
         name: functionCall.name,
         result: null,
         error: `Function not found: ${functionCall.name}`,
@@ -284,6 +296,7 @@ export class ChatService {
 
     if (!execution.success) {
       return {
+        id: functionCall.id,
         name: functionCall.name,
         result: null,
         error: execution.error?.message || "Function execution failed",
@@ -292,6 +305,7 @@ export class ChatService {
     }
 
     return {
+      id: functionCall.id,
       name: functionCall.name,
       result: execution.data || null,
       executionTime: execution.executionTime,
@@ -304,7 +318,7 @@ export class ChatService {
     return JSON.stringify(
       {
         name: functionResult.name,
-        output: functionResult.result,
+        result: functionResult.result,
         error: functionResult.error,
       },
       null,

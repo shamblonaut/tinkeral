@@ -121,6 +121,7 @@ export function mapFunctionResultToGoogleResponse(
     : { output: functionResult.result };
 
   return {
+    id: functionResult.id,
     name: functionResult.name,
     response,
   } as FunctionResponse;

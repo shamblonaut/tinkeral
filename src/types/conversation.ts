@@ -8,11 +8,13 @@ export type FinishReason =
   | "unknown";
 
 export interface FunctionCall {
+  id?: string;
   name: string;
   arguments: Record<string, unknown>;
 }
 
 export interface FunctionResult {
+  id?: string;
   name: string;
   result: unknown;
   error?: string;

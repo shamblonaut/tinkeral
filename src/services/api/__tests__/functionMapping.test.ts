@@ -85,11 +85,13 @@ describe("functionMapping", () => {
 
   it("maps FunctionResult to Google FunctionResponse", () => {
     const successResult: FunctionResult = {
+      id: "call-123",
       name: "get_weather",
       result: { temp: 21 },
     };
 
     const errorResult: FunctionResult = {
+      id: "call-456",
       name: "get_weather",
       result: null,
       error: "Weather API unavailable",
@@ -98,8 +100,11 @@ describe("functionMapping", () => {
     const mappedSuccess = mapFunctionResultToGoogleResponse(successResult);
     const mappedError = mapFunctionResultToGoogleResponse(errorResult);
 
+    expect(mappedSuccess.id).toBe("call-123");
     expect(mappedSuccess.name).toBe("get_weather");
     expect(mappedSuccess.response).toEqual({ output: { temp: 21 } });
+
+    expect(mappedError.id).toBe("call-456");
     expect(mappedError.response).toEqual({ error: "Weather API unavailable" });
   });
 
