@@ -22,7 +22,7 @@ export function SettingsModal() {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && closeModal()}>
-      <DialogContent className="flex h-120 max-h-[85vh] flex-col overflow-hidden sm:max-w-[600px]">
+      <DialogContent className="flex h-120 max-h-[85vh] flex-col overflow-hidden sm:max-w-150">
         <DialogHeader className="shrink-0 pb-4">
           <DialogTitle className="flex items-center gap-2">
             <Settings className="h-5 w-5" />

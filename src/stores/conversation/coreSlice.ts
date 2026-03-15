@@ -3,7 +3,7 @@ import type { StateCreator } from "zustand";
 import { conversations as conversationsDb } from "@/db";
 import { GoogleAPIClient } from "@/services/api/google";
 import { PersistenceService } from "@/services/persistence";
-import { useSettingsStore, useFunctionsStore } from "@/stores";
+import { useFunctionsStore, useSettingsStore } from "@/stores";
 import type { Conversation, ModelParameters } from "@/types";
 
 import type { ConversationCoreState, ConversationState } from "./types";
@@ -92,13 +92,13 @@ export const createCoreSlice: StateCreator<
           conversations: state.conversations.map((c) =>
             c.id === existingEmpty.id
               ? {
-                ...c,
-                modelId,
-                parameters: params,
-                systemPrompt,
-                updatedAt: Date.now(),
-                functionIds,
-              }
+                  ...c,
+                  modelId,
+                  parameters: params,
+                  systemPrompt,
+                  updatedAt: Date.now(),
+                  functionIds,
+                }
               : c,
           ),
           isLoading: false,

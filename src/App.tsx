@@ -57,7 +57,7 @@ function App() {
     };
 
     init();
-  }, [loadSettings, loadConversations, loadModels]);
+  }, [loadSettings, loadConversations, loadModels, loadFunctions]);
 
   // Determine global loading state and progress
   let progress = 0;

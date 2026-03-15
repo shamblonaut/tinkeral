@@ -56,7 +56,6 @@ export const createChatSlice: StateCreator<
       const updatedConv = {
         ...currentConv,
         draft: msg,
-        updatedAt: Date.now(),
       };
 
       return {

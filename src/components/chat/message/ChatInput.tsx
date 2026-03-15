@@ -110,7 +110,7 @@ export function ChatInput({
         onChange={handleInput}
         onKeyDown={handleKeyDown}
         placeholder="Type a message..."
-        className="max-h-[200px] min-h-[40px] flex-1 resize-none py-3"
+        className="max-h-50 min-h-10 flex-1 resize-none py-3"
         disabled={disabled}
         rows={1}
       />

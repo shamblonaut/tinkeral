@@ -33,7 +33,7 @@ const workerSelf = self as unknown as WorkerGlobal;
  * Block dangerous globals that could be used to escape the sandbox.
  * `fetch` is explicitly allowed to enable network requests.
  */
-function restrictGlobals(allowedAPIs: string[]): void {
+function restrictGlobals(_allowedAPIs: string[]): void {
   const BLOCKED_GLOBALS = [
     "importScripts",
     "XMLHttpRequest",
@@ -110,10 +110,10 @@ async function handleExecute(msg: ExecuteMessage): Promise<void> {
     setupConsoleCapture();
 
     // Create an async function from user code so `await` is supported
-    const AsyncFunction = Object.getPrototypeOf(async function () { })
+    const AsyncFunction = Object.getPrototypeOf(async function () {})
       .constructor as new (
-        ...args: string[]
-      ) => (...args: unknown[]) => unknown;
+      ...args: string[]
+    ) => (...args: unknown[]) => unknown;
 
     const fn = new AsyncFunction("args", `"use strict";\n${msg.code}`);
     const result = await fn(msg.args);
