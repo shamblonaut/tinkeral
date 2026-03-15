@@ -338,20 +338,26 @@ export class GoogleAPIClient implements LLMProvider {
     const contents: Content[] = [];
 
     for (const message of messages) {
-      const role = message.role === "model" ? "model" : "user";
+      let role: string = message.role === "model" ? "model" : "user";
+      if (message.functionResult?.name) {
+        role = "user";
+      }
       const parts: NonNullable<Content["parts"]> = [];
 
-      if (message.content?.trim()) {
+      if (message.content?.trim() && !message.functionResult?.name) {
         parts.push({ text: message.content });
       }
 
       if (message.functionCall?.name) {
-        parts.push({
-          functionCall: {
-            name: message.functionCall.name,
-            args: message.functionCall.arguments,
-          },
-        });
+        const functionCall: { name: string; args?: Record<string, unknown> } = {
+          name: message.functionCall.name,
+        };
+
+        if (Object.keys(message.functionCall.arguments || {}).length > 0) {
+          functionCall.args = message.functionCall.arguments;
+        }
+
+        parts.push({ functionCall });
       }
 
       if (message.functionResult?.name) {

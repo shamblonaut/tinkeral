@@ -96,6 +96,7 @@ export class ChatService {
 
           const stream = client.streamChat(providerRequest, abortSignal);
           let turnContent = "";
+          fullContent = ""; // Reset fullContent for each turn
           let turnFunctionCall: FunctionCall | undefined;
           let lastUpdate = Date.now();
 
@@ -164,8 +165,9 @@ export class ChatService {
           fullContent = turnContent;
 
           if (
-            lastMetadata.finishReason === "function_call" &&
-            turnFunctionCall
+            turnFunctionCall &&
+            (lastMetadata.finishReason === "function_call" ||
+              lastMetadata.finishReason === "stop")
           ) {
             await onFunctionCall?.(turnFunctionCall);
 
@@ -291,7 +293,7 @@ export class ChatService {
 
     return {
       name: functionCall.name,
-      result: execution.data,
+      result: execution.data || null,
       executionTime: execution.executionTime,
     };
   }

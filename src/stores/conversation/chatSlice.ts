@@ -21,25 +21,6 @@ import {
   prepareMessagesForRetry,
 } from "./utils";
 
-function insertBeforeMessageById(
-  messages: Message[],
-  referenceMessageId: string,
-  messageToInsert: Message,
-): Message[] {
-  const index = messages.findIndex(
-    (message) => message.id === referenceMessageId,
-  );
-  if (index === -1) {
-    return [...messages, messageToInsert];
-  }
-
-  return [
-    ...messages.slice(0, index),
-    messageToInsert,
-    ...messages.slice(index),
-  ];
-}
-
 async function loadAttachedFunctions(
   functionIds: string[] | undefined,
 ): Promise<FunctionDefinition[]> {
@@ -375,7 +356,19 @@ export const createChatSlice: StateCreator<
             const isAborted =
               error instanceof DOMException && error.name === "AbortError";
 
-            if (!isAborted && !partialContent && userMessage) {
+            const { conversations } = get();
+            const currentConv = conversations.find(
+              (c) => c.id === conversationId,
+            );
+            const hasFunctionResults =
+              currentConv?.messages.some((m) => m.functionResult) || false;
+
+            if (
+              !isAborted &&
+              !partialContent &&
+              userMessage &&
+              !hasFunctionResults
+            ) {
               void get().setDraft(conversationId, userMessage.content);
               // Fire and forget deleteMessage to clean up the conversation
               void get().deleteMessage(userMessage.id);

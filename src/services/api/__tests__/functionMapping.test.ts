@@ -54,20 +54,23 @@ describe("functionMapping", () => {
 
   it("maps JSON schema to Google schema types", () => {
     const schema = mapJSONSchemaToGoogleSchema(sampleFunction.parameters);
+    expect(schema).toBeDefined();
 
-    expect(schema.type).toBe(Type.OBJECT);
-    expect(schema.required).toEqual(["city"]);
-    expect(schema.properties?.city).toEqual(
-      expect.objectContaining({
-        type: Type.STRING,
-        description: "City name",
-      }),
-    );
-    expect(schema.properties?.units?.enum).toEqual(["metric", "imperial"]);
-    expect(schema.properties?.days?.type).toBe(Type.ARRAY);
-    expect(schema.properties?.days?.items?.type).toBe(Type.INTEGER);
-    expect(schema.properties?.filters?.type).toBe(Type.OBJECT);
-    expect(schema.properties?.filters?.required).toEqual(["includeWind"]);
+    if (schema) {
+      expect(schema.type).toBe(Type.OBJECT);
+      expect(schema.required).toEqual(["city"]);
+      expect(schema.properties?.city).toEqual(
+        expect.objectContaining({
+          type: Type.STRING,
+          description: "City name",
+        }),
+      );
+      expect(schema.properties?.units?.enum).toEqual(["metric", "imperial"]);
+      expect(schema.properties?.days?.type).toBe(Type.ARRAY);
+      expect(schema.properties?.days?.items?.type).toBe(Type.INTEGER);
+      expect(schema.properties?.filters?.type).toBe(Type.OBJECT);
+      expect(schema.properties?.filters?.required).toEqual(["includeWind"]);
+    }
   });
 
   it("maps FunctionDefinition to Google FunctionDeclaration", () => {
@@ -106,6 +109,20 @@ describe("functionMapping", () => {
     expect(tools).toHaveLength(1);
     expect(tools[0].functionDeclarations).toHaveLength(1);
     expect(tools[0].functionDeclarations?.[0]?.name).toBe("get_weather");
+  });
+
+  it("maps empty parameters to schema with empty properties object", () => {
+    const emptyFunction: FunctionDefinition = {
+      id: "fn-empty",
+      name: "get_time",
+      description: "Get time",
+      parameters: { type: "object", properties: {} },
+      implementation: "return new Date();",
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+    const declaration = mapFunctionDefinitionToGoogleDeclaration(emptyFunction);
+    expect(declaration.parameters).toBeUndefined();
   });
 
   it("maps function calling mode to tool config", () => {

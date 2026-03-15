@@ -251,4 +251,57 @@ describe("ChatService function call loop", () => {
       expect.objectContaining({ finishReason: "stop" }),
     );
   });
+
+  it("handles 'stop' finish reason when a function call is present", async () => {
+    // This reproduces the cancellation issue where certain models
+    // send a function call but finish with 'stop' instead of 'function_call'
+    mocks.mockStreamChat
+      .mockImplementationOnce(async function* () {
+        yield {
+          delta: "",
+          finishReason: "stop",
+          functionCall: {
+            name: "get_weather",
+            arguments: { city: "London" },
+          },
+        };
+      })
+      .mockImplementationOnce(async function* () {
+        yield {
+          delta: "It's rainy in London.",
+          finishReason: "stop",
+        };
+      });
+
+    mocks.mockCreateClient.mockResolvedValue({
+      streamChat: mocks.mockStreamChat,
+    } as unknown as GoogleAPIClient);
+
+    mocks.mockExecutorExecute.mockResolvedValue({
+      success: true,
+      data: { temp: 15, condition: "rainy" },
+      executionTime: 5,
+      consoleLogs: [],
+    });
+
+    const onFunctionCall = vi.fn();
+    const onFinish = vi.fn();
+
+    await ChatService.executeChat(baseRequest, {
+      onChunk: vi.fn(),
+      onFunctionCall,
+      onFunctionResult: vi.fn(),
+      onFinish,
+      onError: vi.fn(),
+    });
+
+    expect(mocks.mockStreamChat).toHaveBeenCalledTimes(2);
+    expect(onFunctionCall).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "get_weather" }),
+    );
+    expect(onFinish).toHaveBeenCalledWith(
+      "It's rainy in London.",
+      expect.objectContaining({ finishReason: "stop" }),
+    );
+  });
 });
