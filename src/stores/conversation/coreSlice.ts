@@ -3,7 +3,7 @@ import type { StateCreator } from "zustand";
 import { conversations as conversationsDb } from "@/db";
 import { GoogleAPIClient } from "@/services/api/google";
 import { PersistenceService } from "@/services/persistence";
-import { useSettingsStore } from "@/stores";
+import { useSettingsStore, useFunctionsStore } from "@/stores";
 import type { Conversation, ModelParameters } from "@/types";
 
 import type { ConversationCoreState, ConversationState } from "./types";
@@ -85,16 +85,20 @@ export const createCoreSlice: StateCreator<
       });
 
       if (existingEmpty) {
+        const allFunctions = useFunctionsStore.getState().functions;
+        const functionIds = allFunctions.map((f) => f.id);
+
         set((state) => ({
           conversations: state.conversations.map((c) =>
             c.id === existingEmpty.id
               ? {
-                  ...c,
-                  modelId,
-                  parameters: params,
-                  systemPrompt,
-                  updatedAt: Date.now(),
-                }
+                ...c,
+                modelId,
+                parameters: params,
+                systemPrompt,
+                updatedAt: Date.now(),
+                functionIds,
+              }
               : c,
           ),
           isLoading: false,
@@ -104,6 +108,9 @@ export const createCoreSlice: StateCreator<
       }
 
       const id = crypto.randomUUID();
+      const allFunctions = useFunctionsStore.getState().functions;
+      const functionIds = allFunctions.map((f) => f.id);
+
       const newConversation: Conversation = {
         id,
         title: "New Conversation",
@@ -115,6 +122,7 @@ export const createCoreSlice: StateCreator<
         updatedAt: Date.now(),
         persisted: false,
         isTemporary: options.isTemporary,
+        functionIds,
       };
 
       set((state) => {

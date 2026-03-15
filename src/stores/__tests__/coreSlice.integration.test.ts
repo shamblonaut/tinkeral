@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { conversations, db } from "@/db";
 import { GoogleAPIClient } from "@/services/api";
-import { useConversationStore } from "@/stores";
+import { useConversationStore, useFunctionsStore } from "@/stores";
 
 vi.mock("@/services/api/google", () => ({
   GoogleAPIClient: {
@@ -44,6 +44,12 @@ describe("CoreSlice", () => {
     expect(state.activeConversationId).toBe(conversationId);
     expect(state.conversations[0].modelId).toBe("test-model");
     expect(state.conversations[0].createdAt).toBeDefined();
+
+    // Verify all available functions are enabled by default
+    const functionsState = useFunctionsStore.getState();
+    expect(state.conversations[0].functionIds).toEqual(
+      functionsState.functions.map((f) => f.id),
+    );
 
     // Verify NOT persisted (persisted:false by default)
     const persisted = await conversations.get(conversationId);

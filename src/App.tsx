@@ -5,12 +5,17 @@ import { APIKeyModal } from "@/components/auth";
 import { ChatInterface, LoadingScreen } from "@/components/chat";
 import { Toaster, TooltipProvider } from "@/components/ui";
 import { getModelDefaultParameters } from "@/lib/models";
-import { useConversationStore, useSettingsStore } from "@/stores";
+import {
+  useConversationStore,
+  useFunctionsStore,
+  useSettingsStore,
+} from "@/stores";
 
 function App() {
   const [isInitialized, setIsInitialized] = useState(false);
   const loadSettings = useSettingsStore((state) => state.loadSettings);
   const { loadConversations, loadModels } = useConversationStore();
+  const { loadFunctions } = useFunctionsStore();
   const settings = useSettingsStore((state) => state.settings);
   const isSettingsLoading = useSettingsStore((state) => state.isLoading);
   const isConversationsLoading = useConversationStore(
@@ -26,6 +31,7 @@ function App() {
           // Load models in background, don't wait
           loadModels();
         }
+        await loadFunctions();
         await loadConversations();
 
         // If no active conversation, create a new ephemeral one
