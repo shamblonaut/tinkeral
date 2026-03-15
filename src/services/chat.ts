@@ -108,10 +108,15 @@ export class ChatService {
             fullContent = turnContent;
 
             if (chunk.functionCall?.name) {
+              const isNewFunctionCall = !turnFunctionCall;
               turnFunctionCall = {
                 name: chunk.functionCall.name,
                 arguments: chunk.functionCall.arguments || {},
               };
+
+              if (isNewFunctionCall) {
+                onFunctionCall?.(turnFunctionCall);
+              }
             }
 
             if (chunk.finishReason) {

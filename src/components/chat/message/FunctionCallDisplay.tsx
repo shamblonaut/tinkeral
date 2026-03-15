@@ -41,8 +41,11 @@ export function FunctionCallDisplay({
   status = "requested",
   onCancel,
 }: FunctionCallDisplayProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const isExecuting = status === "executing";
+  const [isDetailsExpanded, setIsDetailsExpanded] = useState(isExecuting);
+  const [isArgsExpanded, setIsArgsExpanded] = useState(false);
   const [isResultExpanded, setIsResultExpanded] = useState(false);
+
   const formattedArgs = useMemo(
     () => safeFormatJson(functionCall.arguments),
     [functionCall.arguments],
@@ -51,9 +54,20 @@ export function FunctionCallDisplay({
     () => safeFormatJson(functionResult?.result),
     [functionResult?.result],
   );
-  const shouldCollapse = formattedArgs.length > 320;
+
+  const shouldCollapseArgs = formattedArgs.length > 320;
   const shouldCollapseResult = formattedResult.length > 320;
-  const isExecuting = status === "executing";
+
+  // Auto-expand when executing, auto-collapse when completed
+  const [prevStatus, setPrevStatus] = useState(status);
+  if (status !== prevStatus) {
+    if (status === "executing") {
+      setIsDetailsExpanded(true);
+    } else if (status === "completed" || status === "failed") {
+      setIsDetailsExpanded(false);
+    }
+    setPrevStatus(status);
+  }
 
   const statusLabel =
     status === "executing"
@@ -69,145 +83,124 @@ export function FunctionCallDisplay({
   return (
     <div
       className={cn(
-        "w-full rounded-xl border p-3 shadow-sm transition-all",
+        "my-3 w-full rounded-lg border px-3 py-2 shadow-sm transition-all",
         isExecuting
           ? "border-primary/50 bg-primary/10 animate-in fade-in"
-          : "border-primary/30 bg-primary/5",
+          : "border-primary/20 bg-black/5 dark:bg-white/5",
       )}
     >
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <div className="text-foreground flex items-center gap-2">
-          <Wrench className="text-primary h-4 w-4" />
-          <span className="text-sm font-semibold">Function Call</span>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 overflow-hidden">
+          <div className="bg-primary/10 rounded-md p-1">
+            <Wrench className="text-primary h-3.5 w-3.5 shrink-0" />
+          </div>
+          <span className="text-primary font-mono text-xs font-semibold">
+            {functionCall.name}
+          </span>
+          <span
+            className={cn(
+              "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium tracking-wider uppercase",
+              status === "failed"
+                ? "bg-destructive/10 text-destructive"
+                : "bg-primary/20 text-primary",
+            )}
+          >
+            {isExecuting ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : status === "completed" ? (
+              <CheckCircle2 className="h-3 w-3" />
+            ) : status === "cancelled" ? (
+              <OctagonX className="h-3 w-3" />
+            ) : null}
+            {statusLabel}
+          </span>
         </div>
-        <span className="bg-primary/10 text-primary rounded-md px-2 py-1 font-mono text-xs">
-          {functionCall.name}
-        </span>
-      </div>
 
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <span
-          className={cn(
-            "inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs",
-            status === "failed"
-              ? "bg-destructive/10 text-destructive"
-              : status === "cancelled"
-                ? "bg-muted text-muted-foreground"
-                : status === "completed"
-                  ? "bg-primary/10 text-primary"
-                  : "bg-primary/10 text-primary",
+        <div className="flex items-center gap-1">
+          {isExecuting && onCancel && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:bg-destructive/20 h-6 px-2 text-[10px]"
+              onClick={onCancel}
+            >
+              Cancel
+            </Button>
           )}
-        >
-          {isExecuting ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          ) : status === "completed" ? (
-            <CheckCircle2 className="h-3.5 w-3.5" />
-          ) : status === "cancelled" ? (
-            <OctagonX className="h-3.5 w-3.5" />
-          ) : null}
-          {statusLabel}
-        </span>
-
-        {isExecuting && onCancel && (
           <Button
             variant="ghost"
             size="sm"
-            className="text-destructive h-7 px-2 text-xs"
-            onClick={onCancel}
+            className="hover:bg-primary/20 h-6 w-6 p-0"
+            onClick={() => setIsDetailsExpanded((prev) => !prev)}
           >
-            Cancel
-          </Button>
-        )}
-      </div>
-
-      <div className="bg-background border-border/60 overflow-hidden rounded-md border">
-        <div className="text-muted-foreground border-border/60 border-b px-3 py-2 text-xs font-medium">
-          Request (Arguments)
-        </div>
-        <pre
-          className={cn(
-            "overflow-auto px-3 py-2 font-mono text-xs leading-relaxed",
-            shouldCollapse && !isExpanded && "max-h-28",
-          )}
-        >
-          {formattedArgs}
-        </pre>
-      </div>
-
-      {shouldCollapse && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="mt-2 h-7 text-xs"
-          onClick={() => setIsExpanded((current) => !current)}
-        >
-          {isExpanded ? (
-            <>
-              <ChevronUp className="mr-1 h-3.5 w-3.5" />
-              Collapse
-            </>
-          ) : (
-            <>
-              <ChevronDown className="mr-1 h-3.5 w-3.5" />
-              Expand
-            </>
-          )}
-        </Button>
-      )}
-
-      {functionResult && (
-        <div className="mt-2">
-          <div className="bg-background border-border/60 overflow-hidden rounded-md border">
-            <div className="text-muted-foreground border-border/60 border-b px-3 py-2 text-xs font-medium">
-              Response
-            </div>
-
-            {functionResult.error && (
-              <div className="text-destructive border-border/60 border-b px-3 py-2 text-xs">
-                {functionResult.error}
-              </div>
+            {isDetailsExpanded ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
             )}
+          </Button>
+        </div>
+      </div>
 
+      {isDetailsExpanded && (
+        <div className="animate-in fade-in slide-in-from-top-1 mt-2 space-y-2 duration-200">
+          <div className="bg-muted/30 border-border/40 overflow-hidden rounded-md border">
+            <div className="text-muted-foreground border-border/40 border-b px-2 py-1 text-[9px] font-medium tracking-tight uppercase">
+              Arguments
+            </div>
             <pre
               className={cn(
-                "overflow-auto px-3 py-2 font-mono text-xs leading-relaxed",
-                shouldCollapseResult && !isResultExpanded && "max-h-28",
+                "overflow-auto px-2 py-1.5 font-mono text-[10px] leading-relaxed",
+                shouldCollapseArgs && !isArgsExpanded && "max-h-24",
               )}
             >
-              {formattedResult}
+              {formattedArgs}
             </pre>
-          </div>
-
-          <div className="mt-2 flex items-center justify-between gap-2">
-            {typeof functionResult.executionTime === "number" ? (
-              <span className="bg-background border-border/60 rounded-md border px-2 py-1 text-xs">
-                {functionResult.executionTime.toFixed(0)} ms
-              </span>
-            ) : (
-              <span />
-            )}
-
-            {shouldCollapseResult && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs"
-                onClick={() => setIsResultExpanded((current) => !current)}
+            {shouldCollapseArgs && (
+              <button
+                onClick={() => setIsArgsExpanded(!isArgsExpanded)}
+                className="text-primary hover:bg-muted/50 border-t-border/40 w-full border-t py-0.5 text-[9px] font-medium transition-colors"
               >
-                {isResultExpanded ? (
-                  <>
-                    <ChevronUp className="mr-1 h-3.5 w-3.5" />
-                    Collapse response
-                  </>
-                ) : (
-                  <>
-                    <ChevronDown className="mr-1 h-3.5 w-3.5" />
-                    Expand response
-                  </>
-                )}
-              </Button>
+                {isArgsExpanded ? "Show less" : "Show all arguments"}
+              </button>
             )}
           </div>
+
+          {functionResult && (
+            <div className="bg-muted/30 border-border/40 overflow-hidden rounded-md border">
+              <div className="text-muted-foreground border-border/40 flex items-center justify-between border-b px-2 py-1 text-[9px] font-medium tracking-tight uppercase">
+                <span>Result</span>
+                {typeof functionResult.executionTime === "number" && (
+                  <span className="lowercase opacity-70">
+                    {functionResult.executionTime.toFixed(0)}ms
+                  </span>
+                )}
+              </div>
+
+              {functionResult.error && (
+                <div className="text-destructive border-border/40 border-b px-2 py-1.5 text-[10px]">
+                  {functionResult.error}
+                </div>
+              )}
+
+              <pre
+                className={cn(
+                  "overflow-auto px-2 py-1.5 font-mono text-[10px] leading-relaxed",
+                  shouldCollapseResult && !isResultExpanded && "max-h-24",
+                )}
+              >
+                {formattedResult}
+              </pre>
+              {shouldCollapseResult && (
+                <button
+                  onClick={() => setIsResultExpanded(!isResultExpanded)}
+                  className="text-primary hover:bg-muted/50 border-t-border/40 w-full border-t py-0.5 text-[9px] font-medium transition-colors"
+                >
+                  {isResultExpanded ? "Show less" : "Show all output"}
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

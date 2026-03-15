@@ -191,6 +191,7 @@ interface MessageContentProps {
   isUser: boolean;
   isEditing: boolean;
   isStreaming?: boolean;
+  isEmbedded?: boolean;
   editContent: string;
   onEditContentChange: (content: string) => void;
   onSave: () => void;
@@ -202,6 +203,7 @@ export function MessageContent({
   isUser,
   isEditing,
   isStreaming,
+  isEmbedded = false,
   editContent,
   onEditContentChange,
   onSave,
@@ -213,9 +215,12 @@ export function MessageContent({
         "prose prose-neutral dark:prose-invert relative w-full leading-relaxed wrap-break-word transition-colors duration-200",
         isEditing
           ? "bg-background rounded-xl border p-2 shadow-sm"
-          : isUser
-            ? "bg-primary text-primary-foreground rounded-2xl rounded-tr-sm px-4 py-2 shadow-sm"
-            : "bg-muted rounded-2xl rounded-tl-sm px-4 py-2 shadow-sm",
+          : isEmbedded
+            ? "bg-transparent p-0 shadow-none"
+            : isUser
+              ? "bg-primary text-primary-foreground rounded-2xl rounded-tr-sm px-4 py-2 shadow-sm"
+              : "bg-muted rounded-2xl rounded-tl-sm px-4 py-2 shadow-sm",
+        isEmbedded && isUser && "text-primary-foreground",
       )}
     >
       {isEditing ? (

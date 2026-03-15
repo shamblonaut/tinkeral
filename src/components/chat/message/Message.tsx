@@ -4,7 +4,6 @@ import { toast } from "sonner";
 
 import {
   FunctionCallDisplay,
-  FunctionResultDisplay,
   MessageActions,
   MessageContent,
   TokenUsageDisplay,
@@ -26,27 +25,16 @@ import { useConversationStore } from "@/stores";
 import type { Message as MessageType } from "@/types";
 
 interface MessageProps {
-  message: MessageType;
+  messageGroup: MessageType[];
   isStreaming?: boolean;
-  pairedFunctionResult?: MessageType["functionResult"];
-  functionCallStatus?:
-    | "requested"
-    | "executing"
-    | "completed"
-    | "failed"
-    | "cancelled";
 }
 
 export const Message = memo(function Message({
-  message,
+  messageGroup,
   isStreaming,
-  pairedFunctionResult,
-  functionCallStatus,
 }: MessageProps) {
-  const isFunctionCallMessage = Boolean(message.functionCall);
-  const isFunctionResultMessage = Boolean(message.functionResult);
-  const isFunctionMessage = isFunctionCallMessage || isFunctionResultMessage;
-  const isUser = message.role === "user";
+  const message = messageGroup[0];
+  const isUser = message.role === "user" && !message.functionResult;
   const isSystem = message.role === "system";
 
   const [isEditing, setIsEditing] = useState(false);
@@ -58,11 +46,15 @@ export const Message = memo(function Message({
     useConversationStore();
 
   const handleCopy = useCallback(() => {
-    navigator.clipboard.writeText(message.content);
+    const fullContent = messageGroup
+      .map((m) => m.content)
+      .filter(Boolean)
+      .join("\n\n");
+    navigator.clipboard.writeText(fullContent);
     setIsCopied(true);
     toast.success("Copied to clipboard");
     setTimeout(() => setIsCopied(false), 2000);
-  }, [message.content]);
+  }, [messageGroup]);
 
   const handleEdit = () => {
     setIsEditing(true);
@@ -105,6 +97,10 @@ export const Message = memo(function Message({
       </div>
     );
   }
+
+  const isFunctionMessage = messageGroup.some(
+    (m) => m.functionCall || m.functionResult,
+  );
 
   return (
     <div
@@ -177,31 +173,74 @@ export const Message = memo(function Message({
           )}
         </div>
 
-        {message.functionCall ? (
-          <FunctionCallDisplay
-            functionCall={message.functionCall}
-            functionResult={pairedFunctionResult}
-            status={functionCallStatus}
-            onCancel={
-              functionCallStatus === "executing" ? abortGeneration : undefined
-            }
-          />
-        ) : message.functionResult ? (
-          <FunctionResultDisplay functionResult={message.functionResult} />
-        ) : (
-          <MessageContent
-            content={message.content}
-            isUser={isUser}
-            isEditing={isEditing}
-            isStreaming={isStreaming}
-            editContent={editContent}
-            onEditContentChange={setEditContent}
-            onSave={handleSave}
-            onCancel={handleCancel}
-          />
-        )}
+        <div
+          className={cn(
+            "relative w-full rounded-2xl px-4 py-2 shadow-sm transition-colors duration-200",
+            isUser
+              ? "bg-primary text-primary-foreground rounded-tr-sm"
+              : "bg-muted rounded-tl-sm",
+          )}
+        >
+          <div className="flex w-full flex-col gap-1">
+            {messageGroup.map((m, idx) => {
+              const isLastInGroup = idx === messageGroup.length - 1;
+              const isFunctionCall = Boolean(m.functionCall);
+              const isFunctionResult = Boolean(m.functionResult);
 
-        {!isEditing && !isStreaming && !isFunctionMessage && (
+              if (isFunctionResult) return null;
+
+              let pairedResult;
+              let status: "executing" | "completed" | "failed" | "cancelled" =
+                "completed";
+
+              if (isFunctionCall) {
+                pairedResult = messageGroup.find(
+                  (candidate) =>
+                    candidate.functionResult?.name === m.functionCall?.name,
+                )?.functionResult;
+
+                if (pairedResult) {
+                  status = pairedResult.error ? "failed" : "completed";
+                } else {
+                  status = isStreaming ? "executing" : "cancelled";
+                }
+              }
+
+              return (
+                <div key={m.id} className="flex flex-col">
+                  {m.content && (
+                    <MessageContent
+                      content={m.content}
+                      isUser={isUser}
+                      isEditing={isEditing}
+                      isStreaming={
+                        isStreaming && isLastInGroup && !isFunctionCall
+                      }
+                      isEmbedded={true}
+                      editContent={editContent}
+                      onEditContentChange={setEditContent}
+                      onSave={handleSave}
+                      onCancel={handleCancel}
+                    />
+                  )}
+
+                  {isFunctionCall && m.functionCall && (
+                    <FunctionCallDisplay
+                      functionCall={m.functionCall}
+                      functionResult={pairedResult}
+                      status={status}
+                      onCancel={
+                        status === "executing" ? abortGeneration : undefined
+                      }
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {!isEditing && !isStreaming && (
           <div className="flex h-8 items-center pt-1">
             <MessageActions
               isUser={isUser}

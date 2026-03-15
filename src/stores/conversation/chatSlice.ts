@@ -222,30 +222,25 @@ export const createChatSlice: StateCreator<
             }));
           },
           onFunctionCall: (functionCall: FunctionCall) => {
-            const functionCallMessage: Message = {
-              id: crypto.randomUUID(),
-              role: "model",
-              content: "",
-              timestamp: Date.now(),
-              functionCall,
-              metadata: {
-                model: conversation.modelId,
-                finishReason: "function_call",
-              },
-            };
-
             set((state: ConversationState) => ({
-              conversations: state.conversations.map((currentConversation) =>
-                currentConversation.id === conversationId
+              conversations: state.conversations.map((c) =>
+                c.id === conversationId
                   ? {
-                      ...currentConversation,
-                      messages: insertBeforeMessageById(
-                        currentConversation.messages,
-                        assistantMessageId!,
-                        functionCallMessage,
+                      ...c,
+                      messages: c.messages.map((m) =>
+                        m.id === assistantMessageId
+                          ? {
+                              ...m,
+                              functionCall,
+                              metadata: {
+                                ...m.metadata,
+                                finishReason: "function_call",
+                              },
+                            }
+                          : m,
                       ),
                     }
-                  : currentConversation,
+                  : c,
               ),
             }));
           },
@@ -258,20 +253,32 @@ export const createChatSlice: StateCreator<
               functionResult,
             };
 
+            const nextAssistantMessageId = crypto.randomUUID();
+            const nextAssistantMessage: Message = {
+              id: nextAssistantMessageId,
+              role: "model",
+              content: "",
+              timestamp: Date.now(),
+              metadata: { model: conversation.modelId },
+            };
+
             set((state: ConversationState) => ({
-              conversations: state.conversations.map((currentConversation) =>
-                currentConversation.id === conversationId
+              conversations: state.conversations.map((c) =>
+                c.id === conversationId
                   ? {
-                      ...currentConversation,
-                      messages: insertBeforeMessageById(
-                        currentConversation.messages,
-                        assistantMessageId!,
+                      ...c,
+                      messages: [
+                        ...c.messages,
                         functionResultMessage,
-                      ),
+                        nextAssistantMessage,
+                      ],
                     }
-                  : currentConversation,
+                  : c,
               ),
             }));
+
+            // Update for the next turn in the loop
+            assistantMessageId = nextAssistantMessageId;
           },
           onFinish: async (fullContent: string, lastMetadata: ChatMetadata) => {
             set((state: ConversationState) => {

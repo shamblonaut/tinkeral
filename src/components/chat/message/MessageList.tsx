@@ -11,17 +11,6 @@ interface MessageListProps {
   className?: string;
 }
 
-interface MessageRenderItem {
-  message: MessageType;
-  pairedFunctionResult?: MessageType["functionResult"];
-  functionCallStatus?:
-    | "requested"
-    | "executing"
-    | "completed"
-    | "failed"
-    | "cancelled";
-}
-
 export function MessageList({
   messages,
   isStreaming,
@@ -83,67 +72,33 @@ export function MessageList({
     }
   };
 
-  const functionCallStatusByMessageId = useMemo(() => {
-    const statuses: Record<
-      string,
-      "requested" | "executing" | "completed" | "failed" | "cancelled"
-    > = {};
+  const renderedGroups = useMemo(() => {
+    const groups: { messages: MessageType[] }[] = [];
+    let currentGroup: MessageType[] = [];
 
-    messages.forEach((message, index) => {
-      const functionCall = message.functionCall;
-      if (!functionCall) {
-        return;
+    messages.forEach((message) => {
+      const isFunctionResult = Boolean(message.functionResult);
+      const isAIReleated = message.role === "model" || isFunctionResult;
+
+      if (!isAIReleated) {
+        // Human user message starts a new group, and we also push it as its own group
+        if (currentGroup.length > 0) {
+          groups.push({ messages: currentGroup });
+          currentGroup = [];
+        }
+        groups.push({ messages: [message] });
+      } else {
+        // AI related (model or tool result) - cumulative in current group
+        currentGroup.push(message);
       }
-
-      const pairedResult = messages
-        .slice(index + 1)
-        .find(
-          (candidate) => candidate.functionResult?.name === functionCall.name,
-        )?.functionResult;
-
-      if (pairedResult) {
-        statuses[message.id] = pairedResult.error ? "failed" : "completed";
-        return;
-      }
-
-      statuses[message.id] = isStreaming ? "executing" : "cancelled";
     });
 
-    return statuses;
-  }, [isStreaming, messages]);
-
-  const renderedMessages = useMemo(() => {
-    const items: MessageRenderItem[] = [];
-
-    for (let index = 0; index < messages.length; index += 1) {
-      const message = messages[index];
-
-      if (message.functionCall) {
-        const nextMessage = messages[index + 1];
-        const pairedFunctionResult =
-          nextMessage?.functionResult &&
-          nextMessage.functionResult.name === message.functionCall.name
-            ? nextMessage.functionResult
-            : undefined;
-
-        items.push({
-          message,
-          pairedFunctionResult,
-          functionCallStatus: functionCallStatusByMessageId[message.id],
-        });
-
-        if (pairedFunctionResult) {
-          index += 1;
-        }
-
-        continue;
-      }
-
-      items.push({ message });
+    if (currentGroup.length > 0) {
+      groups.push({ messages: currentGroup });
     }
 
-    return items;
-  }, [functionCallStatusByMessageId, messages]);
+    return groups;
+  }, [messages]);
 
   if (messages.length === 0) {
     return (
@@ -161,13 +116,11 @@ export function MessageList({
     <div className="group relative flex h-full flex-1 flex-col overflow-hidden">
       <ScrollArea viewportRef={viewportRef} className={className}>
         <div ref={contentRef} className="flex flex-col py-4">
-          {renderedMessages.map((item, index) => (
+          {renderedGroups.map((group, index) => (
             <Message
-              key={item.message.id}
-              message={item.message}
-              pairedFunctionResult={item.pairedFunctionResult}
-              isStreaming={isStreaming && index === renderedMessages.length - 1}
-              functionCallStatus={item.functionCallStatus}
+              key={group.messages[0].id}
+              messageGroup={group.messages}
+              isStreaming={isStreaming && index === renderedGroups.length - 1}
             />
           ))}
         </div>
