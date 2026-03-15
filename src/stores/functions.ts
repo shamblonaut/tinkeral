@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 import { functions as functionsDB } from "@/db";
+import { EXAMPLE_FUNCTIONS } from "@/features/functions/utils/examples";
 import type { FunctionDefinition } from "@/types";
 
 export interface FunctionsState {
@@ -19,6 +20,7 @@ export interface FunctionsState {
   ) => Promise<void>;
   deleteFunction: (id: string) => Promise<void>;
   getFunction: (id: string) => FunctionDefinition | undefined;
+  importExamples: (names?: string[], ignoreExisting?: boolean) => Promise<void>;
 }
 
 export const useFunctionsStore = create<FunctionsState>((set, get) => ({
@@ -88,5 +90,23 @@ export const useFunctionsStore = create<FunctionsState>((set, get) => ({
 
   getFunction: (id) => {
     return get().functions.find((f) => f.id === id);
+  },
+
+  importExamples: async (names, ignoreExisting = true) => {
+    const { functions: existingFunctions, createFunction } = get();
+
+    for (const example of EXAMPLE_FUNCTIONS) {
+      if (names && !names.includes(example.name)) {
+        continue;
+      }
+
+      const exists = existingFunctions.some((f) => f.name === example.name);
+
+      if (ignoreExisting && exists) {
+        continue;
+      }
+
+      await createFunction(example);
+    }
   },
 }));
