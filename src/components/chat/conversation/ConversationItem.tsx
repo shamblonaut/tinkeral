@@ -1,8 +1,7 @@
-import { CheckSquare, MessageSquare, MoreVertical, Square } from "lucide-react";
+import { CheckSquare, MessageSquare, Square } from "lucide-react";
 import { memo, useEffect, useRef, useState } from "react";
 
 import {
-  Button,
   Input,
   Tooltip,
   TooltipContent,
@@ -15,6 +14,7 @@ import { cn, formatRelativeTime } from "@/lib/utils";
 import { useConversationStore } from "@/stores";
 
 import { ConversationItemDetails } from "./ConversationItemDetails";
+import { ExpandableSelectableItemCard } from "./ExpandableSelectableItemCard";
 
 interface ConversationItemProps {
   conversation: Conversation;
@@ -85,7 +85,7 @@ export const ConversationItem = memo(function ConversationItem({
   };
 
   return (
-    <div
+    <ExpandableSelectableItemCard
       onClick={() => {
         if (isSelectionMode) {
           onToggleSelection?.(conversation.id);
@@ -93,16 +93,17 @@ export const ConversationItem = memo(function ConversationItem({
           onSelect(conversation.id);
         }
       }}
-      className={cn(
-        "group relative flex cursor-pointer flex-col gap-1 rounded-lg p-3 transition-colors",
-        isActive
-          ? "bg-accent text-accent-foreground"
-          : "hover:bg-muted/50 text-muted-foreground hover:text-foreground",
-        isExpanded && "bg-muted/30 hover:bg-muted/40",
+      isActive={isActive}
+      isExpanded={isExpanded}
+      onToggleExpanded={() => setIsExpanded(!isExpanded)}
+      expandButtonContainerClassName={cn(
+        "transition-opacity",
+        isDesktop && !isExpanded
+          ? "opacity-0 group-hover:opacity-100"
+          : "opacity-100",
       )}
-    >
-      <div className="flex items-center gap-2 pr-8">
-        {isSelectionMode ? (
+      leadingContent={
+        isSelectionMode ? (
           isSelected ? (
             <CheckSquare className="text-primary h-4 w-4 shrink-0" />
           ) : (
@@ -110,8 +111,10 @@ export const ConversationItem = memo(function ConversationItem({
           )
         ) : (
           <MessageSquare className="h-4 w-4 shrink-0" />
-        )}
-        {isEditing ? (
+        )
+      }
+      titleContent={
+        isEditing ? (
           <Input
             ref={inputRef}
             value={title}
@@ -125,58 +128,29 @@ export const ConversationItem = memo(function ConversationItem({
           <span className="truncate text-sm font-medium">
             {conversation.title || "New Conversation"}
           </span>
-        )}
-      </div>
-
-      <div className="flex items-center justify-between gap-2 pl-6 text-[11px]">
-        <span className="truncate opacity-70">{modelName}</span>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span className="shrink-0 cursor-help opacity-50">
-              {formatRelativeTime(conversation.updatedAt)}
-            </span>
-          </TooltipTrigger>
-          <TooltipContent side="right">
-            <p>Created: {new Date(conversation.createdAt).toLocaleString()}</p>
-            <p>Updated: {new Date(conversation.updatedAt).toLocaleString()}</p>
-          </TooltipContent>
-        </Tooltip>
-      </div>
-
-      <div
-        className={cn(
-          "absolute top-2 right-2 transition-opacity",
-          isDesktop && !isExpanded
-            ? "opacity-0 group-hover:opacity-100"
-            : "opacity-100",
-        )}
-      >
-        <Button
-          variant="ghost"
-          size="icon"
-          className={cn(
-            "h-7 w-7 transition-all",
-            isActive ? "hover:bg-accent-foreground/10" : "hover:bg-accent",
-            isExpanded && "bg-accent rotate-90",
-          )}
-          onClick={(e) => {
-            e.stopPropagation();
-            setIsExpanded(!isExpanded);
-          }}
-        >
-          <MoreVertical className="h-3.5 w-3.5" />
-          <span className="sr-only">Toggle details</span>
-        </Button>
-      </div>
-
-      <div
-        className={cn(
-          "grid transition-[grid-template-rows,opacity,margin] duration-200 ease-in-out",
-          isExpanded
-            ? "mt-2 grid-rows-[1fr] opacity-100"
-            : "mt-0 grid-rows-[0fr] opacity-0",
-        )}
-      >
+        )
+      }
+      metadataContent={
+        <>
+          <span className="truncate opacity-70">{modelName}</span>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="shrink-0 cursor-help opacity-50">
+                {formatRelativeTime(conversation.updatedAt)}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              <p>
+                Created: {new Date(conversation.createdAt).toLocaleString()}
+              </p>
+              <p>
+                Updated: {new Date(conversation.updatedAt).toLocaleString()}
+              </p>
+            </TooltipContent>
+          </Tooltip>
+        </>
+      }
+      detailsContent={
         <ConversationItemDetails
           conversation={conversation}
           modelName={modelName}
@@ -184,7 +158,7 @@ export const ConversationItem = memo(function ConversationItem({
           onDuplicate={duplicateConversation}
           onDelete={onDelete}
         />
-      </div>
-    </div>
+      }
+    />
   );
 });

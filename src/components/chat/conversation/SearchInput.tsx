@@ -1,7 +1,6 @@
-import { Loader2, Search, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import { Button, Input } from "@/components/ui";
+import { SearchField } from "@/components/ui";
 import { useDebounce } from "@/hooks";
 import { useConversationStore } from "@/stores";
 
@@ -14,8 +13,7 @@ export function SearchInput() {
   const [localSearchQuery, setLocalSearchQuery] = useState(searchQuery);
 
   // Update isSearching immediately when local input changes
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
+  const handleInputChange = (value: string) => {
     setLocalSearchQuery(value);
     if (value !== searchQuery) {
       setIsSearching(true);
@@ -35,30 +33,13 @@ export function SearchInput() {
   }, [searchQuery]);
 
   return (
-    <div className="relative">
-      <Search className="text-muted-foreground absolute top-1/2 left-2 h-4 w-4 -translate-y-1/2" />
-      <Input
-        type="search"
-        placeholder="Search conversations..."
-        value={localSearchQuery}
-        onChange={handleInputChange}
-        className="h-8 pr-8 pl-8 text-xs focus-visible:ring-1"
-      />
-      <div className="absolute top-1/2 right-2 flex -translate-y-1/2 items-center gap-1">
-        {isSearching && (
-          <Loader2 className="text-muted-foreground h-3 w-3 animate-spin" />
-        )}
-        {searchQuery && !isSearching && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 hover:bg-transparent"
-            onClick={() => setSearchQuery("")}
-          >
-            <X className="text-muted-foreground h-3 w-3" />
-          </Button>
-        )}
-      </div>
-    </div>
+    <SearchField
+      placeholder="Search conversations..."
+      value={localSearchQuery}
+      isSearching={isSearching}
+      onChange={handleInputChange}
+      onClear={() => setSearchQuery("")}
+      clearAriaLabel="Clear conversation search"
+    />
   );
 }

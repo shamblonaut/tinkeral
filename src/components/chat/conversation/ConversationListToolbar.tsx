@@ -1,12 +1,4 @@
-import {
-  CheckSquare,
-  ChevronDown,
-  Plus,
-  Square,
-  Trash2,
-  X,
-  Zap,
-} from "lucide-react";
+import { CheckSquare, ChevronDown, Plus, Zap } from "lucide-react";
 
 import {
   Button,
@@ -17,6 +9,7 @@ import {
 } from "@/components/ui";
 
 import { SearchInput } from "./SearchInput";
+import { SelectableListModeBar } from "./SelectableListModeBar";
 
 interface ConversationListToolbarProps {
   isSelectionMode: boolean;
@@ -90,50 +83,14 @@ export function ConversationListToolbar({
             </Button>
           </>
         ) : (
-          <div className="animate-in fade-in slide-in-from-top-1 flex w-full items-center justify-between gap-2 duration-200">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={onToggleSelectionMode}
-                title="Cancel selection"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-              <span className="text-sm font-medium">
-                {selectedCount} selected
-              </span>
-            </div>
-
-            <div className="flex items-center gap-1">
-              {selectedCount > 0 && (
-                <Button
-                  variant="destructive"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={onBulkDelete}
-                  title="Delete selected"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              )}
-
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-muted-foreground h-8 w-8"
-                onClick={isAllFilteredSelected ? onDeselectAll : onSelectAll}
-                title={isAllFilteredSelected ? "Deselect All" : "Select All"}
-              >
-                {isAllFilteredSelected ? (
-                  <CheckSquare className="text-primary h-4 w-4" />
-                ) : (
-                  <Square className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
-          </div>
+          <SelectableListModeBar
+            selectedCount={selectedCount}
+            allFilteredSelected={isAllFilteredSelected}
+            onCancelSelection={onToggleSelectionMode}
+            onBulkDelete={onBulkDelete}
+            onSelectAll={onSelectAll}
+            onDeselectAll={onDeselectAll}
+          />
         )}
       </div>
 
