@@ -193,6 +193,9 @@ describe("ChatInterface — Messaging & Streaming", () => {
 
     expect(screen.getByText("Hello AI")).toBeInTheDocument();
     expect(screen.getByText("Hello world")).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Requested|Executing|Function Result/i),
+    ).toBeNull();
   });
 
   it("should disable the input field while a message is generating/streaming", async () => {

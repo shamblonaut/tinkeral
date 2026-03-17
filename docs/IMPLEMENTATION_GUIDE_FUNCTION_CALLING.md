@@ -632,15 +632,15 @@ src/components/chat/message/MessageList.tsx
 
 **Tasks**:
 
-- [ ] Write integration test: full function calling flow
+- [x] Write integration test: full function calling flow
   - Create function → attach to conversation → send message → model calls function → result sent back → model responds
-- [ ] Write integration test: function management lifecycle
+- [x] Write integration test: function management lifecycle
   - Create → edit → test → duplicate → delete
-- [ ] Write integration test: error handling
+- [x] Write integration test: error handling
   - Function timeout, runtime error, missing function
-- [ ] Write integration test: conversation persistence with function calls
+- [x] Write integration test: conversation persistence with function calls
   - Function call messages persist and reload correctly
-- [ ] Update existing chat integration tests to verify function calling doesn't break normal chat
+- [x] Update existing chat integration tests to verify function calling doesn't break normal chat
 
 **Acceptance Criteria**:
 
