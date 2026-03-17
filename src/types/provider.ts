@@ -1,5 +1,3 @@
-import type { FunctionDefinition } from "@/db";
-import type { ProviderError } from "@/services/api";
 import type {
   FinishReason,
   FunctionCall,
@@ -7,6 +5,8 @@ import type {
   ModelParameters,
   TokenUsage,
 } from "./conversation";
+import type { ProviderErrorLike } from "./error";
+import type { FunctionDefinition } from "./schema";
 
 /**
  * Information about a specific model
@@ -150,5 +150,5 @@ export interface LLMProvider {
   /**
    * Normalize provider-specific errors to common format.
    */
-  normalizeError(error: unknown): ProviderError;
+  normalizeError(error: unknown): ProviderErrorLike;
 }

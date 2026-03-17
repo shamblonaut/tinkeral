@@ -18,6 +18,7 @@ import type {
   LLMProvider,
   Message,
   ModelInfo,
+  ProviderErrorLike,
   StreamChunk,
 } from "@/types";
 import { ProviderError } from "./base";
@@ -252,7 +253,7 @@ export class GoogleAPIClient implements LLMProvider {
     }
   }
 
-  normalizeError(error: unknown): ProviderError {
+  normalizeError(error: unknown): ProviderErrorLike {
     if (error instanceof DOMException && error.name === "AbortError") {
       return new ProviderError({
         type: "unknown",

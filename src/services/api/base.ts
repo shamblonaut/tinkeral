@@ -1,4 +1,4 @@
-import type { ErrorType } from "@/types/error";
+import type { ErrorType, ProviderErrorLike } from "@/types/error";
 
 /**
  * Normalize any error to a common format.
@@ -28,7 +28,7 @@ function isProviderErrorParams(error: unknown): error is ProviderErrorParams {
   );
 }
 
-export class ProviderError extends Error {
+export class ProviderError extends Error implements ProviderErrorLike {
   type: ErrorType;
   provider?: string;
   retriable: boolean;

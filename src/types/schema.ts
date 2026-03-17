@@ -1,10 +1,7 @@
-import type {
-  FunctionCallingMode,
-  JSONSchema,
-  Message,
-  ModelParameters,
-  UIPreferences,
-} from "@/types";
+import type { Message, ModelParameters } from "./conversation";
+import type { JSONSchema } from "./functions";
+import type { FunctionCallingMode } from "./provider";
+import type { UIPreferences } from "./settings";
 
 export interface Conversation {
   readonly id: string;
