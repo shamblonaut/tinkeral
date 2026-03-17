@@ -87,7 +87,11 @@ describe("ImportExport Integration", () => {
 
   describe("Import Flow", () => {
     it("should import data successfully when file is selected", async () => {
-      vi.mocked(importExportService.importData).mockResolvedValue(undefined);
+      vi.mocked(importExportService.importData).mockResolvedValue({
+        settingsUpdated: false,
+        conversationsUpdated: false,
+        functionsUpdated: false,
+      });
 
       render(<ImportExport />);
 

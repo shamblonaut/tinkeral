@@ -51,13 +51,13 @@ export const createSelectionSlice: StateCreator<
     if (selectedIds.length === 0) return;
 
     try {
-      const persistedIds = currentConversations
-        .filter((c) => selectedIds.includes(c.id) && c.persisted !== false)
-        .map((c) => c.id);
+      const persistedConversations = currentConversations.filter(
+        (c) => selectedIds.includes(c.id) && c.persisted !== false,
+      );
 
       await Promise.all(
-        persistedIds.map((id) =>
-          PersistenceService.deleteConversation(id, true),
+        persistedConversations.map((conversation) =>
+          PersistenceService.deleteConversationIfPersisted(conversation),
         ),
       );
 

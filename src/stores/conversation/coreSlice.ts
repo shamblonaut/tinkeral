@@ -166,7 +166,7 @@ export const createCoreSlice: StateCreator<
   deleteConversation: async (id: string) => {
     try {
       const conversation = get().conversations.find((c) => c.id === id);
-      await PersistenceService.deleteConversation(id, conversation?.persisted);
+      await PersistenceService.deleteConversationIfPersisted(conversation);
 
       set((state) => {
         const newConversations = state.conversations.filter((c) => c.id !== id);
@@ -187,9 +187,7 @@ export const createCoreSlice: StateCreator<
   renameConversation: async (id: string, title: string) => {
     try {
       const conversation = get().conversations.find((c) => c.id === id);
-      if (conversation && !conversation.isTemporary) {
-        await PersistenceService.updateTitle(id, title);
-      }
+      await PersistenceService.renameConversation(conversation, title);
 
       set((state) => ({
         conversations: state.conversations

@@ -1,9 +1,10 @@
 import { db } from "@/db";
-import {
-  useConversationStore,
-  useFunctionsStore,
-  useSettingsStore,
-} from "@/stores";
+
+export interface ImportDataResult {
+  settingsUpdated: boolean;
+  conversationsUpdated: boolean;
+  functionsUpdated: boolean;
+}
 
 export async function exportData(): Promise<string> {
   const settings = await db.settings.get("app-settings");
@@ -21,7 +22,9 @@ export async function exportData(): Promise<string> {
   return JSON.stringify(payload, null, 2);
 }
 
-export async function importData(jsonString: string): Promise<void> {
+export async function importData(
+  jsonString: string,
+): Promise<ImportDataResult> {
   let parsed;
   try {
     parsed = JSON.parse(jsonString);
@@ -74,6 +77,12 @@ export async function importData(jsonString: string): Promise<void> {
     }
   }
 
+  const result: ImportDataResult = {
+    settingsUpdated: false,
+    conversationsUpdated: false,
+    functionsUpdated: false,
+  };
+
   await db.transaction(
     "rw",
     db.settings,
@@ -82,6 +91,7 @@ export async function importData(jsonString: string): Promise<void> {
     async () => {
       if (parsed.settings && typeof parsed.settings === "object") {
         await db.settings.put(parsed.settings);
+        result.settingsUpdated = true;
       }
 
       if (
@@ -111,17 +121,16 @@ export async function importData(jsonString: string): Promise<void> {
 
         // Merge rather than completely overwriting
         await db.conversations.bulkPut(processedConversations);
+        result.conversationsUpdated = true;
       }
 
       if (Array.isArray(parsed.functions) && parsed.functions.length > 0) {
         // Merge rather than completely overwriting
         await db.functions.bulkPut(parsed.functions);
+        result.functionsUpdated = true;
       }
     },
   );
 
-  // Reload stores so UI updates immediately
-  await useSettingsStore.getState().loadSettings();
-  await useConversationStore.getState().loadConversations();
-  await useFunctionsStore.getState().ensureFunctionsLoaded(true);
+  return result;
 }

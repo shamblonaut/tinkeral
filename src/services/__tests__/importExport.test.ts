@@ -30,46 +30,6 @@ vi.mock("@/db", () => ({
   },
 }));
 
-// Mock functions
-export const mockLoadSettings = vi.fn();
-export const mockLoadConversations = vi.fn();
-export const mockEnsureFunctionsLoaded = vi.fn();
-
-// Mock stores
-vi.mock("@/stores", () => ({
-  useSettingsStore: {
-    getState: vi.fn(() => ({
-      loadSettings: mockLoadSettings,
-    })),
-  },
-  useConversationStore: {
-    getState: vi.fn(() => ({
-      loadConversations: mockLoadConversations,
-    })),
-  },
-  useFunctionsStore: {
-    getState: vi.fn(() => ({
-      ensureFunctionsLoaded: mockEnsureFunctionsLoaded,
-    })),
-  },
-}));
-
-vi.mock("@/stores/settings", () => ({
-  useSettingsStore: {
-    getState: vi.fn(() => ({
-      loadSettings: mockLoadSettings,
-    })),
-  },
-}));
-
-vi.mock("@/stores/conversation", () => ({
-  useConversationStore: {
-    getState: vi.fn(() => ({
-      loadConversations: mockLoadConversations,
-    })),
-  },
-}));
-
 describe("Import/Export Service", () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -164,7 +124,7 @@ describe("Import/Export Service", () => {
         ],
       });
 
-      await importData(payload);
+      const result = await importData(payload);
 
       expect(db.settings.put).toHaveBeenCalledWith({
         id: "app-settings",
@@ -177,11 +137,25 @@ describe("Import/Export Service", () => {
         { id: "func-1", name: "testFn", implementation: "return true;" },
       ]);
 
-      // Verify the stores' load methods were called via the mocked getState()
-      expect(mockLoadSettings).toHaveBeenCalledTimes(1);
-      expect(mockLoadConversations).toHaveBeenCalledTimes(1);
-      expect(mockEnsureFunctionsLoaded).toHaveBeenCalledTimes(1);
-      expect(mockEnsureFunctionsLoaded).toHaveBeenCalledWith(true);
+      expect(result).toEqual({
+        settingsUpdated: true,
+        conversationsUpdated: true,
+        functionsUpdated: true,
+      });
+    });
+
+    it("should return granular update flags for partial imports", async () => {
+      const payload = JSON.stringify({
+        settings: { id: "app-settings", theme: "light" },
+      });
+
+      const result = await importData(payload);
+
+      expect(result).toEqual({
+        settingsUpdated: true,
+        conversationsUpdated: false,
+        functionsUpdated: false,
+      });
     });
   });
 });

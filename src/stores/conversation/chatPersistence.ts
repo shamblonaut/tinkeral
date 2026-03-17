@@ -34,24 +34,18 @@ export async function persistFinalChatConversation(
     return;
   }
 
-  if (finalConversation.persisted === false && !finalConversation.isTemporary) {
-    const wasPersisted = await PersistenceService.saveNewConversation(
-      finalConversation,
-      titleUpdate,
-    );
+  const wasPersisted = await PersistenceService.persistConversation(
+    finalConversation,
+    { titleUpdate },
+  );
 
-    if (wasPersisted) {
-      set((state) => ({
-        conversations: state.conversations.map((conversation) =>
-          conversation.id === conversationId
-            ? { ...conversation, persisted: true }
-            : conversation,
-        ),
-      }));
-    }
-
-    return;
+  if (wasPersisted) {
+    set((state) => ({
+      conversations: state.conversations.map((conversation) =>
+        conversation.id === conversationId
+          ? { ...conversation, persisted: true }
+          : conversation,
+      ),
+    }));
   }
-
-  await PersistenceService.updateConversation(finalConversation);
 }

@@ -4,11 +4,24 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui";
 import { exportData, importData } from "@/services/importExport";
+import { useConversationStore } from "@/stores/conversation";
+import { useFunctionsStore } from "@/stores/functions";
+import { useSettingsStore } from "@/stores/settings";
 
 export function ImportExport() {
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const loadSettings = useSettingsStore((state) => state.loadSettings);
+  const loadConversations = useConversationStore(
+    (state) => state.loadConversations,
+  );
+  const ensureActiveConversation = useConversationStore(
+    (state) => state.ensureActiveConversation,
+  );
+  const ensureFunctionsLoaded = useFunctionsStore(
+    (state) => state.ensureFunctionsLoaded,
+  );
 
   const handleExport = async () => {
     try {
@@ -42,7 +55,21 @@ export function ImportExport() {
     try {
       setIsImporting(true);
       const text = await file.text();
-      await importData(text);
+      const result = await importData(text);
+
+      if (result.settingsUpdated) {
+        await loadSettings();
+      }
+
+      if (result.functionsUpdated) {
+        await ensureFunctionsLoaded(true);
+      }
+
+      if (result.conversationsUpdated) {
+        await loadConversations();
+        await ensureActiveConversation();
+      }
+
       toast.success("Data imported successfully");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Unknown error";
