@@ -8,6 +8,7 @@ import {
   ChatSettings,
   ConversationSidebar,
   FunctionAttachmentBar,
+  FunctionErrorBoundary,
   MessageList,
 } from "@/components/chat";
 import { SettingsModal } from "@/components/chat/settings/SettingsModal";
@@ -100,7 +101,16 @@ export function ChatInterface() {
 
   return (
     <div className="bg-background flex h-svh flex-col md:flex-row">
-      {platformView === "chat" ? <ConversationSidebar /> : <FunctionSidebar />}
+      {platformView === "chat" ? (
+        <ConversationSidebar />
+      ) : (
+        <FunctionErrorBoundary
+          title="Function sidebar unavailable"
+          description="The function management sidebar hit an error and can be retried."
+        >
+          <FunctionSidebar />
+        </FunctionErrorBoundary>
+      )}
 
       <div className="flex flex-1 flex-col overflow-hidden">
         <ChatHeader
@@ -133,7 +143,14 @@ export function ChatInterface() {
               </div>
             )}
 
-            {features.functionCalling && <FunctionAttachmentBar />}
+            {features.functionCalling && (
+              <FunctionErrorBoundary
+                title="Function attachments unavailable"
+                description="The function attachment bar encountered an error."
+              >
+                <FunctionAttachmentBar />
+              </FunctionErrorBoundary>
+            )}
           </>
         )}
 
@@ -159,16 +176,21 @@ export function ChatInterface() {
                 <ChatSettings />
               </div>
             ) : (
-              <FunctionEditorProvider
-                key={selectedFunctionId ?? "__new__"}
-                initialValues={selectedFn}
-                onSave={handleFunctionSave}
-                onCancel={() => selectFunction(null)}
+              <FunctionErrorBoundary
+                title="Function editor unavailable"
+                description="The function editor encountered an error and can be retried."
               >
-                <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-                  <FunctionEditorMain />
-                </div>
-              </FunctionEditorProvider>
+                <FunctionEditorProvider
+                  key={selectedFunctionId ?? "__new__"}
+                  initialValues={selectedFn}
+                  onSave={handleFunctionSave}
+                  onCancel={() => selectFunction(null)}
+                >
+                  <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                    <FunctionEditorMain />
+                  </div>
+                </FunctionEditorProvider>
+              </FunctionErrorBoundary>
             )}
           </div>
         </div>

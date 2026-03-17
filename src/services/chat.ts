@@ -8,11 +8,16 @@ import type {
   FunctionCallingMode,
   FunctionDefinition,
   FunctionResult,
+  JSONSchema,
+  JSONSchemaProperty,
   Message,
   ModelParameters,
   ChatRequest as ProviderChatRequest,
   TokenUsage,
 } from "@/types";
+
+const MAX_FUNCTION_RESULT_BYTES = 100 * 1024;
+const FUNCTION_RESULT_PREVIEW_BYTES = 16 * 1024;
 
 /**
  * Service-level chat request.
@@ -261,6 +266,19 @@ export class ChatService {
       };
     }
 
+    const argsValidationError = this.validateFunctionCallArguments(
+      functionDefinition.parameters,
+      functionCall.arguments,
+    );
+    if (argsValidationError) {
+      return {
+        id: functionCall.id,
+        name: functionCall.name,
+        result: null,
+        error: argsValidationError,
+      };
+    }
+
     if (abortSignal?.aborted) {
       executor.terminate();
       throw new DOMException("Aborted", "AbortError");
@@ -299,17 +317,183 @@ export class ChatService {
         id: functionCall.id,
         name: functionCall.name,
         result: null,
-        error: execution.error?.message || "Function execution failed",
+        error: this.truncateErrorMessage(
+          execution.error?.message || "Function execution failed",
+        ),
         executionTime: execution.executionTime,
       };
     }
 
+    const normalizedResult = this.normalizeFunctionResultData(execution.data);
+
     return {
       id: functionCall.id,
       name: functionCall.name,
-      result: execution.data || null,
+      result: normalizedResult,
       executionTime: execution.executionTime,
     };
+  }
+
+  private static validateFunctionCallArguments(
+    schema: JSONSchema,
+    rawArgs: unknown,
+  ): string | null {
+    if (!rawArgs || typeof rawArgs !== "object" || Array.isArray(rawArgs)) {
+      return "Invalid function arguments: expected an object.";
+    }
+
+    const args = rawArgs as Record<string, unknown>;
+    const required = schema.required || [];
+    for (const key of required) {
+      if (!(key in args) || args[key] === undefined) {
+        return `Invalid function arguments: missing required parameter "${key}".`;
+      }
+    }
+
+    if (schema.additionalProperties === false) {
+      for (const key of Object.keys(args)) {
+        if (!(key in schema.properties)) {
+          return `Invalid function arguments: unexpected parameter "${key}".`;
+        }
+      }
+    }
+
+    for (const [key, value] of Object.entries(args)) {
+      const property = schema.properties[key];
+      if (!property) continue;
+
+      const mismatch = this.validateSchemaProperty(property, value, key);
+      if (mismatch) {
+        return `Invalid function arguments: ${mismatch}`;
+      }
+    }
+
+    return null;
+  }
+
+  private static validateSchemaProperty(
+    property: JSONSchemaProperty,
+    value: unknown,
+    path: string,
+  ): string | null {
+    if (value === undefined) return null;
+
+    switch (property.type) {
+      case "string":
+        return typeof value === "string"
+          ? null
+          : `parameter "${path}" must be a string.`;
+      case "number":
+        return typeof value === "number" && Number.isFinite(value)
+          ? null
+          : `parameter "${path}" must be a number.`;
+      case "integer":
+        return typeof value === "number" && Number.isInteger(value)
+          ? null
+          : `parameter "${path}" must be an integer.`;
+      case "boolean":
+        return typeof value === "boolean"
+          ? null
+          : `parameter "${path}" must be a boolean.`;
+      case "array": {
+        if (!Array.isArray(value)) {
+          return `parameter "${path}" must be an array.`;
+        }
+
+        if (!property.items) return null;
+        for (let index = 0; index < value.length; index += 1) {
+          const itemMismatch = this.validateSchemaProperty(
+            property.items,
+            value[index],
+            `${path}[${index}]`,
+          );
+          if (itemMismatch) {
+            return itemMismatch;
+          }
+        }
+        return null;
+      }
+      case "object": {
+        if (!value || typeof value !== "object" || Array.isArray(value)) {
+          return `parameter "${path}" must be an object.`;
+        }
+
+        const nestedObject = value as Record<string, unknown>;
+        const nestedRequired = property.required || [];
+        for (const requiredKey of nestedRequired) {
+          if (
+            !(requiredKey in nestedObject) ||
+            nestedObject[requiredKey] === undefined
+          ) {
+            return `parameter "${path}.${requiredKey}" is required.`;
+          }
+        }
+
+        if (!property.properties) return null;
+        for (const [nestedKey, nestedValue] of Object.entries(nestedObject)) {
+          const nestedSchema = property.properties[nestedKey];
+          if (!nestedSchema) continue;
+
+          const nestedMismatch = this.validateSchemaProperty(
+            nestedSchema,
+            nestedValue,
+            `${path}.${nestedKey}`,
+          );
+          if (nestedMismatch) {
+            return nestedMismatch;
+          }
+        }
+
+        return null;
+      }
+      default:
+        return null;
+    }
+  }
+
+  private static normalizeFunctionResultData(data: unknown): unknown {
+    if (data === undefined) {
+      return null;
+    }
+
+    const serialized = this.safeStringify(data);
+    if (!serialized) {
+      return data;
+    }
+
+    const sizeBytes = this.getByteLength(serialized);
+    if (sizeBytes <= MAX_FUNCTION_RESULT_BYTES) {
+      return data;
+    }
+
+    const preview = serialized.slice(0, FUNCTION_RESULT_PREVIEW_BYTES);
+    return {
+      truncated: true,
+      reason: "Function result exceeded maximum size and was truncated",
+      originalSizeBytes: sizeBytes,
+      preview,
+    };
+  }
+
+  private static truncateErrorMessage(error: string): string {
+    const maxErrorLength = 2048;
+    if (error.length <= maxErrorLength) {
+      return error;
+    }
+
+    return `${error.slice(0, maxErrorLength)}… (truncated)`;
+  }
+
+  private static safeStringify(value: unknown): string | null {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return null;
+    }
+  }
+
+  private static getByteLength(value: string): number {
+    return new TextEncoder().encode(value).length;
   }
 
   private static serializeFunctionResult(

@@ -23,6 +23,7 @@ export * from "./message/TokenUsageDisplay";
 
 // functions
 export * from "./functions/FunctionAttachmentBar";
+export * from "./functions/FunctionErrorBoundary";
 
 // layout
 export * from "./layout/ChatHeader";

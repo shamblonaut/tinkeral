@@ -17,6 +17,8 @@ interface FunctionResultDisplayProps {
   functionResult: FunctionResult;
 }
 
+const MAX_RENDERED_JSON_CHARS = 100 * 1024;
+
 function safeFormatJson(value: unknown): string {
   try {
     const result = JSON.stringify(value, null, 2);
@@ -38,6 +40,10 @@ export function FunctionResultDisplay({
     () => safeFormatJson(functionResult.result),
     [functionResult.result],
   );
+  const isTruncated = formattedResult.length > MAX_RENDERED_JSON_CHARS;
+  const renderedResult = isTruncated
+    ? `${formattedResult.slice(0, MAX_RENDERED_JSON_CHARS)}\n… output truncated for display`
+    : formattedResult;
   const shouldCollapse = formattedResult.length > 500;
 
   return (
@@ -93,6 +99,12 @@ export function FunctionResultDisplay({
         </div>
       )}
 
+      {isTruncated && (
+        <div className="text-muted-foreground mb-2 rounded-md border border-current/20 bg-current/5 px-3 py-2 text-xs">
+          Output truncated for UI performance.
+        </div>
+      )}
+
       <div
         className={cn(
           "bg-background border-border/60 overflow-hidden rounded-md border",
@@ -117,7 +129,7 @@ export function FunctionResultDisplay({
             },
           }}
         >
-          {formattedResult}
+          {renderedResult}
         </SyntaxHighlighter>
       </div>
 

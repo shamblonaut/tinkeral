@@ -190,6 +190,100 @@ describe("ChatService function call loop", () => {
     });
   });
 
+  it("returns a graceful error when function arguments do not match schema", async () => {
+    mocks.mockStreamChat
+      .mockImplementationOnce(async function* () {
+        yield {
+          delta: "",
+          finishReason: "function_call",
+          functionCall: {
+            name: "get_weather",
+            arguments: { city: 123 },
+          },
+        };
+      })
+      .mockImplementationOnce(async function* () {
+        yield {
+          delta: "I could not run that with those arguments.",
+          finishReason: "stop",
+        };
+      });
+
+    mocks.mockCreateClient.mockResolvedValue({
+      streamChat: mocks.mockStreamChat,
+    } as unknown as GoogleAPIClient);
+
+    const onFunctionResult = vi.fn();
+
+    await ChatService.executeChat(baseRequest, {
+      onChunk: vi.fn(),
+      onFunctionCall: vi.fn(),
+      onFunctionResult,
+      onFinish: vi.fn(),
+      onError: vi.fn(),
+    });
+
+    expect(mocks.mockExecutorExecute).not.toHaveBeenCalled();
+    expect(onFunctionResult).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "get_weather",
+        result: null,
+        error: 'Invalid function arguments: parameter "city" must be a string.',
+      }),
+    );
+  });
+
+  it("truncates oversized function results before sending them back", async () => {
+    mocks.mockStreamChat
+      .mockImplementationOnce(async function* () {
+        yield {
+          delta: "",
+          finishReason: "function_call",
+          functionCall: {
+            name: "get_weather",
+            arguments: { city: "Tokyo" },
+          },
+        };
+      })
+      .mockImplementationOnce(async function* () {
+        yield {
+          delta: "Received a large function result.",
+          finishReason: "stop",
+        };
+      });
+
+    mocks.mockCreateClient.mockResolvedValue({
+      streamChat: mocks.mockStreamChat,
+    } as unknown as GoogleAPIClient);
+
+    mocks.mockExecutorExecute.mockResolvedValue({
+      success: true,
+      data: { payload: "x".repeat(120 * 1024) },
+      executionTime: 8,
+      consoleLogs: [],
+    });
+
+    const onFunctionResult = vi.fn();
+
+    await ChatService.executeChat(baseRequest, {
+      onChunk: vi.fn(),
+      onFunctionCall: vi.fn(),
+      onFunctionResult,
+      onFinish: vi.fn(),
+      onError: vi.fn(),
+    });
+
+    expect(onFunctionResult).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "get_weather",
+        result: expect.objectContaining({
+          truncated: true,
+          originalSizeBytes: expect.any(Number),
+        }),
+      }),
+    );
+  });
+
   it("handles sequential function calls before final response", async () => {
     mocks.mockStreamChat
       .mockImplementationOnce(async function* () {

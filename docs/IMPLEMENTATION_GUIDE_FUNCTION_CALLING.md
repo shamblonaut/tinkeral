@@ -661,17 +661,17 @@ src/services/__tests__/executor.integration.test.ts
 
 ---
 
-#### Milestone 5.4: Error Handling & Edge Cases
+#### Milestone 5.2: Error Handling & Edge Cases
 
 **Tasks**:
 
-- [ ] Handle model calling a function that isn't attached (graceful error)
-- [ ] Handle model calling a function with wrong arguments (type mismatch)
-- [ ] Handle Web Worker crash/unresponsive state
-- [ ] Handle concurrent function executions (queue or reject)
-- [ ] Add error boundaries around function-related components
-- [ ] Handle large function results (truncation, scrolling)
-- [ ] Verify function calling works with all Gemini models that support it
+- [x] Handle model calling a function that isn't attached (graceful error)
+- [x] Handle model calling a function with wrong arguments (type mismatch)
+- [x] Handle Web Worker crash/unresponsive state
+- [x] Handle concurrent function executions (queue or reject)
+- [x] Add error boundaries around function-related components
+- [x] Handle large function results (truncation, scrolling)
+- [x] Verify function calling works with all Gemini models that support it
 
 **Acceptance Criteria**:
 
@@ -684,7 +684,7 @@ src/services/__tests__/executor.integration.test.ts
 
 ---
 
-#### Milestone 5.5: Enable Feature Flag & Final Polish
+#### Milestone 5.3: Enable Feature Flag & Final Polish
 
 **Tasks**:
 

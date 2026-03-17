@@ -4,6 +4,7 @@ import { toast } from "sonner";
 
 import {
   FunctionCallDisplay,
+  FunctionErrorBoundary,
   MessageActions,
   MessageContent,
   TokenUsageDisplay,
@@ -225,14 +226,19 @@ export const Message = memo(function Message({
                   )}
 
                   {isFunctionCall && m.functionCall && (
-                    <FunctionCallDisplay
-                      functionCall={m.functionCall}
-                      functionResult={pairedResult}
-                      status={status}
-                      onCancel={
-                        status === "executing" ? abortGeneration : undefined
-                      }
-                    />
+                    <FunctionErrorBoundary
+                      title="Function call message unavailable"
+                      description="Rendering this function call failed."
+                    >
+                      <FunctionCallDisplay
+                        functionCall={m.functionCall}
+                        functionResult={pairedResult}
+                        status={status}
+                        onCancel={
+                          status === "executing" ? abortGeneration : undefined
+                        }
+                      />
+                    </FunctionErrorBoundary>
                   )}
                 </div>
               );

@@ -26,6 +26,8 @@ interface FunctionCallDisplayProps {
   onCancel?: () => void;
 }
 
+const MAX_RENDERED_JSON_CHARS = 100 * 1024;
+
 function safeFormatJson(value: unknown): string {
   try {
     const result = JSON.stringify(value, null, 2);
@@ -50,10 +52,14 @@ export function FunctionCallDisplay({
     () => safeFormatJson(functionCall.arguments),
     [functionCall.arguments],
   );
-  const formattedResult = useMemo(
+  const rawFormattedResult = useMemo(
     () => safeFormatJson(functionResult?.result),
     [functionResult?.result],
   );
+  const isResultTruncated = rawFormattedResult.length > MAX_RENDERED_JSON_CHARS;
+  const formattedResult = isResultTruncated
+    ? `${rawFormattedResult.slice(0, MAX_RENDERED_JSON_CHARS)}\n… output truncated for display`
+    : rawFormattedResult;
 
   const shouldCollapseArgs = formattedArgs.length > 320;
   const shouldCollapseResult = formattedResult.length > 320;
@@ -180,6 +186,12 @@ export function FunctionCallDisplay({
               {functionResult.error && (
                 <div className="text-destructive border-border/40 border-b px-2 py-1.5 text-[10px]">
                   {functionResult.error}
+                </div>
+              )}
+
+              {isResultTruncated && (
+                <div className="text-muted-foreground border-border/40 border-b px-2 py-1 text-[9px]">
+                  Output truncated for UI performance.
                 </div>
               )}
 

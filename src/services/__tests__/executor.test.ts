@@ -38,6 +38,7 @@ function createMockFunction(
 class MockWorker {
   onmessage: ((event: MessageEvent) => void) | null = null;
   onerror: ((event: ErrorEvent) => void) | null = null;
+  onmessageerror: ((event: MessageEvent) => void) | null = null;
   terminated = false;
 
   postMessage(data: unknown): void {
@@ -61,6 +62,11 @@ class MockWorker {
   /** Simulate a worker-level error. */
   simulateError(message: string): void {
     this.onerror?.(new ErrorEvent("error", { message }));
+  }
+
+  /** Simulate worker message transport failure. */
+  simulateMessageError(data?: unknown): void {
+    this.onmessageerror?.(new MessageEvent("messageerror", { data }));
   }
 
   /**
@@ -401,24 +407,29 @@ describe("FunctionExecutor", () => {
       }).not.toThrow();
     });
 
-    it("should terminate previous worker when executing a new function", async () => {
+    it("should reject concurrent execution while another execution is in progress", async () => {
       const workers: MockWorker[] = [];
 
       MockWorker.onPostMessage = (worker) => {
         workers.push(worker);
-        // Respond immediately to keep the test moving
-        worker.simulateMessage({ type: "result", data: "ok" });
+        // Keep first execution pending
       };
 
       const func = createMockFunction();
 
-      await executor.execute(func, {});
-      const firstWorker = workers[0];
-      expect(firstWorker.terminated).toBe(true); // terminated after completion
+      const firstExecution = executor.execute(func, {});
+      await vi.waitFor(() => {
+        expect(workers).toHaveLength(1);
+      });
 
-      await executor.execute(func, {});
-      expect(workers).toHaveLength(2);
-      expect(workers[1].terminated).toBe(true); // also terminated after completion
+      const concurrentResult = await executor.execute(func, {});
+
+      expect(concurrentResult.success).toBe(false);
+      expect(concurrentResult.error?.name).toBe("ConcurrentExecutionError");
+
+      workers[0].simulateMessage({ type: "result", data: "ok" });
+      const firstResult = await firstExecution;
+      expect(firstResult.success).toBe(true);
     });
   });
 
@@ -495,6 +506,19 @@ describe("FunctionExecutor", () => {
       expect(result.consoleLogs).toHaveLength(4);
       const levels = result.consoleLogs.map((l: ConsoleEntry) => l.level);
       expect(levels).toEqual(["log", "warn", "error", "log"]);
+    });
+
+    it("should handle worker message transport failures", async () => {
+      MockWorker.onPostMessage = (worker) => {
+        worker.simulateMessageError({ bad: "payload" });
+      };
+
+      const func = createMockFunction();
+      const result = await executor.execute(func, {});
+
+      expect(result.success).toBe(false);
+      expect(result.error?.name).toBe("WorkerCommunicationError");
+      expect(result.error?.message).toBe("Worker communication failed");
     });
   });
 });

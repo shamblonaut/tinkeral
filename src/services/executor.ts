@@ -63,8 +63,17 @@ export class FunctionExecutor {
     args: Record<string, unknown>,
     options: ExecutionOptions = {},
   ): Promise<ExecutionResult> {
-    // Terminate any previous active worker
-    this.terminate();
+    if (this.activeWorker) {
+      return {
+        success: false,
+        error: {
+          message: "Another function execution is already in progress",
+          name: "ConcurrentExecutionError",
+        },
+        executionTime: 0,
+        consoleLogs: [],
+      };
+    }
 
     const timeout = options.timeout ?? func.timeout ?? 5000;
     const startTime = performance.now();
@@ -153,13 +162,41 @@ export class FunctionExecutor {
         });
       };
 
+      worker.onmessageerror = () => {
+        settle({
+          success: false,
+          error: {
+            message: "Worker communication failed",
+            name: "WorkerCommunicationError",
+          },
+          executionTime: performance.now() - startTime,
+          consoleLogs,
+        });
+      };
+
       // Send the execution request to the worker
-      worker.postMessage({
-        type: "execute",
-        code: func.implementation,
-        args,
-        allowedAPIs: func.allowedAPIs,
-      });
+      try {
+        worker.postMessage({
+          type: "execute",
+          code: func.implementation,
+          args,
+          allowedAPIs: func.allowedAPIs,
+        });
+      } catch (error: unknown) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Worker communication failed";
+        settle({
+          success: false,
+          error: {
+            message,
+            name: "WorkerCommunicationError",
+          },
+          executionTime: performance.now() - startTime,
+          consoleLogs,
+        });
+      }
     });
   }
 

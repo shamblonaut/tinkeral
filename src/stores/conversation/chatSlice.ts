@@ -154,6 +154,12 @@ export const createChatSlice: StateCreator<
       const attachedFunctions = await loadAttachedFunctions(
         conversation.functionIds,
       );
+      const selectedModel = get().availableModels.find(
+        (model) => model.id === conversation.modelId,
+      );
+      const supportsFunctionCalling =
+        selectedModel?.capabilities.functionCalling ?? true;
+      const enabledFunctions = supportsFunctionCalling ? attachedFunctions : [];
 
       assistantMessageId = crypto.randomUUID();
       const assistantMessage: Message = {
@@ -179,9 +185,9 @@ export const createChatSlice: StateCreator<
           parameters: conversation.parameters,
           systemPrompt: conversation.systemPrompt,
           apiKey,
-          ...(attachedFunctions.length
+          ...(enabledFunctions.length
             ? {
-                functions: attachedFunctions,
+                functions: enabledFunctions,
                 functionCallingMode: conversation.functionCallingMode,
               }
             : {}),
