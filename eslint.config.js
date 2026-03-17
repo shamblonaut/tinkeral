@@ -26,4 +26,72 @@ export default defineConfig([
       ],
     },
   },
+  {
+    files: ["src/components/chat/**/*.{ts,tsx}"],
+    ignores: ["src/components/chat/**/__tests__/**"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "@/components/chat",
+              message:
+                "Avoid intra-domain barrel imports inside chat components. Import directly via a relative path instead.",
+            },
+            {
+              name: "@/components/chat/index",
+              message:
+                "Avoid intra-domain barrel imports inside chat components. Import directly via a relative path instead.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["src/stores/**/*.{ts,tsx}"],
+    ignores: ["src/stores/**/__tests__/**"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "@/stores",
+              message:
+                "Store internals must import concrete store modules (e.g. '@/stores/settings') instead of the '@/stores' barrel.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["src/types/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: [
+                "@/services",
+                "@/services/*",
+                "../services",
+                "../services/*",
+              ],
+              message:
+                "Types layer must not depend on services. Move shared shapes to '@/types' and import from there.",
+            },
+            {
+              group: ["@/db", "@/db/*", "../db", "../db/*"],
+              message:
+                "Types layer must not depend on db modules. Move shared shapes to '@/types' and import from there.",
+            },
+          ],
+        },
+      ],
+    },
+  },
 ]);
