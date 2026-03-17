@@ -2,11 +2,6 @@ import { RotateCcw, X } from "lucide-react";
 import { useEffect } from "react";
 
 import {
-  ModelSelector,
-  ParameterControl,
-  SystemPromptSection,
-} from "@/components/chat";
-import {
   Button,
   Checkbox,
   Drawer,
@@ -28,6 +23,10 @@ import { useConversationStore, useUIStore } from "@/stores";
 import { useFunctionsStore } from "@/stores/functions";
 import type { FunctionCallingMode } from "@/types";
 import { DEFAULT_PARAMETERS } from "@/types";
+
+import { ModelSelector } from "./ModelSelector";
+import { ParameterControl } from "./ParameterControl";
+import { SystemPromptSection } from "./SystemPromptSection";
 
 export function ChatSettings() {
   const { isChatSettingsOpen, toggleChatSettings, setChatSettingsOpen } =

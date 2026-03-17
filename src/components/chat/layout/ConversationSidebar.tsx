@@ -1,6 +1,5 @@
 import { Settings, X } from "lucide-react";
 
-import { ConversationList } from "@/components/chat";
 import {
   Button,
   Sheet,
@@ -11,6 +10,8 @@ import {
 import { useMediaQuery } from "@/hooks";
 import { cn } from "@/lib/utils";
 import { useUIStore } from "@/stores";
+
+import { ConversationList } from "../conversation/ConversationList";
 
 export function ConversationSidebar() {
   const { isSidebarOpen, toggleSidebar, setSidebarOpen, openModal } =

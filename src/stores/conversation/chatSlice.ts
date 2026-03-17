@@ -4,7 +4,7 @@ import { functions as functionsDb } from "@/db";
 import { DEFAULT_MODEL_ID, getModelDefaultParameters } from "@/lib/models";
 import { ChatService, type ChatMetadata } from "@/services/chat";
 import { PersistenceService } from "@/services/persistence";
-import { useSettingsStore } from "@/stores";
+import { useSettingsStore } from "@/stores/settings";
 import {
   DEFAULT_PARAMETERS,
   type FunctionCall,

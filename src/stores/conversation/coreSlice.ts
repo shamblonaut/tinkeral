@@ -3,7 +3,8 @@ import type { StateCreator } from "zustand";
 import { conversations as conversationsDb } from "@/db";
 import { GoogleAPIClient } from "@/services/api/google";
 import { PersistenceService } from "@/services/persistence";
-import { useFunctionsStore, useSettingsStore } from "@/stores";
+import { useFunctionsStore } from "@/stores/functions";
+import { useSettingsStore } from "@/stores/settings";
 import type { Conversation, ModelParameters } from "@/types";
 
 import type { ConversationCoreState, ConversationState } from "./types";

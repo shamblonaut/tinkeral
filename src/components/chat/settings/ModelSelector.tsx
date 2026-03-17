@@ -1,7 +1,6 @@
 import { Check, ChevronsUpDown } from "lucide-react";
 import { useState } from "react";
 
-import { ModelDetails } from "@/components/chat";
 import {
   Button,
   Command,
@@ -23,6 +22,8 @@ import {
 import { useMediaQuery, useModelSelection } from "@/hooks";
 import { cn } from "@/lib/utils";
 import type { ModelInfo } from "@/types";
+
+import { ModelDetails } from "./ModelDetails";
 
 function ModelItem({
   model,

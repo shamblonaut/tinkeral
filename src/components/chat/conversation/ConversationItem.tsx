@@ -1,7 +1,6 @@
 import { CheckSquare, MessageSquare, MoreVertical, Square } from "lucide-react";
 import { memo, useEffect, useRef, useState } from "react";
 
-import { ConversationItemDetails } from "@/components/chat";
 import {
   Button,
   Input,
@@ -14,6 +13,8 @@ import { useMediaQuery } from "@/hooks";
 import { KNOWN_MODELS } from "@/lib/models";
 import { cn, formatRelativeTime } from "@/lib/utils";
 import { useConversationStore } from "@/stores";
+
+import { ConversationItemDetails } from "./ConversationItemDetails";
 
 interface ConversationItemProps {
   conversation: Conversation;

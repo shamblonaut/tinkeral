@@ -2,15 +2,6 @@ import { WifiOff, Zap } from "lucide-react";
 import { useCallback, useEffect } from "react";
 import { toast } from "sonner";
 
-import {
-  ChatHeader,
-  ChatInput,
-  ChatSettings,
-  ConversationSidebar,
-  FunctionAttachmentBar,
-  FunctionErrorBoundary,
-  MessageList,
-} from "@/components/chat";
 import { SettingsModal } from "@/components/chat/settings/SettingsModal";
 import features from "@/config/features";
 import {
@@ -21,6 +12,14 @@ import {
 import { DEFAULT_MODEL_ID, getModelDefaultParameters } from "@/lib/models";
 import { useConversationStore, useSettingsStore, useUIStore } from "@/stores";
 import { useFunctionsStore } from "@/stores/functions";
+
+import { FunctionAttachmentBar } from "../functions/FunctionAttachmentBar";
+import { FunctionErrorBoundary } from "../functions/FunctionErrorBoundary";
+import { ChatInput } from "../message/ChatInput";
+import { MessageList } from "../message/MessageList";
+import { ChatSettings } from "../settings/ChatSettings";
+import { ChatHeader } from "./ChatHeader";
+import { ConversationSidebar } from "./ConversationSidebar";
 
 export function ChatInterface() {
   const {

@@ -3,13 +3,6 @@ import { memo, useCallback, useState } from "react";
 import { toast } from "sonner";
 
 import {
-  FunctionCallDisplay,
-  FunctionErrorBoundary,
-  MessageActions,
-  MessageContent,
-  TokenUsageDisplay,
-} from "@/components/chat";
-import {
   Avatar,
   AvatarFallback,
   AvatarImage,
@@ -24,6 +17,12 @@ import {
 import { cn } from "@/lib/utils";
 import { useConversationStore } from "@/stores";
 import type { Message as MessageType } from "@/types";
+
+import { FunctionErrorBoundary } from "../functions/FunctionErrorBoundary";
+import { FunctionCallDisplay } from "./FunctionCallDisplay";
+import { MessageActions } from "./MessageActions";
+import { MessageContent } from "./MessageContent";
+import { TokenUsageDisplay } from "./TokenUsageDisplay";
 
 interface MessageProps {
   messageGroup: MessageType[];

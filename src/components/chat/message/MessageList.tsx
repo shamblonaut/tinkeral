@@ -1,9 +1,10 @@
 import { ArrowDown } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { Message } from "@/components/chat";
 import { ScrollArea } from "@/components/ui";
 import type { Message as MessageType } from "@/types";
+
+import { Message } from "./Message";
 
 interface MessageListProps {
   messages: MessageType[];

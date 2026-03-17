@@ -10,7 +10,6 @@ import {
 import { useCallback, useMemo, useState } from "react";
 import { useShallow } from "zustand/react/shallow";
 
-import { ConversationItem, SearchInput } from "@/components/chat";
 import {
   Button,
   Dialog,
@@ -28,6 +27,9 @@ import {
 import { DEFAULT_MODEL_ID, getModelDefaultParameters } from "@/lib/models";
 import { cn } from "@/lib/utils";
 import { useConversationStore, useSettingsStore } from "@/stores";
+
+import { ConversationItem } from "./ConversationItem";
+import { SearchInput } from "./SearchInput";
 
 interface ConversationListProps {
   className?: string;
