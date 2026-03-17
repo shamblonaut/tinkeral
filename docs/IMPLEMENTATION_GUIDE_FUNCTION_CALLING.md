@@ -688,12 +688,12 @@ src/services/__tests__/executor.integration.test.ts
 
 **Tasks**:
 
-- [ ] Set `features.functionCalling = true`
-- [ ] Review all function calling UI for consistency with existing app style
-- [ ] Verify responsive behavior (mobile function management, function messages)
-- [ ] Verify accessibility (keyboard navigation, screen reader labels)
-- [ ] Performance check (lazy-loaded editor, worker memory cleanup)
-- [ ] Update README with function calling documentation
+- [x] Set `features.functionCalling = true`
+- [x] Review all function calling UI for consistency with existing app style
+- [x] Verify responsive behavior (mobile function management, function messages)
+- [x] Verify accessibility (keyboard navigation, screen reader labels)
+- [x] Performance check (lazy-loaded editor, worker memory cleanup)
+- [x] Update README with function calling documentation
 
 **Acceptance Criteria**:
 

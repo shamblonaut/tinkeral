@@ -138,6 +138,16 @@ export function FunctionCallDisplay({
             size="sm"
             className="hover:bg-primary/20 h-6 w-6 p-0"
             onClick={() => setIsDetailsExpanded((prev) => !prev)}
+            aria-label={
+              isDetailsExpanded
+                ? "Collapse function details"
+                : "Expand function details"
+            }
+            title={
+              isDetailsExpanded
+                ? "Collapse function details"
+                : "Expand function details"
+            }
           >
             {isDetailsExpanded ? (
               <ChevronUp className="h-4 w-4" />

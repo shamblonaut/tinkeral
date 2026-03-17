@@ -27,3 +27,30 @@ pnpm run dev
 ```
 
 Open [http://localhost:5173](http://localhost:5173) in your browser.
+
+## 🧰 Function Calling
+
+Tinkeral includes built-in function calling so you can test tool-use flows end-to-end in the browser.
+
+### What you can do
+
+- Create and edit JavaScript functions in the **Functions** view
+- Define structured input parameters with JSON Schema fields
+- Run functions in an isolated Web Worker sandbox before using them in chat
+- Attach functions to a conversation and let Gemini call them during responses
+- Inspect function-call arguments, results, errors, and execution time in chat messages
+
+### How to use it
+
+1. Open **Functions** from the header toggle.
+2. Create a function (name, description, parameters, implementation).
+3. Use the built-in test runner to validate behavior.
+4. Switch back to **Chat** and attach one or more functions to the current conversation.
+5. Send a prompt that requires tool use and review the function call/result cards.
+
+### Safety and performance notes
+
+- Function code executes in a Web Worker, not the DOM thread.
+- Execution timeouts are enforced per function.
+- Function result rendering is truncated in the UI for large payloads.
+- The CodeMirror editor is lazy-loaded to keep initial bundle load smaller.

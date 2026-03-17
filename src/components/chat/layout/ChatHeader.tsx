@@ -56,6 +56,8 @@ export function ChatHeader({
               platformView === "chat" && "bg-background text-foreground",
             )}
             onClick={() => setPlatformView("chat")}
+            aria-pressed={platformView === "chat"}
+            aria-label="Switch to chat view"
           >
             <MessageSquareText className="h-3.5 w-3.5" />
             <span className="hidden md:inline">Chat</span>
@@ -69,6 +71,8 @@ export function ChatHeader({
                 platformView === "functions" && "bg-background text-foreground",
               )}
               onClick={() => setPlatformView("functions")}
+              aria-pressed={platformView === "functions"}
+              aria-label="Switch to functions view"
             >
               <Braces className="h-3.5 w-3.5" />
               <span className="hidden md:inline">Functions</span>

@@ -109,11 +109,30 @@ function FunctionListItem({
           onSelect(fn.id);
         }
       }}
+      onKeyDown={(e) => {
+        if (isEditing) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          if (isSelectionMode) {
+            onToggleSelection(fn.id);
+          } else {
+            onSelect(fn.id);
+          }
+        }
+      }}
       onDoubleClick={() => {
         if (!isSelectionMode && !isEditing) {
           onSelect(fn.id);
         }
       }}
+      role="button"
+      tabIndex={0}
+      aria-pressed={isSelectionMode ? isSelected : isActive}
+      aria-label={
+        isSelectionMode
+          ? `${isSelected ? "Deselect" : "Select"} function ${fn.name}`
+          : `Open function ${fn.name}`
+      }
       className={cn(
         "group relative flex cursor-pointer flex-col gap-1 rounded-lg p-3 transition-colors",
         isActive
@@ -182,6 +201,7 @@ function FunctionListItem({
             isActive ? "hover:bg-accent-foreground/10" : "hover:bg-accent",
             isExpanded && "bg-accent rotate-90",
           )}
+          aria-expanded={isExpanded}
           onClick={(e) => {
             e.stopPropagation();
             setIsExpanded((prev) => !prev);
@@ -461,6 +481,7 @@ export function FunctionSidebarList({
                 onClick={handleCreate}
                 className="h-9 flex-1 justify-start gap-2"
                 variant="outline"
+                aria-label="Create new function"
               >
                 <Plus className="h-4 w-4" />
                 New Function
@@ -472,6 +493,7 @@ export function FunctionSidebarList({
                 size="icon"
                 className="h-8 w-8"
                 title="Select functions"
+                aria-label="Select functions"
               >
                 <CheckSquare className="h-4 w-4" />
               </Button>
@@ -485,6 +507,7 @@ export function FunctionSidebarList({
                   className="h-8 w-8"
                   onClick={toggleSelectionMode}
                   title="Cancel selection"
+                  aria-label="Cancel selection"
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -501,6 +524,7 @@ export function FunctionSidebarList({
                     className="h-8 w-8"
                     onClick={() => setFunctionToDelete("bulk")}
                     title="Delete selected"
+                    aria-label="Delete selected functions"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -518,6 +542,11 @@ export function FunctionSidebarList({
                     setSelectedIds(filteredFunctions.map((fn) => fn.id));
                   }}
                   title={allFilteredSelected ? "Deselect All" : "Select All"}
+                  aria-label={
+                    allFilteredSelected
+                      ? "Deselect all filtered functions"
+                      : "Select all filtered functions"
+                  }
                 >
                   {allFilteredSelected ? (
                     <CheckSquare className="text-primary h-4 w-4" />
@@ -539,6 +568,7 @@ export function FunctionSidebarList({
             onChange={(e) => {
               setSearchInput(e.target.value);
             }}
+            aria-label="Search functions"
             className="h-8 pr-8 pl-8 text-xs focus-visible:ring-1"
           />
           <div className="absolute top-1/2 right-2 flex -translate-y-1/2 items-center gap-1">
@@ -553,6 +583,7 @@ export function FunctionSidebarList({
                 onClick={() => {
                   setSearchInput("");
                 }}
+                aria-label="Clear function search"
               >
                 <X className="text-muted-foreground h-3 w-3" />
               </Button>
