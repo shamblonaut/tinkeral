@@ -25,6 +25,8 @@ describe("FunctionsStore", () => {
       functions: [],
       isLoading: false,
       error: null,
+      hasLoaded: false,
+      lastLoadedAt: null,
     });
   });
 
@@ -33,6 +35,8 @@ describe("FunctionsStore", () => {
     expect(state.functions).toHaveLength(0);
     expect(state.isLoading).toBe(false);
     expect(state.error).toBeNull();
+    expect(state.hasLoaded).toBe(false);
+    expect(state.lastLoadedAt).toBeNull();
   });
 
   it("should load functions from IndexedDB", async () => {
@@ -50,6 +54,8 @@ describe("FunctionsStore", () => {
     expect(state.functions).toHaveLength(1);
     expect(state.functions[0].name).toBe("testFunction");
     expect(state.isLoading).toBe(false);
+    expect(state.hasLoaded).toBe(true);
+    expect(state.lastLoadedAt).not.toBeNull();
   });
 
   it("should create a function and persist it", async () => {

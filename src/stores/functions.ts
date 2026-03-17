@@ -4,13 +4,18 @@ import { functions as functionsDB } from "@/db";
 import { EXAMPLE_FUNCTIONS } from "@/features/functions/utils/examples";
 import type { FunctionDefinition } from "@/types";
 
+let inFlightFunctionsLoad: Promise<void> | null = null;
+
 export interface FunctionsState {
   functions: FunctionDefinition[];
   isLoading: boolean;
   error: string | null;
+  hasLoaded: boolean;
+  lastLoadedAt: number | null;
 
   // Actions
   loadFunctions: () => Promise<void>;
+  ensureFunctionsLoaded: (force?: boolean) => Promise<void>;
   createFunction: (
     fn: Omit<FunctionDefinition, "id" | "createdAt" | "updatedAt">,
   ) => Promise<string>;
@@ -27,16 +32,48 @@ export const useFunctionsStore = create<FunctionsState>((set, get) => ({
   functions: [],
   isLoading: false,
   error: null,
+  hasLoaded: false,
+  lastLoadedAt: null,
 
   loadFunctions: async () => {
-    set({ isLoading: true, error: null });
-    try {
-      const all = await functionsDB.getAll();
-      set({ functions: all, isLoading: false });
-    } catch (error) {
-      console.error("Failed to load functions:", error);
-      set({ error: "Failed to load functions", isLoading: false });
+    if (inFlightFunctionsLoad) {
+      return inFlightFunctionsLoad;
     }
+
+    inFlightFunctionsLoad = (async () => {
+      set({ isLoading: true, error: null });
+      try {
+        const all = await functionsDB.getAll();
+        set({
+          functions: all,
+          isLoading: false,
+          hasLoaded: true,
+          lastLoadedAt: Date.now(),
+        });
+      } catch (error) {
+        console.error("Failed to load functions:", error);
+        set({
+          error: "Failed to load functions",
+          isLoading: false,
+          hasLoaded: false,
+        });
+      }
+    })();
+
+    try {
+      await inFlightFunctionsLoad;
+    } finally {
+      inFlightFunctionsLoad = null;
+    }
+  },
+
+  ensureFunctionsLoaded: async (force = false) => {
+    const { hasLoaded } = get();
+    if (!force && hasLoaded) {
+      return;
+    }
+
+    await get().loadFunctions();
   },
 
   createFunction: async (fn) => {

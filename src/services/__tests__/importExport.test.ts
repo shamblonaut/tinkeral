@@ -33,7 +33,7 @@ vi.mock("@/db", () => ({
 // Mock functions
 export const mockLoadSettings = vi.fn();
 export const mockLoadConversations = vi.fn();
-export const mockLoadFunctions = vi.fn();
+export const mockEnsureFunctionsLoaded = vi.fn();
 
 // Mock stores
 vi.mock("@/stores", () => ({
@@ -49,7 +49,7 @@ vi.mock("@/stores", () => ({
   },
   useFunctionsStore: {
     getState: vi.fn(() => ({
-      loadFunctions: mockLoadFunctions,
+      ensureFunctionsLoaded: mockEnsureFunctionsLoaded,
     })),
   },
 }));
@@ -180,7 +180,8 @@ describe("Import/Export Service", () => {
       // Verify the stores' load methods were called via the mocked getState()
       expect(mockLoadSettings).toHaveBeenCalledTimes(1);
       expect(mockLoadConversations).toHaveBeenCalledTimes(1);
-      expect(mockLoadFunctions).toHaveBeenCalledTimes(1);
+      expect(mockEnsureFunctionsLoaded).toHaveBeenCalledTimes(1);
+      expect(mockEnsureFunctionsLoaded).toHaveBeenCalledWith(true);
     });
   });
 });

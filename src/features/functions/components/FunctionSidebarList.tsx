@@ -317,7 +317,7 @@ export function FunctionSidebarList({
   const {
     functions,
     isLoading,
-    loadFunctions,
+    ensureFunctionsLoaded,
     createFunction,
     updateFunction,
     deleteFunction,
@@ -336,8 +336,8 @@ export function FunctionSidebarList({
   const isSearching = searchInput !== debouncedSearchQuery;
 
   useEffect(() => {
-    void loadFunctions();
-  }, [loadFunctions]);
+    void ensureFunctionsLoaded();
+  }, [ensureFunctionsLoaded]);
 
   const filteredFunctions = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();

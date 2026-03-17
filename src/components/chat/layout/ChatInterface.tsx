@@ -9,8 +9,7 @@ import {
   FunctionEditorProvider,
   FunctionSidebar,
 } from "@/features/functions";
-import { DEFAULT_MODEL_ID, getModelDefaultParameters } from "@/lib/models";
-import { useConversationStore, useSettingsStore, useUIStore } from "@/stores";
+import { useConversationStore, useUIStore } from "@/stores";
 import { useFunctionsStore } from "@/stores/functions";
 
 import { FunctionAttachmentBar } from "../functions/FunctionAttachmentBar";
@@ -30,6 +29,7 @@ export function ChatInterface() {
     isStreaming,
     error,
     abortGeneration,
+    ensureActiveConversation,
   } = useConversationStore();
 
   const {
@@ -67,17 +67,9 @@ export function ChatInterface() {
 
   useEffect(() => {
     if (!activeConversationId && !isLoading) {
-      const createNew = async () => {
-        const { settings } = useSettingsStore.getState();
-        const defaultModel = settings?.defaultModel || DEFAULT_MODEL_ID;
-        const params = getModelDefaultParameters(defaultModel);
-        await useConversationStore
-          .getState()
-          .createConversation(defaultModel, params);
-      };
-      createNew();
+      void ensureActiveConversation();
     }
-  }, [activeConversationId, isLoading]);
+  }, [activeConversationId, isLoading, ensureActiveConversation]);
 
   const handleSend = (content: string) => {
     sendMessage(content).catch((err: unknown) => {

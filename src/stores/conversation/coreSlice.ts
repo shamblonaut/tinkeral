@@ -1,6 +1,7 @@
 import type { StateCreator } from "zustand";
 
 import { conversations as conversationsDb } from "@/db";
+import { DEFAULT_MODEL_ID, getModelDefaultParameters } from "@/lib/models";
 import { GoogleAPIClient } from "@/services/api/google";
 import { PersistenceService } from "@/services/persistence";
 import { useFunctionsStore } from "@/stores/functions";
@@ -66,6 +67,26 @@ export const createCoreSlice: StateCreator<
         activeConversationId: id,
       };
     });
+  },
+
+  ensureActiveConversation: async () => {
+    const { activeConversationId, conversations } = get();
+
+    if (activeConversationId) {
+      const existingConversation = conversations.find(
+        (conversation) => conversation.id === activeConversationId,
+      );
+      if (existingConversation) {
+        return activeConversationId;
+      }
+    }
+
+    const { settings } = useSettingsStore.getState();
+    const defaultModel = settings?.defaultModel || DEFAULT_MODEL_ID;
+    const defaultParams =
+      settings?.defaultParameters || getModelDefaultParameters(defaultModel);
+
+    return get().createConversation(defaultModel, defaultParams);
   },
 
   createConversation: async (

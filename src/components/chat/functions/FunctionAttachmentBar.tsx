@@ -25,12 +25,12 @@ export function FunctionAttachmentBar() {
     (state) => state.toggleFunctionAttachment,
   );
 
-  const { functions, loadFunctions, isLoading } = useFunctionsStore();
+  const { functions, ensureFunctionsLoaded, isLoading } = useFunctionsStore();
   const { setPlatformView, selectFunction } = useUIStore();
 
   useEffect(() => {
-    void loadFunctions();
-  }, [loadFunctions]);
+    void ensureFunctionsLoaded();
+  }, [ensureFunctionsLoaded]);
 
   const attachedFunctionIds = useMemo(
     () => conversation?.functionIds ?? [],

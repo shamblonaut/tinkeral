@@ -64,7 +64,7 @@ export function ChatSettings() {
   );
   const {
     functions,
-    loadFunctions,
+    ensureFunctionsLoaded,
     isLoading: isLoadingFunctions,
   } = useFunctionsStore();
   const setPlatformView = useUIStore((state) => state.setPlatformView);
@@ -72,9 +72,9 @@ export function ChatSettings() {
 
   useEffect(() => {
     if (features.functionCalling) {
-      void loadFunctions();
+      void ensureFunctionsLoaded();
     }
-  }, [loadFunctions]);
+  }, [ensureFunctionsLoaded]);
 
   const maxOutputTokens = activeModel?.contextWindow.output || 8192;
   const supportsFunctionCalling =

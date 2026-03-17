@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { APIKeyModal } from "@/components/auth";
 import { ChatInterface, LoadingScreen } from "@/components/chat";
 import { Toaster, TooltipProvider } from "@/components/ui";
-import { getModelDefaultParameters } from "@/lib/models";
 import {
   useConversationStore,
   useFunctionsStore,
@@ -14,8 +13,9 @@ import {
 function App() {
   const [isInitialized, setIsInitialized] = useState(false);
   const loadSettings = useSettingsStore((state) => state.loadSettings);
-  const { loadConversations, loadModels } = useConversationStore();
-  const { loadFunctions } = useFunctionsStore();
+  const { loadConversations, loadModels, ensureActiveConversation } =
+    useConversationStore();
+  const { ensureFunctionsLoaded } = useFunctionsStore();
   const settings = useSettingsStore((state) => state.settings);
   const isSettingsLoading = useSettingsStore((state) => state.isLoading);
   const isConversationsLoading = useConversationStore(
@@ -31,24 +31,9 @@ function App() {
           // Load models in background, don't wait
           loadModels();
         }
-        await loadFunctions();
+        await ensureFunctionsLoaded();
         await loadConversations();
-
-        // If no active conversation, create a new ephemeral one
-        const conversationStore = useConversationStore.getState();
-        if (!conversationStore.activeConversationId) {
-          if (settingsState.settings) {
-            const defaultModel = settingsState.settings.defaultModel;
-            const defaultParams =
-              settingsState.settings.defaultParameters ||
-              getModelDefaultParameters(defaultModel);
-
-            await conversationStore.createConversation(
-              defaultModel,
-              defaultParams,
-            );
-          }
-        }
+        await ensureActiveConversation();
         setIsInitialized(true);
       } catch (error) {
         console.error("Initialization failed:", error);
@@ -57,7 +42,13 @@ function App() {
     };
 
     init();
-  }, [loadSettings, loadConversations, loadModels, loadFunctions]);
+  }, [
+    loadSettings,
+    loadConversations,
+    loadModels,
+    ensureFunctionsLoaded,
+    ensureActiveConversation,
+  ]);
 
   // Determine global loading state and progress
   let progress = 0;

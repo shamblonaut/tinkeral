@@ -16,6 +16,7 @@ export interface ConversationCoreState {
 
   loadConversations: () => Promise<void>;
   loadModels: () => Promise<void>;
+  ensureActiveConversation: () => Promise<string>;
   setActiveConversation: (id: string) => void;
   createConversation: (
     modelId: string,

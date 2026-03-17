@@ -1,7 +1,6 @@
 import type { StateCreator } from "zustand";
 
 import { functions as functionsDb } from "@/db";
-import { DEFAULT_MODEL_ID, getModelDefaultParameters } from "@/lib/models";
 import { ChatService, type ChatMetadata } from "@/services/chat";
 import { PersistenceService } from "@/services/persistence";
 import { useSettingsStore } from "@/stores/settings";
@@ -76,11 +75,7 @@ export const createChatSlice: StateCreator<
 
     if (!activeConversationId) {
       try {
-        const { settings } = useSettingsStore.getState();
-        const modelId = settings?.defaultModel || DEFAULT_MODEL_ID;
-        const params = getModelDefaultParameters(modelId);
-        const newId = await get().createConversation(modelId, params);
-        activeConversationId = newId;
+        activeConversationId = await get().ensureActiveConversation();
         conversations = get().conversations;
       } catch (error) {
         console.error("Failed to auto-create conversation:", error);

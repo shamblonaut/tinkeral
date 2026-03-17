@@ -123,5 +123,5 @@ export async function importData(jsonString: string): Promise<void> {
   // Reload stores so UI updates immediately
   await useSettingsStore.getState().loadSettings();
   await useConversationStore.getState().loadConversations();
-  await useFunctionsStore.getState().loadFunctions();
+  await useFunctionsStore.getState().ensureFunctionsLoaded(true);
 }
