@@ -1,4 +1,6 @@
-import type { JSONSchema } from "@/types";
+import type { JSONSchema } from "@/shared/types";
+
+import { FunctionExecutor } from "../services";
 
 const NAME_REGEX = /^[a-zA-Z0-9_.-]{1,64}$/;
 
@@ -26,8 +28,6 @@ export function validateTimeout(value: number): string | undefined {
   if (value < 100) return "Minimum timeout is 100ms.";
   if (value > 60000) return "Maximum timeout is 60000ms (60 seconds).";
 }
-
-import { FunctionExecutor } from "@/services/executor";
 
 export function validateImplementation(code: string): string | undefined {
   if (!code.trim()) return "Implementation is required.";

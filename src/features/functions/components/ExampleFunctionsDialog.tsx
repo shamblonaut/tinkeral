@@ -11,9 +11,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui";
-import { EXAMPLE_FUNCTIONS } from "@/features/functions/utils/examples";
-import { useFunctionsStore } from "@/stores/functions";
+} from "@/shared/components/ui";
+
+import { useFunctionsStore } from "../store";
+import { EXAMPLE_FUNCTIONS } from "../utils/examples";
 
 interface ExampleFunctionsDialogProps {
   open: boolean;

@@ -1,14 +1,14 @@
 import { ThemeProvider } from "next-themes";
 import { useEffect, useState } from "react";
 
-import { APIKeyModal } from "@/components/auth";
-import { ChatInterface, LoadingScreen } from "@/components/chat";
-import { Toaster, TooltipProvider } from "@/components/ui";
 import {
+  ChatInterface,
+  LoadingScreen,
   useConversationStore,
-  useFunctionsStore,
-  useSettingsStore,
-} from "@/stores";
+} from "@/features/chat";
+import { useFunctionsStore } from "@/features/functions";
+import { APIKeyModal, useSettingsStore } from "@/features/settings";
+import { Toaster, TooltipProvider } from "@/shared/components/ui";
 
 function App() {
   const [isInitialized, setIsInitialized] = useState(false);

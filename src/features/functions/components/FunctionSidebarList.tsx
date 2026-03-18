@@ -1,9 +1,10 @@
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
+
+import { useFunctionSidebarState } from "../hooks";
 import { ExampleFunctionsDialog } from "./ExampleFunctionsDialog";
 import { FunctionDeleteDialog } from "./FunctionDeleteDialog";
 import { FunctionSidebarResults } from "./FunctionSidebarResults";
 import { FunctionSidebarToolbar } from "./FunctionSidebarToolbar";
-import { useFunctionSidebarState } from "./useFunctionSidebarState";
 
 interface FunctionSidebarListProps {
   className?: string;

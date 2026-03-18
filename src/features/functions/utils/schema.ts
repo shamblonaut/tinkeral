@@ -1,4 +1,5 @@
-import type { JSONSchema, JSONSchemaProperty } from "@/types";
+import type { JSONSchema, JSONSchemaProperty } from "@/shared/types";
+
 import type { ParameterRowData } from "../types";
 
 /**

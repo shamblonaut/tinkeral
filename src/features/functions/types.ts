@@ -1,10 +1,9 @@
 import type { ReactNode } from "react";
 
-import type {
-  FunctionDefinition,
-  JSONSchema,
-  JSONSchemaPropertyType,
-} from "@/types";
+import type { FunctionDefinition } from "@/db";
+import type { JSONSchema, JSONSchemaPropertyType } from "@/shared/types";
+
+export type { FunctionDefinition } from "@/db";
 
 export interface FormErrors {
   name?: string;

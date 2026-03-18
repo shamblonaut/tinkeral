@@ -3,7 +3,7 @@ import { cleanup } from "@testing-library/react";
 import "fake-indexeddb/auto";
 import { afterEach, beforeEach, vi } from "vitest";
 
-import { createLocalStorageMock, createMatchMediaMock } from "@/test";
+import { createLocalStorageMock, createMatchMediaMock } from "./mocks";
 
 beforeEach(() => {
   vi.spyOn(console, "error").mockImplementation(() => {});

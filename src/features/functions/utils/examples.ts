@@ -1,4 +1,4 @@
-import type { FunctionDefinition } from "@/types";
+import type { FunctionDefinition } from "../types";
 
 export const EXAMPLE_FUNCTIONS: Omit<
   FunctionDefinition,

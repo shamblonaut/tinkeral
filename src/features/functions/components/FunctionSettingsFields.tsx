@@ -1,5 +1,6 @@
-import { Input, Label, Textarea } from "@/components/ui";
 import { memo } from "react";
+
+import { Input, Label, Textarea } from "@/shared/components/ui";
 
 export const NameField = memo(function NameField({
   value,

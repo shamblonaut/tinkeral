@@ -1,7 +1,7 @@
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it } from "vitest";
 
-import { conversations, db, functions, settings, type AppSettings } from "@/db";
+import { conversations, db, functions, settings, type AppSettings } from "..";
 
 describe("Database Operations", () => {
   beforeEach(async () => {

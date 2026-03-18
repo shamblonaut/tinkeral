@@ -1,12 +1,11 @@
 import { Plus } from "lucide-react";
 import { memo, useCallback, useEffect, useState } from "react";
 
-import { Button } from "@/components/ui";
-import type { JSONSchemaPropertyType } from "@/types";
+import { Button } from "@/shared/components/ui";
+import type { JSONSchemaPropertyType } from "@/shared/types";
+
 import type { ParameterRowData, ParameterSchemaEditorProps } from "../types";
-
 import { emptyRow, rowsToSchema, schemaToRows } from "../utils/schema";
-
 import { ParameterRow } from "./ParameterRow";
 
 export const ParameterSchemaEditor = memo(function ParameterSchemaEditor({

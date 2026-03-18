@@ -12,9 +12,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   CompactMetadataCard,
   CompactMetadataCardItem,
-} from "@/components/chat/conversation/CompactMetadataCard";
-import { ExpandableSelectableItemCard } from "@/components/chat/conversation/ExpandableSelectableItemCard";
-import { ItemActionsRow } from "@/components/chat/conversation/ItemActionsRow";
+  ExpandableSelectableItemCard,
+  ItemActionsRow,
+} from "@/features/chat";
 import {
   Button,
   Input,
@@ -22,9 +22,10 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@/components/ui";
-import { cn, formatRelativeTime, formatSmartDate } from "@/lib/utils";
-import type { FunctionDefinition } from "@/types";
+} from "@/shared/components/ui";
+import { cn, formatRelativeTime, formatSmartDate } from "@/shared/lib/utils";
+
+import type { FunctionDefinition } from "../types";
 
 interface FunctionSidebarResultsProps {
   filteredFunctions: FunctionDefinition[];

@@ -11,6 +11,7 @@ import {
   syntaxHighlighting,
 } from "@codemirror/language";
 import { Compartment, EditorState } from "@codemirror/state";
+import type { EditorView as EditorViewType } from "@codemirror/view";
 import {
   EditorView,
   crosshairCursor,
@@ -24,8 +25,6 @@ import {
   placeholder as placeholderExt,
 } from "@codemirror/view";
 import { githubDarkInit, githubLightInit } from "@uiw/codemirror-theme-github";
-
-import type { EditorView as EditorViewType } from "@codemirror/view";
 
 // ---------------------------------------------------------------------------
 // Types & Reusable State

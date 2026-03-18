@@ -1,15 +1,19 @@
 import { Trash2 } from "lucide-react";
 import { memo } from "react";
 
-import { Button, Checkbox, Input, Label } from "@/components/ui";
 import {
+  Button,
+  Checkbox,
+  Input,
+  Label,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import type { JSONSchemaPropertyType } from "@/types";
+} from "@/shared/components/ui";
+import type { JSONSchemaPropertyType } from "@/shared/types";
+
 import type { ParameterRowData } from "../types";
 
 const SUPPORTED_TYPES: JSONSchemaPropertyType[] = [

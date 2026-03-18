@@ -1,9 +1,9 @@
 import { Settings } from "lucide-react";
 
-import { ResponsiveSidebarShell } from "@/components/chat/layout/ResponsiveSidebarShell";
-import { Button } from "@/components/ui";
-import { useMediaQuery } from "@/hooks";
-import { useUIStore } from "@/stores";
+import { ResponsiveSidebarShell } from "@/features/chat";
+import { Button } from "@/shared/components/ui";
+import { useMediaQuery } from "@/shared/hooks";
+import { useUIStore } from "@/shared/store/ui";
 
 import { FunctionSidebarList } from "./FunctionSidebarList";
 

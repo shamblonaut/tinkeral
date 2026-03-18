@@ -11,7 +11,8 @@ import {
   useState,
 } from "react";
 
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/lib/utils";
+
 import type { CodeEditorHandle, CodeEditorProps } from "../types";
 
 // Lazy-loaded CodeMirror core — only fetched when CodeEditor mounts

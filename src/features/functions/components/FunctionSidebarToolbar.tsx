@@ -1,7 +1,8 @@
 import { CheckSquare, Plus } from "lucide-react";
 
-import { SelectableListModeBar } from "@/components/chat/conversation/SelectableListModeBar";
-import { Button, SearchField } from "@/components/ui";
+import { SelectableListModeBar } from "@/features/chat";
+import { SearchField } from "@/shared/components";
+import { Button } from "@/shared/components/ui";
 
 interface FunctionSidebarToolbarProps {
   isSelectionMode: boolean;

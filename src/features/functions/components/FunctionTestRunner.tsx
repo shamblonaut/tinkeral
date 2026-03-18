@@ -8,14 +8,12 @@ import {
   Label,
   ScrollArea,
   Textarea,
-} from "@/components/ui";
-import { cn } from "@/lib/utils";
-import { FunctionExecutor, type ExecutionResult } from "@/services/executor";
-import type {
-  FunctionDefinition,
-  JSONSchema,
-  JSONSchemaProperty,
-} from "@/types";
+} from "@/shared/components/ui";
+import { cn } from "@/shared/lib/utils";
+import type { JSONSchema, JSONSchemaProperty } from "@/shared/types";
+
+import { FunctionExecutor, type ExecutionResult } from "../services";
+import type { FunctionDefinition } from "../types";
 
 interface FunctionTestRunnerProps {
   name: string;

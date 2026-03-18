@@ -11,6 +11,27 @@ This document defines all TypeScript interfaces, types, and contracts used throu
 3. **Extensible**: Support future enhancements without breaking changes
 4. **Clear**: Self-documenting names with JSDoc where helpful
 
+## Type Ownership Rules
+
+Type placement follows ownership and reuse boundaries:
+
+- **DB-canonical persisted entities** live in `src/db/schema.ts` and are exported via `@/db`:
+  - `Conversation`
+  - `AppSettings`
+  - `FunctionDefinition`
+- **Feature-local type barrels** re-export owned entity types for feature code:
+  - `src/features/chat/types.ts` → `Conversation`
+  - `src/features/settings/types.ts` → `AppSettings`
+  - `src/features/functions/types.ts` → `FunctionDefinition`
+- **Shared cross-feature contracts** remain in `src/shared/types/*`:
+  - provider/request/streaming contracts (`provider.ts`)
+  - message and parameter contracts (`conversation.ts`)
+  - JSON schema primitives (`functions.ts`)
+  - error contracts (`error.ts`)
+  - UI preference contracts (`settings.ts`)
+
+Guideline: if a type models persisted domain data, it belongs to DB schema; if it is feature-internal, keep it in that feature; if it is a cross-feature protocol/contract, keep it in shared types.
+
 ## Core Domain Types
 
 ### Message

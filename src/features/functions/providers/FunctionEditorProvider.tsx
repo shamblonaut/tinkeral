@@ -1,10 +1,10 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { useFunctionsStore } from "@/stores/functions";
-import type { JSONSchema } from "@/types";
+import type { JSONSchema } from "@/shared/types";
 
 import { FunctionEditorContext } from "../context";
+import { useFunctionsStore } from "../store";
 import type {
   CodeEditorHandle,
   FormErrors,

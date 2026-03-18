@@ -1,4 +1,4 @@
-import { ConfirmDeleteDialog } from "@/components/ui";
+import { DeleteConfirmationDialog } from "@/shared/components";
 
 interface FunctionDeleteDialogProps {
   functionToDelete: string | null;
@@ -24,7 +24,7 @@ export function FunctionDeleteDialog({
       : "Are you sure you want to delete this function? This action cannot be undone.";
 
   return (
-    <ConfirmDeleteDialog
+    <DeleteConfirmationDialog
       open={functionToDelete !== null}
       onOpenChange={(open) => {
         if (!open) onClose();

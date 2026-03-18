@@ -6,8 +6,8 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "@/components/ui";
-import { cn } from "@/lib/utils";
+} from "@/shared/components/ui";
+import { cn } from "@/shared/lib/utils";
 
 import { useFunctionEditor } from "../hooks";
 import CodeEditor from "./CodeEditor";
