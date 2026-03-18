@@ -1,5 +1,6 @@
 import { ThemeProvider } from "next-themes";
 import { useEffect, useState } from "react";
+import { useShallow } from "zustand/react/shallow";
 
 import {
   ChatInterface,
@@ -14,8 +15,18 @@ function App() {
   const [isInitialized, setIsInitialized] = useState(false);
   const loadSettings = useSettingsStore((state) => state.loadSettings);
   const { loadConversations, loadModels, ensureActiveConversation } =
-    useConversationStore();
-  const { ensureFunctionsLoaded } = useFunctionsStore();
+    useConversationStore(
+      useShallow((state) => ({
+        loadConversations: state.loadConversations,
+        loadModels: state.loadModels,
+        ensureActiveConversation: state.ensureActiveConversation,
+      })),
+    );
+  const { ensureFunctionsLoaded } = useFunctionsStore(
+    useShallow((state) => ({
+      ensureFunctionsLoaded: state.ensureFunctionsLoaded,
+    })),
+  );
   const settings = useSettingsStore((state) => state.settings);
   const isSettingsLoading = useSettingsStore((state) => state.isLoading);
   const isConversationsLoading = useConversationStore(

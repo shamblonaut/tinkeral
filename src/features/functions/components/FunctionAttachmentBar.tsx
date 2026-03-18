@@ -1,5 +1,6 @@
 import { Braces, Plus } from "lucide-react";
 import { useEffect, useMemo } from "react";
+import { useShallow } from "zustand/react/shallow";
 
 import { useConversationStore } from "@/features/chat";
 import {
@@ -26,8 +27,19 @@ export function FunctionAttachmentBar() {
     (state) => state.toggleFunctionAttachment,
   );
 
-  const { functions, ensureFunctionsLoaded, isLoading } = useFunctionsStore();
-  const { setPlatformView, selectFunction } = useUIStore();
+  const { functions, ensureFunctionsLoaded, isLoading } = useFunctionsStore(
+    useShallow((state) => ({
+      functions: state.functions,
+      ensureFunctionsLoaded: state.ensureFunctionsLoaded,
+      isLoading: state.isLoading,
+    })),
+  );
+  const { setPlatformView, selectFunction } = useUIStore(
+    useShallow((state) => ({
+      setPlatformView: state.setPlatformView,
+      selectFunction: state.selectFunction,
+    })),
+  );
 
   useEffect(() => {
     void ensureFunctionsLoaded();

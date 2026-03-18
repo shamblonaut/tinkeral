@@ -1,5 +1,6 @@
 import { RotateCcw, X } from "lucide-react";
 import { useEffect } from "react";
+import { useShallow } from "zustand/react/shallow";
 
 import features from "@/config/features";
 import { useConversationStore } from "@/features/chat";
@@ -30,7 +31,13 @@ import { SystemPromptSection } from "./SystemPromptSection";
 
 export function ChatSettings() {
   const { isChatSettingsOpen, toggleChatSettings, setChatSettingsOpen } =
-    useUIStore();
+    useUIStore(
+      useShallow((state) => ({
+        isChatSettingsOpen: state.isChatSettingsOpen,
+        toggleChatSettings: state.toggleChatSettings,
+        setChatSettingsOpen: state.setChatSettingsOpen,
+      })),
+    );
   const isDesktop = useMediaQuery("(min-width: 768px)");
 
   const activeConversationId = useConversationStore(
@@ -66,7 +73,13 @@ export function ChatSettings() {
     functions,
     ensureFunctionsLoaded,
     isLoading: isLoadingFunctions,
-  } = useFunctionsStore();
+  } = useFunctionsStore(
+    useShallow((state) => ({
+      functions: state.functions,
+      ensureFunctionsLoaded: state.ensureFunctionsLoaded,
+      isLoading: state.isLoading,
+    })),
+  );
   const setPlatformView = useUIStore((state) => state.setPlatformView);
   const selectFunction = useUIStore((state) => state.selectFunction);
 

@@ -1,6 +1,7 @@
 import { WifiOff, Zap } from "lucide-react";
 import { useCallback, useEffect } from "react";
 import { toast } from "sonner";
+import { useShallow } from "zustand/react/shallow";
 
 import features from "@/config/features";
 import {
@@ -27,7 +28,18 @@ export function ChatInterface() {
     error,
     abortGeneration,
     ensureActiveConversation,
-  } = useConversationStore();
+  } = useConversationStore(
+    useShallow((state) => ({
+      activeConversationId: state.activeConversationId,
+      conversations: state.conversations,
+      sendMessage: state.sendMessage,
+      isLoading: state.isLoading,
+      isStreaming: state.isStreaming,
+      error: state.error,
+      abortGeneration: state.abortGeneration,
+      ensureActiveConversation: state.ensureActiveConversation,
+    })),
+  );
 
   const {
     platformView,
@@ -38,7 +50,18 @@ export function ChatInterface() {
     toggleSidebar,
     selectedFunctionId,
     selectFunction,
-  } = useUIStore();
+  } = useUIStore(
+    useShallow((state) => ({
+      platformView: state.platformView,
+      setPlatformView: state.setPlatformView,
+      toggleChatSettings: state.toggleChatSettings,
+      isChatSettingsOpen: state.isChatSettingsOpen,
+      isSidebarOpen: state.isSidebarOpen,
+      toggleSidebar: state.toggleSidebar,
+      selectedFunctionId: state.selectedFunctionId,
+      selectFunction: state.selectFunction,
+    })),
+  );
 
   const conversation = conversations.find(
     (c: { id: string }) => c.id === activeConversationId,

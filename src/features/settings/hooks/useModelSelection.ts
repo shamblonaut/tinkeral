@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useShallow } from "zustand/react/shallow";
 
 import { useConversationStore } from "@/features/chat";
 import {
@@ -15,9 +16,22 @@ export function useModelSelection(onSelect?: () => void) {
     activeConversationId,
     conversations,
     createConversation,
-  } = useConversationStore();
+  } = useConversationStore(
+    useShallow((state) => ({
+      availableModels: state.availableModels,
+      loadModels: state.loadModels,
+      activeConversationId: state.activeConversationId,
+      conversations: state.conversations,
+      createConversation: state.createConversation,
+    })),
+  );
 
-  const { settings, updateSettings } = useSettingsStore();
+  const { settings, updateSettings } = useSettingsStore(
+    useShallow((state) => ({
+      settings: state.settings,
+      updateSettings: state.updateSettings,
+    })),
+  );
 
   const activeConversation = conversations.find(
     (c) => c.id === activeConversationId,

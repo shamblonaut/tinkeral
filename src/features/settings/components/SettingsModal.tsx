@@ -1,4 +1,5 @@
 import { Settings } from "lucide-react";
+import { useShallow } from "zustand/react/shallow";
 
 import {
   Dialog,
@@ -17,7 +18,12 @@ import { GeneralSettingsTab } from "./GeneralSettingsTab";
 import { ImportExport } from "./ImportExport";
 
 export function SettingsModal() {
-  const { activeModal, closeModal } = useUIStore();
+  const { activeModal, closeModal } = useUIStore(
+    useShallow((state) => ({
+      activeModal: state.activeModal,
+      closeModal: state.closeModal,
+    })),
+  );
 
   const isOpen = activeModal === "settings";
 

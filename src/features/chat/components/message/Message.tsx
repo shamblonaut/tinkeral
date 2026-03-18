@@ -1,6 +1,7 @@
 import { Bot, User } from "lucide-react";
 import { memo, useCallback, useState } from "react";
 import { toast } from "sonner";
+import { useShallow } from "zustand/react/shallow";
 
 import { FunctionErrorBoundary } from "@/features/functions";
 import {
@@ -45,7 +46,14 @@ export const Message = memo(function Message({
   const [isCopied, setIsCopied] = useState(false);
 
   const { deleteMessage, retryMessage, editMessage, abortGeneration } =
-    useConversationStore();
+    useConversationStore(
+      useShallow((state) => ({
+        deleteMessage: state.deleteMessage,
+        retryMessage: state.retryMessage,
+        editMessage: state.editMessage,
+        abortGeneration: state.abortGeneration,
+      })),
+    );
 
   const handleCopy = useCallback(() => {
     const fullContent = messageGroup

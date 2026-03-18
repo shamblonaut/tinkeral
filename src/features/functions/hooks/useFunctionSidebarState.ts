@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { useShallow } from "zustand/react/shallow";
 
 import { useDebounce } from "@/shared/hooks";
 import { useUIStore } from "@/shared/store/ui";
@@ -20,9 +21,23 @@ export function useFunctionSidebarState({
     createFunction,
     updateFunction,
     deleteFunction,
-  } = useFunctionsStore();
+  } = useFunctionsStore(
+    useShallow((state) => ({
+      functions: state.functions,
+      isLoading: state.isLoading,
+      ensureFunctionsLoaded: state.ensureFunctionsLoaded,
+      createFunction: state.createFunction,
+      updateFunction: state.updateFunction,
+      deleteFunction: state.deleteFunction,
+    })),
+  );
 
-  const { selectedFunctionId, selectFunction } = useUIStore();
+  const { selectedFunctionId, selectFunction } = useUIStore(
+    useShallow((state) => ({
+      selectedFunctionId: state.selectedFunctionId,
+      selectFunction: state.selectFunction,
+    })),
+  );
 
   const [searchInput, setSearchInput] = useState("");
   const [isSelectionMode, setIsSelectionMode] = useState(false);

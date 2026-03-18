@@ -1,4 +1,5 @@
 import { Settings } from "lucide-react";
+import { useShallow } from "zustand/react/shallow";
 
 import { Button } from "@/shared/components/ui";
 import { useMediaQuery } from "@/shared/hooks";
@@ -8,7 +9,14 @@ import { ConversationList, ResponsiveSidebarShell } from "..";
 
 export function ConversationSidebar() {
   const { isSidebarOpen, toggleSidebar, setSidebarOpen, openModal } =
-    useUIStore();
+    useUIStore(
+      useShallow((state) => ({
+        isSidebarOpen: state.isSidebarOpen,
+        toggleSidebar: state.toggleSidebar,
+        setSidebarOpen: state.setSidebarOpen,
+        openModal: state.openModal,
+      })),
+    );
   const isDesktop = useMediaQuery("(min-width: 768px)");
 
   const Content = (

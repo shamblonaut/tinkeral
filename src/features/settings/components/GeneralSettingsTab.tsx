@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
+import { useShallow } from "zustand/react/shallow";
 
 import { Button, Input, Label } from "@/shared/components/ui";
 import { GoogleAPIClient } from "@/shared/services/api";
@@ -7,7 +8,12 @@ import { GoogleAPIClient } from "@/shared/services/api";
 import { useSettingsStore } from "../store";
 
 export function GeneralSettingsTab() {
-  const { settings, setApiKey } = useSettingsStore();
+  const { settings, setApiKey } = useSettingsStore(
+    useShallow((state) => ({
+      settings: state.settings,
+      setApiKey: state.setApiKey,
+    })),
+  );
   const [apiKey, setLocalApiKey] = useState(settings?.apiKeys?.google || "");
   const [isValidating, setIsValidating] = useState(false);
 

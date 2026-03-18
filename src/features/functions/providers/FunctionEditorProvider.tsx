@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { useShallow } from "zustand/react/shallow";
 
 import type { JSONSchema } from "@/shared/types";
 
@@ -57,7 +58,13 @@ export function FunctionEditorProvider({
     timeout: initialValues?.timeout ?? DEFAULT_TIMEOUT,
   });
 
-  const { createFunction, updateFunction, functions } = useFunctionsStore();
+  const { createFunction, updateFunction, functions } = useFunctionsStore(
+    useShallow((state) => ({
+      createFunction: state.createFunction,
+      updateFunction: state.updateFunction,
+      functions: state.functions,
+    })),
+  );
 
   const checkNameUniqueness = useCallback(
     (value: string): string | undefined => {
