@@ -1,7 +1,14 @@
 import "fake-indexeddb/auto";
-import { beforeEach, describe, expect, it } from "vitest";
+import { toast } from "sonner";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { conversations, db, functions, settings, type AppSettings } from "..";
+
+vi.mock("sonner", () => ({
+  toast: {
+    error: vi.fn(),
+  },
+}));
 
 describe("Database Operations", () => {
   beforeEach(async () => {
@@ -114,6 +121,57 @@ describe("Database Operations", () => {
       const fn = await functions.get(id);
       expect(fn?.name).toBe("testFn");
       expect(typeof fn?.id).toBe("string");
+    });
+  });
+
+  describe("Error Handling", () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+    });
+
+    it("should catch QuotaExceededError and show a specific toast", async () => {
+      const mockAdd = vi.spyOn(db.conversations, "add").mockRejectedValueOnce({
+        name: "QuotaExceededError",
+      });
+
+      await expect(
+        conversations.create({
+          title: "Test",
+          modelId: "gemini-pro",
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          messages: [],
+          parameters: { temperature: 0.7, maxTokens: 2048, topP: 0.95 },
+        }),
+      ).rejects.toMatchObject({ name: "QuotaExceededError" });
+
+      expect(toast.error).toHaveBeenCalledWith(
+        "Storage limit reached. Please delete old conversations or free up space.",
+      );
+
+      mockAdd.mockRestore();
+    });
+
+    it("should catch generic errors and show the fallback toast", async () => {
+      const genericError = new Error("Generic DB Error");
+      const mockAdd = vi
+        .spyOn(db.conversations, "add")
+        .mockRejectedValueOnce(genericError);
+
+      await expect(
+        conversations.create({
+          title: "Test",
+          modelId: "gemini-pro",
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          messages: [],
+          parameters: { temperature: 0.7, maxTokens: 2048, topP: 0.95 },
+        }),
+      ).rejects.toThrow("Generic DB Error");
+
+      expect(toast.error).toHaveBeenCalledWith("Failed to create conversation");
+
+      mockAdd.mockRestore();
     });
   });
 });
