@@ -1,0 +1,4 @@
+# Add pnpm to PATH for GUI Git clients (like VS Code) which don't load .bashrc/.zshrc
+export PATH="$HOME/.local/share/pnpm:$PATH"
+
+pnpm exec lint-staged

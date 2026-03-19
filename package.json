@@ -11,7 +11,8 @@
     "format:check": "prettier --check .",
     "typecheck": "tsc -b --noEmit",
     "preview": "vite preview",
-    "test": "vitest --run"
+    "test": "vitest --run",
+    "prepare": "husky"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.1",
@@ -62,7 +63,9 @@
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "fake-indexeddb": "^6.2.5",
     "globals": "^16.5.0",
+    "husky": "^9.1.7",
     "jsdom": "^28.0.0",
+    "lint-staged": "^16.4.0",
     "prettier": "^3.8.1",
     "prettier-plugin-organize-imports": "^4.3.0",
     "prettier-plugin-tailwindcss": "^0.7.2",
