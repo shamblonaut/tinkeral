@@ -1,4 +1,4 @@
-import { create } from "zustand";
+import { create, type StateCreator } from "zustand";
 
 import { functions as functionsDB } from "@/db";
 
@@ -29,7 +29,7 @@ export interface FunctionsState {
   importExamples: (names?: string[], ignoreExisting?: boolean) => Promise<void>;
 }
 
-export const useFunctionsStore = create<FunctionsState>((set, get) => ({
+const createFunctionsSlice: StateCreator<FunctionsState> = (set, get) => ({
   functions: [],
   isLoading: false,
   error: null,
@@ -147,4 +147,8 @@ export const useFunctionsStore = create<FunctionsState>((set, get) => ({
       await createFunction(example);
     }
   },
+});
+
+export const useFunctionsStore = create<FunctionsState>()((...a) => ({
+  ...createFunctionsSlice(...a),
 }));

@@ -1,4 +1,4 @@
-import { create } from "zustand";
+import { create, type StateCreator } from "zustand";
 import { persist } from "zustand/middleware";
 
 export interface Toast {
@@ -31,53 +31,54 @@ interface UIState {
   selectFunction: (id: string | null) => void;
 }
 
+const createUISlice: StateCreator<UIState, [["zustand/persist", unknown]]> = (
+  set,
+  get,
+) => ({
+  platformView: "chat",
+  isSidebarOpen: true,
+  isChatSettingsOpen:
+    typeof window !== "undefined" ? window.innerWidth >= 768 : true,
+  activeModal: null,
+  toasts: [],
+
+  selectedFunctionId: null,
+
+  setPlatformView: (view: PlatformView) => set({ platformView: view }),
+  toggleSidebar: () =>
+    set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
+  setSidebarOpen: (isOpen: boolean) => set({ isSidebarOpen: isOpen }),
+  toggleChatSettings: () =>
+    set((state) => ({
+      isChatSettingsOpen: !state.isChatSettingsOpen,
+    })),
+  setChatSettingsOpen: (isOpen: boolean) => set({ isChatSettingsOpen: isOpen }),
+  openModal: (modalId: string) => set({ activeModal: modalId }),
+  closeModal: () => set({ activeModal: null }),
+  addToast: (toast) => {
+    const id = crypto.randomUUID();
+    const newToast = { ...toast, id };
+    set((state) => ({ toasts: [...state.toasts, newToast] }));
+    if (toast.duration !== 0) {
+      setTimeout(() => {
+        get().removeToast(id);
+      }, toast.duration || 3000);
+    }
+  },
+  removeToast: (id: string) => {
+    set((state) => ({
+      toasts: state.toasts.filter((t) => t.id !== id),
+    }));
+  },
+  selectFunction: (id: string | null) => set({ selectedFunctionId: id }),
+});
+
 export const useUIStore = create<UIState>()(
-  persist(
-    (set, get) => ({
-      platformView: "chat",
-      isSidebarOpen: true,
-      isChatSettingsOpen:
-        typeof window !== "undefined" ? window.innerWidth >= 768 : true,
-      activeModal: null,
-      toasts: [],
-
-      selectedFunctionId: null,
-
-      setPlatformView: (view: PlatformView) => set({ platformView: view }),
-      toggleSidebar: () =>
-        set((state) => ({ isSidebarOpen: !state.isSidebarOpen })),
-      setSidebarOpen: (isOpen: boolean) => set({ isSidebarOpen: isOpen }),
-      toggleChatSettings: () =>
-        set((state) => ({
-          isChatSettingsOpen: !state.isChatSettingsOpen,
-        })),
-      setChatSettingsOpen: (isOpen: boolean) =>
-        set({ isChatSettingsOpen: isOpen }),
-      openModal: (modalId: string) => set({ activeModal: modalId }),
-      closeModal: () => set({ activeModal: null }),
-      addToast: (toast) => {
-        const id = crypto.randomUUID();
-        const newToast = { ...toast, id };
-        set((state) => ({ toasts: [...state.toasts, newToast] }));
-        if (toast.duration !== 0) {
-          setTimeout(() => {
-            get().removeToast(id);
-          }, toast.duration || 3000);
-        }
-      },
-      removeToast: (id: string) => {
-        set((state) => ({
-          toasts: state.toasts.filter((t) => t.id !== id),
-        }));
-      },
-      selectFunction: (id: string | null) => set({ selectedFunctionId: id }),
+  persist((...a) => ({ ...createUISlice(...a) }), {
+    name: "ui-storage",
+    partialize: (state) => ({
+      platformView: state.platformView,
+      isSidebarOpen: state.isSidebarOpen,
     }),
-    {
-      name: "ui-storage",
-      partialize: (state) => ({
-        platformView: state.platformView,
-        isSidebarOpen: state.isSidebarOpen,
-      }),
-    },
-  ),
+  }),
 );

@@ -1,4 +1,4 @@
-import { create } from "zustand";
+import { create, type StateCreator } from "zustand";
 
 import { settings } from "@/db";
 import { DEFAULT_MODEL_ID } from "@/shared/lib/models";
@@ -32,7 +32,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   },
 };
 
-export const useSettingsStore = create<SettingsState>((set, get) => ({
+const createSettingsSlice: StateCreator<SettingsState> = (set, get) => ({
   settings: null,
   isLoading: false,
   error: null,
@@ -110,4 +110,8 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       set({ error: "Failed to update preferences" });
     }
   },
+});
+
+export const useSettingsStore = create<SettingsState>()((...a) => ({
+  ...createSettingsSlice(...a),
 }));
