@@ -39,7 +39,7 @@ export function SystemPromptSection({
                 <span className="sr-only">Info</span>
               </Button>
             </PopoverTrigger>
-            <PopoverContent side="top" className="max-w-[200px] p-2">
+            <PopoverContent side="top" className="max-w-50 p-2">
               <p className="text-xs">
                 Instructions for how the model should behave.
               </p>
@@ -54,7 +54,7 @@ export function SystemPromptSection({
         placeholder="You are a helpful assistant..."
         value={systemPrompt}
         onChange={(e) => setSystemPrompt(e.target.value)}
-        className="min-h-[100px] resize-y"
+        className="min-h-25 resize-y"
         disabled={isDisabled}
       />
     </div>

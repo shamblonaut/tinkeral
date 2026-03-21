@@ -247,7 +247,7 @@ export function MessageContent({
                 onSave();
               }
             }}
-            className="text-foreground min-h-[40px] w-full resize-none overflow-hidden border-none bg-transparent px-2 py-1 shadow-none focus-visible:ring-0"
+            className="text-foreground min-h-10 w-full resize-none overflow-hidden border-none bg-transparent px-2 py-1 shadow-none focus-visible:ring-0"
             autoFocus
             rows={2}
           />

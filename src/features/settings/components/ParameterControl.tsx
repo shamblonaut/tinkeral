@@ -115,7 +115,7 @@ export function ParameterControl({
                   <span className="sr-only">Info</span>
                 </Button>
               </PopoverTrigger>
-              <PopoverContent side="top" className="max-w-[200px] p-2">
+              <PopoverContent side="top" className="max-w-50 p-2">
                 <p className="text-xs">{description}</p>
               </PopoverContent>
             </Popover>

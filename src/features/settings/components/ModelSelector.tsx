@@ -152,7 +152,7 @@ function ModelSelectorDesktop() {
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-2xl p-0" align="end">
-        <div className="flex h-[300px]">
+        <div className="flex h-75">
           <div className="bg-muted/30 flex-1 overflow-y-auto p-4">
             {activeModel ? (
               <ModelDetails model={activeModel} />

@@ -268,7 +268,7 @@ export const Message = memo(function Message({
       </div>
 
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-        <DialogContent className="max-w-[400px]">
+        <DialogContent className="max-w-100">
           <DialogHeader>
             <DialogTitle>Delete Message</DialogTitle>
             <DialogDescription className="text-left">
