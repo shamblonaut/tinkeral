@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import type { FunctionDefinition } from "@/db";
 import type { JSONSchema, JSONSchemaPropertyType } from "@/shared/types";
+export type { JSONSchema, JSONSchemaPropertyType };
 
 export type { FunctionDefinition } from "@/db";
 

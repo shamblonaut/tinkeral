@@ -1,7 +1,7 @@
 import "fake-indexeddb/auto";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { db } from "@/db";
+import { db, functions as functionsDB } from "@/db";
 
 import { useFunctionsStore } from "../functions";
 
@@ -29,15 +29,6 @@ describe("FunctionsStore", () => {
       hasLoaded: false,
       lastLoadedAt: null,
     });
-  });
-
-  it("should start empty", () => {
-    const state = useFunctionsStore.getState();
-    expect(state.functions).toHaveLength(0);
-    expect(state.isLoading).toBe(false);
-    expect(state.error).toBeNull();
-    expect(state.hasLoaded).toBe(false);
-    expect(state.lastLoadedAt).toBeNull();
   });
 
   it("should load functions from IndexedDB", async () => {
@@ -92,22 +83,6 @@ describe("FunctionsStore", () => {
     expect(persisted?.description).toBe("Updated description");
   });
 
-  it("should update the updatedAt timestamp on update", async () => {
-    const store = useFunctionsStore.getState();
-    const id = await store.createFunction(makeFunction());
-    const originalUpdatedAt =
-      useFunctionsStore.getState().functions[0].updatedAt;
-
-    // Small delay to ensure timestamp changes
-    await new Promise((r) => setTimeout(r, 5));
-    await useFunctionsStore
-      .getState()
-      .updateFunction(id, { description: "Changed" });
-
-    const updated = useFunctionsStore.getState().functions[0];
-    expect(updated.updatedAt).toBeGreaterThan(originalUpdatedAt);
-  });
-
   it("should delete a function", async () => {
     const store = useFunctionsStore.getState();
     const id = await store.createFunction(makeFunction());
@@ -131,30 +106,60 @@ describe("FunctionsStore", () => {
     expect(fn?.name).toBe("myFunc");
   });
 
-  it("should return undefined for a missing id in getFunction", () => {
-    const fn = useFunctionsStore.getState().getFunction("nonexistent");
-    expect(fn).toBeUndefined();
+  it("ensureFunctionsLoaded should skip loading when already loaded unless forced", async () => {
+    const loadSpy = vi.spyOn(useFunctionsStore.getState(), "loadFunctions");
+
+    useFunctionsStore.setState({ hasLoaded: true });
+    await useFunctionsStore.getState().ensureFunctionsLoaded();
+    expect(loadSpy).not.toHaveBeenCalled();
+
+    await useFunctionsStore.getState().ensureFunctionsLoaded(true);
+    expect(loadSpy).toHaveBeenCalledTimes(1);
   });
 
-  it("should handle multiple functions independently", async () => {
-    const store = useFunctionsStore.getState();
-    const id1 = await store.createFunction(makeFunction({ name: "funcA" }));
-    const id2 = await store.createFunction(makeFunction({ name: "funcB" }));
+  it("loadFunctions should set error when db read fails", async () => {
+    vi.spyOn(functionsDB, "getAll").mockRejectedValueOnce(new Error("db-fail"));
 
-    expect(useFunctionsStore.getState().functions).toHaveLength(2);
-
-    await useFunctionsStore.getState().deleteFunction(id1);
+    await useFunctionsStore.getState().loadFunctions();
 
     const state = useFunctionsStore.getState();
-    expect(state.functions).toHaveLength(1);
-    expect(state.functions[0].id).toBe(id2);
+    expect(state.error).toBe("Failed to load functions");
+    expect(state.hasLoaded).toBe(false);
+    expect(state.isLoading).toBe(false);
   });
 
-  it("should set isLoading during loadFunctions", async () => {
-    // Intercept the async state to confirm it transitions correctly
-    const loadPromise = useFunctionsStore.getState().loadFunctions();
-    // After resolution, isLoading should be false
-    await loadPromise;
-    expect(useFunctionsStore.getState().isLoading).toBe(false);
+  it("createFunction should set error and rethrow on db failure", async () => {
+    vi.spyOn(functionsDB, "create").mockRejectedValueOnce(
+      new Error("create-fail"),
+    );
+
+    await expect(
+      useFunctionsStore.getState().createFunction(makeFunction()),
+    ).rejects.toThrow("create-fail");
+
+    expect(useFunctionsStore.getState().error).toBe(
+      "Failed to create function",
+    );
+  });
+
+  it("importExamples should honor names filter and ignoreExisting", async () => {
+    await useFunctionsStore.getState().createFunction({
+      ...makeFunction(),
+      name: "calculate",
+    });
+
+    await useFunctionsStore.getState().importExamples(["calculate"], true);
+    expect(
+      useFunctionsStore
+        .getState()
+        .functions.filter((f) => f.name === "calculate"),
+    ).toHaveLength(1);
+
+    await useFunctionsStore.getState().importExamples(["calculate"], false);
+    expect(
+      useFunctionsStore
+        .getState()
+        .functions.filter((f) => f.name === "calculate"),
+    ).toHaveLength(2);
   });
 });

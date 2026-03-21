@@ -168,4 +168,87 @@ describe("calculateConversationTokens", () => {
     expect(result.total).toBe(50);
     expect(result.isExact).toBe(true);
   });
+
+  it("sums subsequent messages correctly (middle inputTokens case)", () => {
+    const messages: Message[] = [
+      {
+        id: "1",
+        role: "user",
+        content: "M1",
+        timestamp: 1,
+        metadata: { usage: { totalTokens: 10 } },
+      },
+      {
+        id: "2",
+        role: "user",
+        content: "M2",
+        timestamp: 2,
+        metadata: { usage: { inputTokens: 5 } },
+      },
+      {
+        id: "3",
+        role: "model",
+        content: "M3",
+        timestamp: 3,
+        metadata: { usage: { outputTokens: 5 } },
+      },
+    ];
+    const conversation = { messages };
+    const result = calculateConversationTokens(conversation);
+    expect(result.total).toBe(20);
+    expect(result.isExact).toBe(true);
+  });
+
+  it("handles case with only inputTokens in the middle (no cumulative totals case)", () => {
+    const messages: Message[] = [
+      {
+        id: "1",
+        role: "user",
+        content: "M1",
+        timestamp: 1,
+        metadata: { usage: { inputTokens: 5 } },
+      },
+      {
+        id: "2",
+        role: "user",
+        content: "M2",
+        timestamp: 2,
+        metadata: { usage: { inputTokens: 5 } },
+      },
+      {
+        id: "3",
+        role: "model",
+        content: "M3",
+        timestamp: 3,
+        metadata: { usage: { outputTokens: 5 } },
+      },
+    ];
+    const conversation = { messages };
+    const result = calculateConversationTokens(conversation);
+    expect(result.total).toBe(15);
+    expect(result.isExact).toBe(false);
+  });
+
+  it("handles last message with only inputTokens (no cumulative totals case)", () => {
+    const messages: Message[] = [
+      {
+        id: "1",
+        role: "user",
+        content: "M1",
+        timestamp: 1,
+        metadata: { usage: { inputTokens: 5 } },
+      },
+      {
+        id: "2",
+        role: "user",
+        content: "M2",
+        timestamp: 2,
+        metadata: { usage: { inputTokens: 5 } },
+      },
+    ];
+    const conversation = { messages };
+    const result = calculateConversationTokens(conversation);
+    expect(result.total).toBe(10);
+    expect(result.isExact).toBe(false);
+  });
 });

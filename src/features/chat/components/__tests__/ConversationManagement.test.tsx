@@ -1,5 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { TooltipProvider } from "@/shared/components/ui";
@@ -80,6 +79,14 @@ vi.mock("@/services/api/google", () => ({
 
 setupChatTests();
 
+const triggerClick = (element: Element) => {
+  fireEvent.pointerDown(element);
+  fireEvent.mouseDown(element);
+  fireEvent.pointerUp(element);
+  fireEvent.mouseUp(element);
+  fireEvent.click(element);
+};
+
 beforeEach(() => {
   vi.useFakeTimers({
     toFake: [
@@ -108,8 +115,6 @@ describe("Conversation Management", () => {
       });
     });
 
-    const user = userEvent.setup({ delay: null });
-
     render(
       <TooltipProvider>
         <ConversationList />
@@ -117,35 +122,21 @@ describe("Conversation Management", () => {
     );
 
     // 1. Expand details
-    const click1 = user.click(
-      screen.getByRole("button", { name: /toggle details/i }),
-    );
+    triggerClick(screen.getByRole("button", { name: /toggle details/i }));
     await act(async () => {
       await vi.runAllTimersAsync();
     });
-    await click1;
 
     // 2. Click Rename button
-    const click2 = user.click(screen.getByRole("button", { name: /rename/i }));
+    triggerClick(screen.getByRole("button", { name: /rename/i }));
     await act(async () => {
       await vi.runAllTimersAsync();
     });
-    await click2;
 
     // 3. Type new name
     const input = screen.getByDisplayValue("Old Name");
-    const clear1 = user.clear(input);
-    await act(async () => {
-      await vi.runAllTimersAsync();
-    });
-    await clear1;
-
-    const type1 = user.type(input, "New Name{enter}");
-    await act(async () => {
-      await vi.runAllTimersAsync();
-    });
-    await type1;
-
+    fireEvent.change(input, { target: { value: "New Name" } });
+    fireEvent.keyDown(input, { key: "Enter", code: "Enter" });
     await act(async () => {
       await vi.runAllTimersAsync();
     });
@@ -155,16 +146,14 @@ describe("Conversation Management", () => {
     expect(conv?.title).toBe("New Name");
   });
 
-  it("should delete a conversation", async () => {
-    const convId = "test-delete-id";
+  it("should cancel deletion before confirming delete", async () => {
+    const convId = "test-delete-flow-id";
     await act(async () => {
       useConversationStore.setState({
-        conversations: [createMockConv(convId, "Delete Me")],
+        conversations: [createMockConv(convId, "Delete Flow")],
         activeConversationId: convId,
       });
     });
-
-    const user = userEvent.setup({ delay: null });
 
     render(
       <TooltipProvider>
@@ -173,86 +162,41 @@ describe("Conversation Management", () => {
     );
 
     // 1. Expand
-    const click1 = user.click(
-      screen.getByRole("button", { name: /toggle details/i }),
-    );
+    triggerClick(screen.getByRole("button", { name: /toggle details/i }));
     await act(async () => {
       await vi.runAllTimersAsync();
     });
-    await click1;
 
     // 2. Click Delete button
-    const click2 = user.click(screen.getByRole("button", { name: /delete/i }));
-    await act(async () => {
-      await vi.runAllTimersAsync();
-    });
-    await click2;
-
-    // 3. Confirm dialog - pick the last 'Delete' button (the one in the dialog)
-    const deleteBtns = screen.getAllByRole("button", {
-      name: "Delete",
-      hidden: true,
-    });
-    const click3 = user.click(deleteBtns[deleteBtns.length - 1]);
-    await act(async () => {
-      await vi.runAllTimersAsync();
-    });
-    await click3;
-
+    triggerClick(screen.getByRole("button", { name: /delete/i }));
     await act(async () => {
       await vi.runAllTimersAsync();
     });
 
-    expect(useConversationStore.getState().conversations).toHaveLength(0);
-  });
-
-  it("should cancel deletion", async () => {
-    const convId = "test-cancel-id";
-    await act(async () => {
-      useConversationStore.setState({
-        conversations: [createMockConv(convId, "Keep Me")],
-        activeConversationId: convId,
-      });
-    });
-
-    const user = userEvent.setup({ delay: null });
-
-    render(
-      <TooltipProvider>
-        <ConversationList />
-      </TooltipProvider>,
-    );
-
-    // 1. Expand
-    const click1 = user.click(
-      screen.getByRole("button", { name: /toggle details/i }),
-    );
-    await act(async () => {
-      await vi.runAllTimersAsync();
-    });
-    await click1;
-
-    // 2. Click Delete button
-    const click2 = user.click(screen.getByRole("button", { name: /delete/i }));
-    await act(async () => {
-      await vi.runAllTimersAsync();
-    });
-    await click2;
-
-    // 3. Cancel dialog
-    const click3 = user.click(
-      screen.getByRole("button", { name: /cancel/i, hidden: true }),
-    );
-    await act(async () => {
-      await vi.runAllTimersAsync();
-    });
-    await click3;
-
+    // 3. Cancel dialog first
+    triggerClick(screen.getByRole("button", { name: /cancel/i, hidden: true }));
     await act(async () => {
       await vi.runAllTimersAsync();
     });
 
     expect(useConversationStore.getState().conversations).toHaveLength(1);
+
+    // 4. Re-open and confirm delete
+    triggerClick(screen.getByRole("button", { name: /delete/i }));
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+
+    const deleteBtns = screen.getAllByRole("button", {
+      name: "Delete",
+      hidden: true,
+    });
+    triggerClick(deleteBtns[deleteBtns.length - 1]);
+    await act(async () => {
+      await vi.runAllTimersAsync();
+    });
+
+    expect(useConversationStore.getState().conversations).toHaveLength(0);
   });
 
   it("should allow creating a new conversation even when an ephemeral one exists", async () => {
@@ -271,22 +215,13 @@ describe("Conversation Management", () => {
       });
     });
 
-    const user = userEvent.setup({ delay: null });
-
     render(
       <TooltipProvider>
         <ChatInterface />
       </TooltipProvider>,
     );
 
-    const click1 = user.click(
-      screen.getByRole("button", { name: /new conversation/i }),
-    );
-    await act(async () => {
-      await vi.runAllTimersAsync();
-    });
-    await click1;
-
+    triggerClick(screen.getByRole("button", { name: /new conversation/i }));
     await act(async () => {
       await vi.runAllTimersAsync();
     });
@@ -310,21 +245,16 @@ describe("Conversation Management", () => {
       });
     });
 
-    const user = userEvent.setup({ delay: null });
-
     render(
       <TooltipProvider>
         <ChatInterface />
       </TooltipProvider>,
     );
 
-    const click1 = user.click(
-      screen.getByRole("button", { name: /new conversation/i }),
-    );
+    triggerClick(screen.getByRole("button", { name: /new conversation/i }));
     await act(async () => {
       await vi.runAllTimersAsync();
     });
-    await click1;
 
     const state = useConversationStore.getState();
     expect(state.conversations).toHaveLength(1);

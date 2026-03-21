@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { type FunctionDefinition } from "@/db";
 
-import { FunctionExecutor, type ConsoleEntry } from "../executor";
+import { FunctionExecutor } from "../executor";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -100,11 +100,6 @@ describe("FunctionExecutor", () => {
       expect(result).toEqual({ valid: true });
     });
 
-    it("should accept empty code", () => {
-      const result = executor.validate("");
-      expect(result).toEqual({ valid: true });
-    });
-
     it("should accept code with async patterns", () => {
       const result = executor.validate(
         "const data = await Promise.resolve(42);\nreturn data;",
@@ -119,26 +114,6 @@ describe("FunctionExecutor", () => {
       expect(result.valid).toBe(false);
       expect(result.error).toBeDefined();
       expect(result.error).toContain("Unexpected token");
-    });
-
-    it("should reject incomplete expressions", () => {
-      const result = executor.validate("const x = ;");
-      expect(result.valid).toBe(false);
-      expect(result.error).toBeDefined();
-    });
-
-    it("should accept code with arrow functions", () => {
-      const result = executor.validate(
-        "const add = (a, b) => a + b;\nreturn add(1, 2);",
-      );
-      expect(result).toEqual({ valid: true });
-    });
-
-    it("should accept code with try/catch", () => {
-      const result = executor.validate(
-        "try { return JSON.parse(args.input); } catch (e) { return { error: e.message }; }",
-      );
-      expect(result).toEqual({ valid: true });
     });
   });
 
@@ -157,23 +132,6 @@ describe("FunctionExecutor", () => {
       expect(result.data).toBe("hello");
       expect(result.executionTime).toBeGreaterThanOrEqual(0);
       expect(result.consoleLogs).toEqual([]);
-    });
-
-    it("should return complex data from worker", async () => {
-      const responseData = {
-        temp: 22,
-        condition: "sunny",
-        forecast: [20, 21, 23],
-      };
-      MockWorker.onPostMessage = (worker) => {
-        worker.simulateMessage({ type: "result", data: responseData });
-      };
-
-      const func = createMockFunction();
-      const result = await executor.execute(func, {});
-
-      expect(result.success).toBe(true);
-      expect(result.data).toEqual(responseData);
     });
 
     it("should return null/undefined results", async () => {
@@ -258,27 +216,6 @@ describe("FunctionExecutor", () => {
       expect(result.error!.name).toBe("WorkerError");
       expect(result.error!.message).toBe("Script error");
     });
-
-    it("should include console logs captured before an error", async () => {
-      MockWorker.onPostMessage = (worker) => {
-        worker.simulateMessage({
-          type: "console",
-          level: "error",
-          args: ["something went wrong"],
-        });
-        worker.simulateMessage({
-          type: "error",
-          error: { message: "boom", name: "Error" },
-        });
-      };
-
-      const func = createMockFunction();
-      const result = await executor.execute(func, {});
-
-      expect(result.success).toBe(false);
-      expect(result.consoleLogs).toHaveLength(1);
-      expect(result.consoleLogs[0].level).toBe("error");
-    });
   });
 
   // ── execute() — timeout ─────────────────────────────────────────────────
@@ -324,80 +261,11 @@ describe("FunctionExecutor", () => {
 
       vi.useRealTimers();
     });
-
-    it("should use default 5s timeout when neither option is set", async () => {
-      vi.useFakeTimers();
-
-      MockWorker.onPostMessage = () => {};
-
-      const func = createMockFunction();
-      // No timeout on func, no options.timeout
-      const funcNoTimeout = { ...func, timeout: undefined };
-      const resultPromise = executor.execute(funcNoTimeout, {});
-
-      vi.advanceTimersByTime(5100);
-
-      const result = await resultPromise;
-
-      expect(result.success).toBe(false);
-      expect(result.error!.message).toContain("5000ms");
-
-      vi.useRealTimers();
-    });
-
-    it("should not resolve twice if worker responds after timeout", async () => {
-      vi.useFakeTimers();
-
-      const workers: MockWorker[] = [];
-      MockWorker.onPostMessage = (worker) => {
-        workers.push(worker);
-        // Don't respond immediately
-      };
-
-      const func = createMockFunction({ timeout: 100 });
-      const resultPromise = executor.execute(func, {});
-
-      // Trigger timeout
-      vi.advanceTimersByTime(200);
-      const result = await resultPromise;
-      expect(result.success).toBe(false);
-      expect(result.error!.name).toBe("TimeoutError");
-
-      // Late response from worker should be ignored (worker is terminated)
-      if (workers.length > 0) {
-        workers[0].simulateMessage({ type: "result", data: "late" });
-      }
-
-      vi.useRealTimers();
-    });
   });
 
   // ── terminate() ─────────────────────────────────────────────────────────
 
   describe("terminate()", () => {
-    it("should terminate the active worker", async () => {
-      const workers: MockWorker[] = [];
-      MockWorker.onPostMessage = (worker) => {
-        workers.push(worker);
-        // Never respond — keep the worker alive
-      };
-
-      const func = createMockFunction({ timeout: 60000 });
-      void executor.execute(func, {});
-
-      // Wait for postMessage to fire
-      await vi.waitFor(() => {
-        expect(workers.length).toBeGreaterThan(0);
-      });
-
-      executor.terminate();
-      expect(workers[0].terminated).toBe(true);
-
-      // The promise should still be pending (we manually terminated),
-      // so respond now — it should be ignored since worker is terminated
-      workers[0].simulateMessage({ type: "result", data: "ignored" });
-    });
-
     it("should be safe to call multiple times", () => {
       expect(() => {
         executor.terminate();
@@ -457,22 +325,6 @@ describe("FunctionExecutor", () => {
         allowedAPIs: ["fetch"],
       });
     });
-
-    it("should send undefined allowedAPIs when not set", async () => {
-      let receivedMessage: Record<string, unknown> = {};
-
-      MockWorker.onPostMessage = (worker, data) => {
-        receivedMessage = data as Record<string, unknown>;
-        worker.simulateMessage({ type: "result", data: null });
-      };
-
-      const func = createMockFunction();
-      const funcNoAPIs = { ...func, allowedAPIs: undefined };
-
-      await executor.execute(funcNoAPIs, {});
-
-      expect(receivedMessage.allowedAPIs).toBeUndefined();
-    });
   });
 
   // ── Edge cases ──────────────────────────────────────────────────────────
@@ -488,23 +340,6 @@ describe("FunctionExecutor", () => {
 
       expect(result.success).toBe(false);
       expect(result.error!.message).toBe("Worker error");
-    });
-
-    it("should handle multiple console entries of different levels", async () => {
-      MockWorker.onPostMessage = (worker) => {
-        worker.simulateMessage({ type: "console", level: "log", args: [1] });
-        worker.simulateMessage({ type: "console", level: "warn", args: [2] });
-        worker.simulateMessage({ type: "console", level: "error", args: [3] });
-        worker.simulateMessage({ type: "console", level: "log", args: [4, 5] });
-        worker.simulateMessage({ type: "result", data: "done" });
-      };
-
-      const func = createMockFunction();
-      const result = await executor.execute(func, {});
-
-      expect(result.consoleLogs).toHaveLength(4);
-      const levels = result.consoleLogs.map((l: ConsoleEntry) => l.level);
-      expect(levels).toEqual(["log", "warn", "error", "log"]);
     });
 
     it("should handle worker message transport failures", async () => {

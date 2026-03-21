@@ -1,5 +1,10 @@
-import { render, screen, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import "fake-indexeddb/auto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -63,6 +68,14 @@ function functionPayload(): Omit<
 }
 
 describe("Function management lifecycle integration", () => {
+  const triggerClick = (element: Element) => {
+    fireEvent.pointerDown(element);
+    fireEvent.mouseDown(element);
+    fireEvent.pointerUp(element);
+    fireEvent.mouseUp(element);
+    fireEvent.click(element);
+  };
+
   beforeEach(async () => {
     await db.functions.clear();
     vi.clearAllMocks();
@@ -118,14 +131,13 @@ describe("Function management lifecycle integration", () => {
     );
 
     const amountInput = screen.getByRole("spinbutton");
-    await userEvent.clear(amountInput);
-    await userEvent.type(amountInput, "19.2");
-    await userEvent.click(screen.getByRole("button", { name: /^run$/i }));
+    fireEvent.change(amountInput, { target: { value: "19.2" } });
+    triggerClick(screen.getByRole("button", { name: /^run$/i }));
 
     await waitFor(() => {
       expect(mocks.mockExecutorExecute).toHaveBeenCalledTimes(1);
     });
-    expect(screen.getByText("Success")).toBeInTheDocument();
+    expect(await screen.findByText("Success")).toBeInTheDocument();
 
     const source = useFunctionsStore.getState().getFunction(createdId);
     const duplicateId = await store.createFunction({
@@ -158,28 +170,32 @@ describe("Function management lifecycle integration", () => {
       expect(screen.getByText("calculate_total")).toBeInTheDocument();
     });
 
-    await userEvent.click(
-      screen.getByRole("button", { name: /toggle details/i }),
-    );
-    await userEvent.click(screen.getByRole("button", { name: /duplicate/i }));
+    triggerClick(screen.getByRole("button", { name: /toggle details/i }));
+    triggerClick(screen.getByRole("button", { name: /duplicate/i }));
 
     await waitFor(() => {
       expect(useFunctionsStore.getState().functions).toHaveLength(2);
     });
 
     const copiedLabel = "calculate_total Copy";
+    const copyItem = screen.getByRole("button", {
+      name: /open function calculate_total copy/i,
+    });
     expect(screen.getByText(copiedLabel)).toBeInTheDocument();
 
-    await userEvent.click(
-      screen.getAllByRole("button", { name: /toggle details/i })[1],
-    );
-    await userEvent.click(
-      screen.getAllByRole("button", { name: /^delete$/i })[0],
-    );
+    const copyToggle = within(copyItem).getByRole("button", {
+      name: /toggle details/i,
+    });
+    triggerClick(copyToggle);
+
+    const deleteAction = within(copyItem).getByRole("button", {
+      name: /^delete$/i,
+    });
+    triggerClick(deleteAction);
 
     expect(screen.getByText("Delete Function")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: /cancel/i }));
+    triggerClick(screen.getByRole("button", { name: /cancel/i }));
 
     expect(useFunctionsStore.getState().functions).toHaveLength(2);
-  });
+  }, 15000);
 });

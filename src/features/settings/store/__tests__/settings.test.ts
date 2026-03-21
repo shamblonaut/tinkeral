@@ -1,5 +1,5 @@
 import "fake-indexeddb/auto";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { db, settings } from "@/db";
 
@@ -73,5 +73,47 @@ describe("SettingsStore", () => {
     // Verify persistence
     const persisted = await settings.get();
     expect(persisted?.uiPreferences.theme).toBe("dark");
+  });
+
+  it("should set error when loadSettings fails", async () => {
+    vi.spyOn(settings, "get").mockRejectedValueOnce(new Error("load-fail"));
+
+    await useSettingsStore.getState().loadSettings();
+
+    const state = useSettingsStore.getState();
+    expect(state.error).toBe("Failed to load settings");
+    expect(state.isLoading).toBe(false);
+  });
+
+  it("should set error when updateSettings save fails", async () => {
+    const store = useSettingsStore.getState();
+    await store.loadSettings();
+    vi.spyOn(settings, "save").mockRejectedValueOnce(new Error("save-fail"));
+
+    await store.updateSettings({ defaultModel: "gemini-1.5-flash" });
+
+    expect(useSettingsStore.getState().error).toBe("Failed to update settings");
+  });
+
+  it("should set error when setApiKey save fails", async () => {
+    const store = useSettingsStore.getState();
+    await store.loadSettings();
+    vi.spyOn(settings, "save").mockRejectedValueOnce(new Error("save-fail"));
+
+    await store.setApiKey("google", "test-key");
+
+    expect(useSettingsStore.getState().error).toBe("Failed to set API key");
+  });
+
+  it("should set error when updatePreferences save fails", async () => {
+    const store = useSettingsStore.getState();
+    await store.loadSettings();
+    vi.spyOn(settings, "save").mockRejectedValueOnce(new Error("save-fail"));
+
+    await store.updatePreferences({ theme: "dark" });
+
+    expect(useSettingsStore.getState().error).toBe(
+      "Failed to update preferences",
+    );
   });
 });

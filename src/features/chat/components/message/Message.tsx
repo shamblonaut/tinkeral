@@ -19,13 +19,11 @@ import {
 import { cn } from "@/shared/lib/utils";
 import type { Message as MessageType } from "@/shared/types";
 
-import {
-  FunctionCallDisplay,
-  MessageActions,
-  MessageContent,
-  TokenUsageDisplay,
-} from "..";
 import { useConversationStore } from "../../store";
+import { FunctionCallDisplay } from "./FunctionCallDisplay";
+import { MessageActions } from "./MessageActions";
+import { MessageContent } from "./MessageContent";
+import { TokenUsageDisplay } from "./TokenUsageDisplay";
 
 interface MessageProps {
   messageGroup: MessageType[];

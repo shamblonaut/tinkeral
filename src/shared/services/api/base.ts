@@ -49,6 +49,8 @@ export class ProviderError extends Error implements ProviderErrorLike {
 
       if (error instanceof Error) {
         message = error.message;
+      } else if (typeof error === "string") {
+        message = error;
       }
 
       // Basic heuristic for network errors

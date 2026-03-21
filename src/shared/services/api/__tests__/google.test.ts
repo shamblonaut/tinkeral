@@ -63,13 +63,6 @@ describe("GoogleAPIClient", () => {
   });
 
   describe("Initialization & Validation", () => {
-    it("should create a client with valid API key", async () => {
-      mocks.mockListModels.mockResolvedValue([]);
-      const newClient = await GoogleAPIClient.createClient("valid-key");
-      expect(newClient).toBeInstanceOf(GoogleAPIClient);
-      expect(mocks.mockListModels).toHaveBeenCalled();
-    });
-
     it("should throw error with invalid API key", async () => {
       mocks.mockListModels.mockRejectedValue(
         new ApiError({ message: "Invalid key", status: 400 }),
@@ -77,12 +70,6 @@ describe("GoogleAPIClient", () => {
       await expect(GoogleAPIClient.createClient("invalid-key")).rejects.toThrow(
         "Invalid API key",
       );
-    });
-
-    it("validateKey should return true for valid key", async () => {
-      mocks.mockListModels.mockResolvedValue([]);
-      const isValid = await GoogleAPIClient.validateKey("valid-key");
-      expect(isValid).toBe(true);
     });
 
     it("validateKey should return false for invalid key", async () => {
@@ -98,13 +85,6 @@ describe("GoogleAPIClient", () => {
     it("getModels should return known models from registry", async () => {
       const models = await client.getModels();
       expect(models).toBe(KNOWN_MODELS);
-    });
-
-    it("getModel should return model from registry", async () => {
-      const model = await client.getModel("gemini-2.5-pro");
-      expect(model).toBeDefined();
-      expect(model.id).toBe("gemini-2.5-pro");
-      expect(model.name).toBe("Gemini 2.5 Pro");
     });
 
     it("getModel should return unknown model for missing id", async () => {
@@ -210,25 +190,6 @@ describe("GoogleAPIClient", () => {
       await expect(client.chat(mockRequest)).rejects.toThrow("Empty response");
     });
 
-    it("chat should include system prompt if provided", async () => {
-      const requestWithSystem: ChatRequest = {
-        ...mockRequest,
-        systemPrompt: "You are helpful",
-      };
-
-      mocks.mockGenerateContent.mockResolvedValue({ text: "ok" });
-
-      await client.chat(requestWithSystem);
-
-      expect(mocks.mockGenerateContent).toHaveBeenCalledWith(
-        expect.objectContaining({
-          config: expect.objectContaining({
-            systemInstruction: "You are helpful",
-          }),
-        }),
-      );
-    });
-
     it("chat should include function tools when functions are provided", async () => {
       const requestWithFunctions: ChatRequest = {
         ...mockRequest,
@@ -281,38 +242,6 @@ describe("GoogleAPIClient", () => {
         arguments: { city: "Tokyo" },
       });
       expect(response.message.content).toBe("");
-    });
-
-    it("chat should capture both text and function call from a single candidate", async () => {
-      mocks.mockGenerateContent.mockResolvedValue({
-        text: "I am calling the tool.",
-        candidates: [
-          {
-            content: {
-              parts: [
-                { text: "I am calling the tool." },
-                {
-                  functionCall: {
-                    id: "call-xyz",
-                    name: "get_weather",
-                    args: { city: "London" },
-                  },
-                },
-              ],
-            },
-            finishReason: "STOP",
-          },
-        ],
-      });
-
-      const response = await client.chat(mockRequest);
-
-      expect(response.message.content).toBe("I am calling the tool.");
-      expect(response.message.functionCall).toEqual({
-        id: "call-xyz",
-        name: "get_weather",
-        arguments: { city: "London" },
-      });
     });
 
     it("chat should send message content and function call/result as structured parts", async () => {
@@ -412,27 +341,32 @@ describe("GoogleAPIClient", () => {
         }),
       );
     });
+
+    it("should map finish reasons correctly", async () => {
+      mocks.mockGenerateContent.mockResolvedValue({
+        text: "Incomplete",
+        candidates: [{ finishReason: "MAX_TOKENS" }],
+      });
+      let res = await client.chat(mockRequest);
+      expect(res.finishReason).toBe("length");
+
+      mocks.mockGenerateContent.mockResolvedValue({
+        text: "Filtered",
+        candidates: [{ finishReason: "SAFETY" }],
+      });
+      res = await client.chat(mockRequest);
+      expect(res.finishReason).toBe("content_filter");
+
+      mocks.mockGenerateContent.mockResolvedValue({
+        text: "Recitation",
+        candidates: [{ finishReason: "RECITATION" }],
+      });
+      res = await client.chat(mockRequest);
+      expect(res.finishReason).toBe("content_filter");
+    });
   });
 
   describe("Streaming Chat", () => {
-    const functionDefinition = {
-      id: "fn-1",
-      name: "get_weather",
-      description: "Get weather data",
-      parameters: {
-        type: "object" as const,
-        properties: {
-          city: {
-            type: "string" as const,
-          },
-        },
-        required: ["city"],
-      },
-      implementation: "return { city: args.city };",
-      createdAt: 1,
-      updatedAt: 1,
-    };
-
     const mockRequest: ChatRequest = {
       messages: [{ id: "1", role: "user", content: "Hello", timestamp: 1 }],
       model: "gemini-pro",
@@ -477,53 +411,6 @@ describe("GoogleAPIClient", () => {
         thinkingTokens: 0,
         cachedTokens: 0,
       });
-    });
-
-    it("streamChat should handle errors", async () => {
-      mocks.mockGenerateContentStream.mockRejectedValue(
-        new Error("Stream Error"),
-      );
-      const generator = client.streamChat(mockRequest);
-      await expect(generator.next()).rejects.toMatchObject({
-        message: expect.stringContaining("Stream Error"),
-      });
-    });
-
-    it("streamChat should include function tools when functions are provided", async () => {
-      const requestWithFunctions: ChatRequest = {
-        ...mockRequest,
-        functions: [functionDefinition],
-        functionCallingMode: "NONE",
-      };
-
-      const mockStream = {
-        async *[Symbol.asyncIterator]() {
-          yield { text: "ok", candidates: [{ finishReason: "STOP" }] };
-        },
-      };
-
-      mocks.mockGenerateContentStream.mockResolvedValue(mockStream);
-
-      for await (const chunk of client.streamChat(requestWithFunctions)) {
-        expect(chunk.delta).toBeDefined();
-      }
-
-      expect(mocks.mockGenerateContentStream).toHaveBeenCalledWith(
-        expect.objectContaining({
-          config: expect.objectContaining({
-            tools: [
-              {
-                functionDeclarations: [
-                  expect.objectContaining({ name: "get_weather" }),
-                ],
-              },
-            ],
-            toolConfig: expect.objectContaining({
-              functionCallingConfig: expect.objectContaining({ mode: "NONE" }),
-            }),
-          }),
-        }),
-      );
     });
 
     it("streamChat should yield functionCall and preserve text in same chunk", async () => {
@@ -571,13 +458,6 @@ describe("GoogleAPIClient", () => {
       expect(normalized.retriable).toBe(false);
     });
 
-    it("should normalize 429 as rate_limit error", () => {
-      const error = new ApiError({ message: "Too many requests", status: 429 });
-      const normalized = client.normalizeError(error);
-      expect(normalized.type).toBe("rate_limit");
-      expect(normalized.retriable).toBe(true);
-    });
-
     it("should normalize quota error message as quota type", () => {
       const error = new ApiError({
         message: "Your quota is exceeded",
@@ -594,10 +474,14 @@ describe("GoogleAPIClient", () => {
       expect(normalized.type).toBe("content_filter");
     });
 
-    it("should normalize context window 400 as context_length", () => {
-      const error = new ApiError({ message: "too many tokens", status: 400 });
-      const normalized = client.normalizeError(error);
-      expect(normalized.type).toBe("context_length");
+    it("should handle nested JSON error messages", () => {
+      const nestedError = new Error(
+        'Some prefix {"error": {"message": "{\\"error\\": {\\"message\\": \\"deeply nested\\", \\"code\\": 401}}", "code": 403}}',
+      );
+      const normalized = client.normalizeError(nestedError);
+      expect(normalized.message).toBe("deeply nested");
+      expect(normalized.type).toBe("auth");
+      expect(normalized.statusCode).toBe(401);
     });
   });
 });

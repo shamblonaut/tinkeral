@@ -1,5 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { toast } from "sonner";
 import { describe, expect, it, vi } from "vitest";
 
@@ -139,7 +138,6 @@ describe("ChatInterface — Initialization & Loading", () => {
 
 describe("ChatInterface — Messaging & Streaming", () => {
   it("should create a new conversation when sending the first message", async () => {
-    const user = userEvent.setup({ delay: null });
     render(
       <TooltipProvider>
         <ChatInterface />
@@ -149,23 +147,16 @@ describe("ChatInterface — Messaging & Streaming", () => {
     const input = screen.getByPlaceholderText("Type a message...");
     const sendButton = screen.getByRole("button", { name: /send/i });
 
-    const typePromise = user.type(input, "Hello New Conversation");
+    fireEvent.change(input, { target: { value: "Hello New Conversation" } });
+    fireEvent.click(sendButton);
     await act(async () => {
       await vi.runAllTimersAsync();
     });
-    await typePromise;
-
-    const clickPromise = user.click(sendButton);
-    await act(async () => {
-      await vi.runAllTimersAsync();
-    });
-    await clickPromise;
 
     expect(conversationsDb.save).toHaveBeenCalled();
   });
 
   it("should send a message and display the response", async () => {
-    const user = userEvent.setup({ delay: null });
     useConversationStore.setState({
       conversations: [createMockConv("test-conv-id", "Test")],
       activeConversationId: "test-conv-id",
@@ -178,18 +169,12 @@ describe("ChatInterface — Messaging & Streaming", () => {
     );
 
     const input = screen.getByPlaceholderText("Type a message...");
-    const typePromise = user.type(input, "Hello AI");
-    await act(async () => {
-      await vi.runAllTimersAsync();
-    });
-    await typePromise;
-
+    fireEvent.change(input, { target: { value: "Hello AI" } });
     const sendBtn = screen.getByRole("button", { name: /send/i });
-    const clickPromise = user.click(sendBtn);
+    fireEvent.click(sendBtn);
     await act(async () => {
       await vi.runAllTimersAsync();
     });
-    await clickPromise;
 
     expect(screen.getByText("Hello AI")).toBeInTheDocument();
     expect(screen.getByText("Hello world")).toBeInTheDocument();
@@ -199,7 +184,6 @@ describe("ChatInterface — Messaging & Streaming", () => {
   });
 
   it("should disable the input field while a message is generating/streaming", async () => {
-    const user = userEvent.setup({ delay: null });
     useConversationStore.setState({
       conversations: [createMockConv("test-disable-conv", "Test Disable")],
       activeConversationId: "test-disable-conv",
@@ -212,14 +196,10 @@ describe("ChatInterface — Messaging & Streaming", () => {
     );
 
     const input = screen.getByPlaceholderText("Type a message...");
-    const typePromise = user.type(input, "Hello AI");
-    await act(async () => {
-      await vi.runAllTimersAsync();
-    });
-    await typePromise;
+    fireEvent.change(input, { target: { value: "Hello AI" } });
 
     const sendBtn = screen.getByRole("button", { name: /send/i });
-    const clickPromise = user.click(sendBtn);
+    fireEvent.click(sendBtn);
 
     // Initial click should trigger loading state (preventing input)
     await act(async () => {
@@ -237,14 +217,12 @@ describe("ChatInterface — Messaging & Streaming", () => {
     await act(async () => {
       await vi.runAllTimersAsync();
     });
-    await clickPromise;
 
     // After completion, input should be re-enabled
     expect(input).not.toBeDisabled();
   });
 
   it("should display error toast when streaming fails", async () => {
-    const user = userEvent.setup({ delay: null });
     useConversationStore.setState({
       conversations: [
         createMockConv("test-conv-id", "Test", { modelId: "gemini-2.5-flash" }),
@@ -268,18 +246,12 @@ describe("ChatInterface — Messaging & Streaming", () => {
     );
 
     const input = screen.getByPlaceholderText("Type a message...");
-    const typePromise = user.type(input, "Hello Error");
-    await act(async () => {
-      await vi.runAllTimersAsync();
-    });
-    await typePromise;
-
+    fireEvent.change(input, { target: { value: "Hello Error" } });
     const sendBtn = screen.getByRole("button", { name: /send/i });
-    const clickPromise = user.click(sendBtn);
+    fireEvent.click(sendBtn);
     await act(async () => {
       await vi.runAllTimersAsync();
     });
-    await clickPromise;
 
     expect(toast.error).toHaveBeenCalledWith("Stream failed");
   });
@@ -287,7 +259,6 @@ describe("ChatInterface — Messaging & Streaming", () => {
 
 describe("ChatInterface — Message Interactions", () => {
   it("should show confirmation dialog when deleting a message", async () => {
-    const user = userEvent.setup({ delay: null });
     useConversationStore.setState({
       conversations: [
         createMockConv("test-conv", "Test", {
@@ -317,35 +288,31 @@ describe("ChatInterface — Message Interactions", () => {
     );
 
     const deleteButtons = screen.getAllByTitle("Delete message");
-    const click1 = user.click(deleteButtons[0]);
+    fireEvent.click(deleteButtons[0]);
     await act(async () => {
       await vi.runAllTimersAsync();
     });
-    await click1;
 
     expect(screen.getByText("Delete Message")).toBeInTheDocument();
 
     const cancelBtn = screen.getByRole("button", { name: /cancel/i });
-    const clickCancel = user.click(cancelBtn);
+    fireEvent.click(cancelBtn);
     await act(async () => {
       await vi.runAllTimersAsync();
     });
-    await clickCancel;
     expect(screen.queryByText("Delete Message")).not.toBeInTheDocument();
 
     const deleteButtonsAgain = screen.getAllByTitle("Delete message");
-    const click2 = user.click(deleteButtonsAgain[0]);
+    fireEvent.click(deleteButtonsAgain[0]);
     await act(async () => {
       await vi.runAllTimersAsync();
     });
-    await click2;
 
     const confirmDeleteBtn = screen.getByRole("button", { name: "Delete" });
-    const clickConfirm = user.click(confirmDeleteBtn);
+    fireEvent.click(confirmDeleteBtn);
     await act(async () => {
       await vi.runAllTimersAsync();
     });
-    await clickConfirm;
 
     const conv = useConversationStore
       .getState()
@@ -354,7 +321,6 @@ describe("ChatInterface — Message Interactions", () => {
   });
 
   it("should edit a message and trigger regeneration", async () => {
-    const user = userEvent.setup({ delay: null });
     useConversationStore.setState({
       conversations: [
         createMockConv("test-edit-conv", "Test Edit", {
@@ -384,31 +350,19 @@ describe("ChatInterface — Message Interactions", () => {
     );
 
     const editBtn = screen.getAllByTitle("Edit message")[0];
-    const clickEdit = user.click(editBtn);
+    fireEvent.click(editBtn);
     await act(async () => {
       await vi.runAllTimersAsync();
     });
-    await clickEdit;
 
     const editInput = screen.getByDisplayValue("Original Content");
-    const clearPromise = user.clear(editInput);
-    await act(async () => {
-      await vi.runAllTimersAsync();
-    });
-    await clearPromise;
-
-    const typePromise = user.type(editInput, "New Content");
-    await act(async () => {
-      await vi.runAllTimersAsync();
-    });
-    await typePromise;
+    fireEvent.change(editInput, { target: { value: "New Content" } });
 
     const saveBtn = screen.getByRole("button", { name: /save & submit/i });
-    const clickSave = user.click(saveBtn);
+    fireEvent.click(saveBtn);
     await act(async () => {
       await vi.runAllTimersAsync();
     });
-    await clickSave;
 
     const conv = useConversationStore
       .getState()
@@ -419,7 +373,6 @@ describe("ChatInterface — Message Interactions", () => {
   });
 
   it("should retry a message regeneration", async () => {
-    const user = userEvent.setup({ delay: null });
     useConversationStore.setState({
       conversations: [
         createMockConv("test-retry-conv", "Test Retry", {
@@ -449,11 +402,10 @@ describe("ChatInterface — Message Interactions", () => {
     );
 
     const retryBtn = screen.getAllByTitle("Regenerate response")[0];
-    const clickRetry = user.click(retryBtn);
+    fireEvent.click(retryBtn);
     await act(async () => {
       await vi.runAllTimersAsync();
     });
-    await clickRetry;
 
     const conv = useConversationStore
       .getState()

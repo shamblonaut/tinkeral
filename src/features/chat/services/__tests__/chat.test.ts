@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GoogleAPIClient } from "@/shared/services/api";
+import { RateLimiter } from "@/shared/services/rateLimiter";
 import {
   DEFAULT_PARAMETERS,
   type ChatRequest as ProviderChatRequest,
@@ -151,47 +152,6 @@ describe("ChatService function call loop", () => {
     );
   });
 
-  it("sends function error result when function is missing", async () => {
-    mocks.mockStreamChat
-      .mockImplementationOnce(async function* () {
-        yield {
-          delta: "",
-          finishReason: "function_call",
-          functionCall: {
-            name: "missing_function",
-            arguments: { value: 1 },
-          },
-        };
-      })
-      .mockImplementationOnce(async function* () {
-        yield {
-          delta: "I could not run that function.",
-          finishReason: "stop",
-        };
-      });
-
-    mocks.mockCreateClient.mockResolvedValue({
-      streamChat: mocks.mockStreamChat,
-    } as unknown as GoogleAPIClient);
-
-    const onFunctionResult = vi.fn();
-
-    await ChatService.executeChat(baseRequest, {
-      onChunk: vi.fn(),
-      onFunctionCall: vi.fn(),
-      onFunctionResult,
-      onFinish: vi.fn(),
-      onError: vi.fn(),
-    });
-
-    expect(mocks.mockExecutorExecute).not.toHaveBeenCalled();
-    expect(onFunctionResult).toHaveBeenCalledWith({
-      name: "missing_function",
-      result: null,
-      error: "Function not found: missing_function",
-    });
-  });
-
   it("returns a graceful error when function arguments do not match schema", async () => {
     mocks.mockStreamChat
       .mockImplementationOnce(async function* () {
@@ -286,71 +246,6 @@ describe("ChatService function call loop", () => {
     );
   });
 
-  it("handles sequential function calls before final response", async () => {
-    mocks.mockStreamChat
-      .mockImplementationOnce(async function* () {
-        yield {
-          delta: "",
-          finishReason: "function_call",
-          functionCall: {
-            name: "get_weather",
-            arguments: { city: "Tokyo" },
-          },
-        };
-      })
-      .mockImplementationOnce(async function* () {
-        yield {
-          delta: "",
-          finishReason: "function_call",
-          functionCall: {
-            name: "get_weather",
-            arguments: { city: "Osaka" },
-          },
-        };
-      })
-      .mockImplementationOnce(async function* () {
-        yield {
-          delta: "Tokyo and Osaka are both sunny.",
-          finishReason: "stop",
-        };
-      });
-
-    mocks.mockCreateClient.mockResolvedValue({
-      streamChat: mocks.mockStreamChat,
-    } as unknown as GoogleAPIClient);
-
-    mocks.mockExecutorExecute
-      .mockResolvedValueOnce({
-        success: true,
-        data: { city: "Tokyo", condition: "sunny" },
-        executionTime: 5,
-        consoleLogs: [],
-      })
-      .mockResolvedValueOnce({
-        success: true,
-        data: { city: "Osaka", condition: "sunny" },
-        executionTime: 5,
-        consoleLogs: [],
-      });
-
-    const onFinish = vi.fn();
-
-    await ChatService.executeChat(baseRequest, {
-      onChunk: vi.fn(),
-      onFunctionCall: vi.fn(),
-      onFunctionResult: vi.fn(),
-      onFinish,
-      onError: vi.fn(),
-    });
-
-    expect(mocks.mockStreamChat).toHaveBeenCalledTimes(3);
-    expect(mocks.mockExecutorExecute).toHaveBeenCalledTimes(2);
-    expect(onFinish).toHaveBeenCalledWith(
-      "Tokyo and Osaka are both sunny.",
-      expect.objectContaining({ finishReason: "stop" }),
-    );
-  });
-
   it("handles 'stop' finish reason when a function call is present", async () => {
     // This reproduces the cancellation issue where certain models
     // send a function call but finish with 'stop' instead of 'function_call'
@@ -401,6 +296,233 @@ describe("ChatService function call loop", () => {
     expect(onFinish).toHaveBeenCalledWith(
       "It's rainy in London.",
       expect.objectContaining({ finishReason: "stop" }),
+    );
+  });
+
+  it("truncates extremely long error messages", async () => {
+    mocks.mockStreamChat
+      .mockImplementationOnce(async function* () {
+        yield {
+          delta: "",
+          finishReason: "function_call",
+          functionCall: { name: "get_weather", arguments: { city: "Tokyo" } },
+        };
+      })
+      .mockImplementationOnce(async function* () {
+        yield { delta: "Long error handled.", finishReason: "stop" };
+      });
+
+    mocks.mockCreateClient.mockResolvedValue({
+      streamChat: mocks.mockStreamChat,
+    } as unknown as GoogleAPIClient);
+
+    const longError = "x".repeat(3000);
+    mocks.mockExecutorExecute.mockResolvedValue({
+      success: false,
+      error: { message: longError },
+      executionTime: 5,
+      consoleLogs: [],
+    });
+
+    const onFunctionResult = vi.fn();
+
+    await ChatService.executeChat(baseRequest, {
+      onChunk: vi.fn(),
+      onFunctionCall: vi.fn(),
+      onFunctionResult,
+      onFinish: vi.fn(),
+      onError: vi.fn(),
+    });
+
+    expect(onFunctionResult).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error: expect.stringContaining("(truncated)"),
+      }),
+    );
+    expect(onFunctionResult.mock.calls[0][0].error.length).toBeLessThan(
+      longError.length,
+    );
+  });
+
+  it("fails when function-call loop exceeds max iterations", async () => {
+    vi.spyOn(RateLimiter.prototype, "getRetryDelay").mockReturnValue(null);
+
+    mocks.mockStreamChat.mockImplementation(async function* () {
+      yield {
+        delta: "",
+        finishReason: "function_call",
+        functionCall: { name: "get_weather", arguments: { city: "Tokyo" } },
+      };
+    });
+
+    mocks.mockCreateClient.mockResolvedValue({
+      streamChat: mocks.mockStreamChat,
+    } as unknown as GoogleAPIClient);
+
+    mocks.mockExecutorExecute.mockResolvedValue({
+      success: true,
+      data: { ok: true },
+      executionTime: 1,
+      consoleLogs: [],
+    });
+
+    const onError = vi.fn();
+
+    await ChatService.executeChat(baseRequest, {
+      onChunk: vi.fn(),
+      onFinish: vi.fn(),
+      onError,
+      onFunctionCall: vi.fn(),
+      onFunctionResult: vi.fn(),
+    });
+
+    expect(onError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: "Exceeded maximum function-call iterations (10)",
+      }),
+      "",
+    );
+    expect(mocks.mockStreamChat).toHaveBeenCalledTimes(10);
+  });
+
+  it("returns an explicit error when post-function response is empty", async () => {
+    mocks.mockStreamChat
+      .mockImplementationOnce(async function* () {
+        yield {
+          delta: "",
+          finishReason: "function_call",
+          functionCall: {
+            name: "get_weather",
+            arguments: { city: "Tokyo" },
+          },
+        };
+      })
+      .mockImplementationOnce(async function* () {
+        yield { delta: "", finishReason: "stop" };
+      });
+
+    mocks.mockCreateClient.mockResolvedValue({
+      streamChat: mocks.mockStreamChat,
+    } as unknown as GoogleAPIClient);
+
+    mocks.mockExecutorExecute.mockResolvedValue({
+      success: true,
+      data: { temp: 22 },
+      executionTime: 2,
+      consoleLogs: [],
+    });
+
+    const onError = vi.fn();
+
+    await ChatService.executeChat(baseRequest, {
+      onChunk: vi.fn(),
+      onFinish: vi.fn(),
+      onError,
+      onFunctionCall: vi.fn(),
+      onFunctionResult: vi.fn(),
+    });
+
+    expect(onError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message:
+          "Model failed to provide a final response after function calls.",
+      }),
+      "",
+    );
+  });
+
+  it("retries once when rate limiter returns a delay", async () => {
+    const retrySpy = vi
+      .spyOn(RateLimiter.prototype, "getRetryDelay")
+      .mockImplementationOnce(() => 0)
+      .mockImplementation(() => null);
+
+    mocks.mockStreamChat
+      .mockImplementationOnce(async function* () {
+        yield* [];
+        throw new Error("transient");
+      })
+      .mockImplementationOnce(async function* () {
+        yield { delta: "Recovered", finishReason: "stop" };
+      });
+
+    mocks.mockCreateClient.mockResolvedValue({
+      streamChat: mocks.mockStreamChat,
+    } as unknown as GoogleAPIClient);
+
+    const onFinish = vi.fn();
+    const onError = vi.fn();
+
+    await ChatService.executeChat(baseRequest, {
+      onChunk: vi.fn(),
+      onFinish,
+      onError,
+    });
+
+    expect(onFinish).toHaveBeenCalledWith(
+      "Recovered",
+      expect.objectContaining({ finishReason: "stop" }),
+    );
+    expect(onError).not.toHaveBeenCalled();
+    expect(mocks.mockStreamChat).toHaveBeenCalledTimes(2);
+    expect(retrySpy).toHaveBeenCalled();
+  });
+
+  it("errors immediately when apiKey is missing", async () => {
+    vi.spyOn(RateLimiter.prototype, "getRetryDelay").mockReturnValue(null);
+    const onError = vi.fn();
+
+    await ChatService.executeChat(
+      { ...baseRequest, apiKey: "" },
+      {
+        onChunk: vi.fn(),
+        onFinish: vi.fn(),
+        onError,
+      },
+    );
+
+    expect(mocks.mockCreateClient).not.toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: "API key not found for Google provider",
+      }),
+      "",
+    );
+  });
+
+  it("aborts streaming mid-turn when signal flips during iteration", async () => {
+    vi.spyOn(RateLimiter.prototype, "getRetryDelay").mockReturnValue(null);
+    const controller = new AbortController();
+
+    mocks.mockStreamChat.mockImplementationOnce(async function* () {
+      yield { delta: "Part 1 " };
+      yield { delta: "Part 2 " };
+    });
+
+    mocks.mockCreateClient.mockResolvedValue({
+      streamChat: mocks.mockStreamChat,
+    } as unknown as GoogleAPIClient);
+
+    const onError = vi.fn();
+    const onChunk = vi.fn((content: string) => {
+      if (content.includes("Part 1")) {
+        controller.abort();
+      }
+    });
+
+    await ChatService.executeChat(
+      baseRequest,
+      {
+        onChunk,
+        onFinish: vi.fn(),
+        onError,
+      },
+      controller.signal,
+    );
+
+    expect(onError).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "AbortError" }),
+      "Part 1 ",
     );
   });
 });

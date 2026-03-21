@@ -497,7 +497,7 @@ export class GoogleAPIClient implements LLMProvider {
           const nested = this.getNestedErrorMessage(errorData.message);
           return {
             message: nested.message,
-            code: errorData.code || nested.code,
+            code: nested.code || errorData.code,
           };
         }
       }

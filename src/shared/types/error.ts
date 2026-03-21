@@ -11,6 +11,7 @@ export type ErrorType =
   | "model_unavailable" // Model doesn't exist or is disabled
   | "content_filter" // Content policy violation
   | "context_length" // Context too long
+  | "empty_response" // Provider returned no content
   | "unknown"; // Unexpected error
 
 /**

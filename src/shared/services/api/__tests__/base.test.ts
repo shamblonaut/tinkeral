@@ -87,4 +87,15 @@ describe("ProviderError", () => {
       expect(providerError.userMessage.length).toBeGreaterThan(10);
     });
   });
+
+  it("should create an empty response error", () => {
+    const error = new ProviderError({
+      message: "Empty response from model",
+      type: "empty_response",
+      retriable: false,
+      originalError: null,
+    });
+    expect(error.message).toBe("Empty response from model");
+    expect(error.type).toBe("empty_response");
+  });
 });

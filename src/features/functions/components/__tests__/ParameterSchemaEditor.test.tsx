@@ -58,17 +58,11 @@ function multiParamSchema(): JSONSchema {
 describe("ParameterSchemaEditor", () => {
   // ── Empty state ───────────────────────────────────────────────────────────
   describe("empty schema", () => {
-    it("shows the empty state message", () => {
+    it("shows empty-state content and the add button", () => {
       render(
         <ParameterSchemaEditor schema={emptySchema()} onChange={vi.fn()} />,
       );
       expect(screen.getByText(/no parameters defined/i)).toBeInTheDocument();
-    });
-
-    it("renders the 'Add Parameter' button", () => {
-      render(
-        <ParameterSchemaEditor schema={emptySchema()} onChange={vi.fn()} />,
-      );
       expect(
         screen.getByRole("button", { name: /add parameter/i }),
       ).toBeInTheDocument();
@@ -77,18 +71,7 @@ describe("ParameterSchemaEditor", () => {
 
   // ── Rendering existing params ─────────────────────────────────────────────
   describe("rendering existing parameters", () => {
-    it("renders a row for each property", () => {
-      render(
-        <ParameterSchemaEditor
-          schema={multiParamSchema()}
-          onChange={vi.fn()}
-        />,
-      );
-      const nameInputs = screen.getAllByPlaceholderText("param_name");
-      expect(nameInputs).toHaveLength(3);
-    });
-
-    it("populates the name input from the property key", () => {
+    it("renders single-parameter values and hides empty state", () => {
       render(
         <ParameterSchemaEditor
           schema={singleParamSchema()}
@@ -96,45 +79,21 @@ describe("ParameterSchemaEditor", () => {
         />,
       );
       expect(screen.getByDisplayValue("location")).toBeInTheDocument();
-    });
-
-    it("populates the description input from the property description", () => {
-      render(
-        <ParameterSchemaEditor
-          schema={singleParamSchema()}
-          onChange={vi.fn()}
-        />,
-      );
       expect(screen.getByDisplayValue("City name")).toBeInTheDocument();
-    });
-
-    it("populates the type selector from the property type", () => {
-      render(
-        <ParameterSchemaEditor
-          schema={singleParamSchema()}
-          onChange={vi.fn()}
-        />,
-      );
       const typeSelect = screen.getByRole("combobox", {
         name: /parameter 1 type/i,
       });
       expect(typeSelect).toHaveTextContent("string");
-    });
-
-    it("checks the required checkbox for required properties", () => {
-      render(
-        <ParameterSchemaEditor
-          schema={singleParamSchema()}
-          onChange={vi.fn()}
-        />,
-      );
       const checkbox = screen.getByRole("checkbox", {
         name: /parameter 1 required/i,
       });
       expect(checkbox).toBeChecked();
+      expect(
+        screen.queryByText(/no parameters defined/i),
+      ).not.toBeInTheDocument();
     });
 
-    it("does not check the required checkbox for optional properties", () => {
+    it("renders all rows for multi-param schemas and keeps optional unchecked", () => {
       render(
         <ParameterSchemaEditor
           schema={multiParamSchema()}
@@ -148,23 +107,30 @@ describe("ParameterSchemaEditor", () => {
         .closest("div.border")!;
       const checkbox = within(limitRow as HTMLElement).getByRole("checkbox");
       expect(checkbox).not.toBeChecked();
-    });
-
-    it("hides the empty-state message when there are rows", () => {
-      render(
-        <ParameterSchemaEditor
-          schema={singleParamSchema()}
-          onChange={vi.fn()}
-        />,
-      );
-      expect(
-        screen.queryByText(/no parameters defined/i),
-      ).not.toBeInTheDocument();
+      expect(screen.getAllByPlaceholderText("param_name")).toHaveLength(3);
     });
   });
 
   // ── Add parameter ─────────────────────────────────────────────────────────
   describe("adding a parameter", () => {
+    type MockOnChange = ((schema: JSONSchema) => void) & {
+      mock: { calls: JSONSchema[][] };
+    };
+
+    function addNamedParameter(onChange: MockOnChange) {
+      render(
+        <ParameterSchemaEditor schema={emptySchema()} onChange={onChange} />,
+      );
+      fireEvent.click(screen.getByRole("button", { name: /add parameter/i }));
+      const nameInput = screen.getByPlaceholderText("param_name");
+      fireEvent.change(nameInput, { target: { value: "newParam" } });
+      fireEvent.blur(nameInput);
+
+      return onChange.mock.calls[
+        onChange.mock.calls.length - 1
+      ][0] as JSONSchema;
+    }
+
     it("keeps the new row visible in a controlled parent after clicking add", () => {
       function ControlledEditor() {
         const [schema, setSchema] = useState<JSONSchema>(emptySchema());
@@ -178,55 +144,12 @@ describe("ParameterSchemaEditor", () => {
       expect(screen.getByPlaceholderText("param_name")).toBeInTheDocument();
     });
 
-    it("calls onChange when 'Add Parameter' is clicked and a name is typed", () => {
+    it("emits an updated schema with expected defaults when adding a named parameter", () => {
       const onChange = vi.fn();
-      render(
-        <ParameterSchemaEditor schema={emptySchema()} onChange={onChange} />,
-      );
-
-      fireEvent.click(screen.getByRole("button", { name: /add parameter/i }));
-
-      const nameInput = screen.getByPlaceholderText("param_name");
-      fireEvent.change(nameInput, { target: { value: "newParam" } });
-      fireEvent.blur(nameInput);
-
-      const updated: JSONSchema =
-        onChange.mock.calls[onChange.mock.calls.length - 1][0];
+      const updated = addNamedParameter(onChange);
       expect(Object.keys(updated.properties)).toHaveLength(1);
-    });
-
-    it("new row defaults type to 'string'", () => {
-      const onChange = vi.fn();
-      render(
-        <ParameterSchemaEditor schema={emptySchema()} onChange={onChange} />,
-      );
-
-      fireEvent.click(screen.getByRole("button", { name: /add parameter/i }));
-
-      const nameInput = screen.getByPlaceholderText("param_name");
-      fireEvent.change(nameInput, { target: { value: "newParam" } });
-      fireEvent.blur(nameInput);
-
-      const updated: JSONSchema =
-        onChange.mock.calls[onChange.mock.calls.length - 1][0];
       const prop = Object.values(updated.properties)[0];
       expect(prop.type).toBe("string");
-    });
-
-    it("new row is not required by default", () => {
-      const onChange = vi.fn();
-      render(
-        <ParameterSchemaEditor schema={emptySchema()} onChange={onChange} />,
-      );
-
-      fireEvent.click(screen.getByRole("button", { name: /add parameter/i }));
-
-      const nameInput = screen.getByPlaceholderText("param_name");
-      fireEvent.change(nameInput, { target: { value: "newParam" } });
-      fireEvent.blur(nameInput);
-
-      const updated: JSONSchema =
-        onChange.mock.calls[onChange.mock.calls.length - 1][0];
       expect(updated.required ?? []).not.toContain(
         Object.keys(updated.properties)[0],
       );

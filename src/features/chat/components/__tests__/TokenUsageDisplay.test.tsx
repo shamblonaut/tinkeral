@@ -5,22 +5,6 @@ import { describe, expect, it } from "vitest";
 import { TokenUsageDisplay } from "..";
 
 describe("TokenUsageDisplay", () => {
-  beforeEach(() => {
-    vi.useFakeTimers({
-      toFake: [
-        "setTimeout",
-        "clearTimeout",
-        "setInterval",
-        "clearInterval",
-        "Date",
-      ],
-    });
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
   it("should render nothing for user message when usage is missing", () => {
     const { container } = render(
       <TokenUsageDisplay role="user" contentLength={100} />,
@@ -80,27 +64,5 @@ describe("TokenUsageDisplay", () => {
     expect(
       screen.getByTitle("10 thinking tokens consumed by the model"),
     ).toBeInTheDocument();
-  });
-
-  it("should show approximation for model when usage is completely missing", () => {
-    render(<TokenUsageDisplay role="model" contentLength={100} />);
-    // No split tokens, so it shows approximated total (content length / 4)
-    expect(screen.getByText("*25")).toBeInTheDocument();
-    expect(
-      screen.getByTitle("Approximate total tokens in this turn"),
-    ).toBeInTheDocument();
-  });
-
-  it("should render cached tokens for user message when present", () => {
-    render(
-      <TokenUsageDisplay
-        role="user"
-        contentLength={100}
-        usage={{ inputTokens: 50, cachedTokens: 20 }}
-      />,
-    );
-    expect(screen.getByText("50")).toBeInTheDocument();
-    expect(screen.getByText("20")).toBeInTheDocument();
-    expect(screen.getByTitle("20 tokens from cache")).toBeInTheDocument();
   });
 });

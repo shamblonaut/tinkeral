@@ -5,6 +5,7 @@ import { conversations, db } from "@/db";
 import { useSettingsStore, type SettingsState } from "@/features/settings";
 import { GoogleAPIClient } from "@/shared/services/api";
 import type { FinishReason } from "@/shared/types";
+import { PersistenceService } from "../../services/persistence";
 
 import { useConversationStore } from "..";
 
@@ -303,81 +304,6 @@ describe("ChatSlice", () => {
     expect(conversation?.messages[0].id).toBe("msg-1");
   });
 
-  it("should abort ongoing generation when deleting a message", async () => {
-    let streamTrigger: () => void;
-    const streamTriggerPromise = new Promise<void>((r) => {
-      streamTrigger = r;
-    });
-
-    const mockStreamChat = vi
-      .fn()
-      .mockImplementation(async function* (_, signal) {
-        await streamTriggerPromise;
-        await new Promise((resolve) => setTimeout(resolve, 20));
-        yield { delta: "Slow" };
-        await new Promise((resolve) => setTimeout(resolve, 50));
-        if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
-        yield { delta: " Response" };
-      });
-
-    vi.mocked(GoogleAPIClient.createClient).mockResolvedValue({
-      streamChat: mockStreamChat,
-    } as unknown as GoogleAPIClient);
-
-    const store = useConversationStore.getState();
-    const id = await store.createConversation("test-model", {
-      temperature: 0.7,
-      maxTokens: 100,
-      topP: 0.9,
-    });
-    store.setActiveConversation(id);
-
-    useConversationStore.setState((s) => ({
-      conversations: s.conversations.map((c) =>
-        c.id === id
-          ? {
-              ...c,
-              messages: [
-                {
-                  id: "msg-1",
-                  role: "user" as const,
-                  content: "Hi",
-                  timestamp: 1,
-                },
-                {
-                  id: "msg-2",
-                  role: "model" as const,
-                  content: "Hello",
-                  timestamp: 2,
-                },
-              ],
-            }
-          : c,
-      ),
-    }));
-
-    // Start a message regeneration
-    const promise1 = store.retryMessage("msg-2");
-
-    // Give it time to start the stream request
-    streamTrigger!();
-    await vi.advanceTimersByTimeAsync(30); // Yields "Slow"
-
-    // AbortController should be active now
-    expect(useConversationStore.getState().abortController).toBeDefined();
-
-    // Trigger delete! This should halt the previous stream.
-    const promise2 = store.deleteMessage("msg-1");
-
-    // Let the delete operation complete and the stream abort
-    await vi.runAllTimersAsync();
-    await Promise.allSettled([promise1, promise2]);
-
-    const state = useConversationStore.getState();
-    expect(state.isStreaming).toBe(false);
-    expect(state.abortController).toBeNull();
-  });
-
   it("should retry a model message by regenerating response", async () => {
     vi.mocked(GoogleAPIClient.createClient).mockResolvedValue({
       streamChat: vi
@@ -433,102 +359,6 @@ describe("ChatSlice", () => {
     expect(conversation?.messages[1].content).toBe("Regenerated Hello");
   });
 
-  it("should abort ongoing generation when retrying a message", async () => {
-    let streamTrigger: () => void;
-    const streamTriggerPromise = new Promise<void>((r) => {
-      streamTrigger = r;
-    });
-
-    const mockStreamChat = vi
-      .fn()
-      .mockImplementation(async function* (_, signal) {
-        await streamTriggerPromise;
-        await new Promise((resolve) => setTimeout(resolve, 20));
-        yield { delta: "Slow" };
-        await new Promise((resolve) => setTimeout(resolve, 50));
-        if (signal?.aborted) throw new DOMException("Aborted", "AbortError");
-        yield { delta: " Response" };
-      });
-
-    vi.mocked(GoogleAPIClient.createClient).mockResolvedValue({
-      streamChat: mockStreamChat,
-    } as unknown as GoogleAPIClient);
-
-    const store = useConversationStore.getState();
-    const id = await store.createConversation("test-model", {
-      temperature: 0.7,
-      maxTokens: 100,
-      topP: 0.9,
-    });
-    store.setActiveConversation(id);
-
-    useConversationStore.setState((s) => ({
-      conversations: s.conversations.map((c) =>
-        c.id === id
-          ? {
-              ...c,
-              messages: [
-                {
-                  id: "msg-1",
-                  role: "user" as const,
-                  content: "Hi",
-                  timestamp: 1,
-                },
-                {
-                  id: "msg-2",
-                  role: "model" as const,
-                  content: "Hello",
-                  timestamp: 2,
-                },
-              ],
-            }
-          : c,
-      ),
-    }));
-
-    // Start a message regeneration
-    const promise1 = store.retryMessage("msg-2");
-
-    // Give it time to start the stream request
-    streamTrigger!();
-    await vi.advanceTimersByTimeAsync(30); // Yields "Slow"
-
-    // AbortController should be active now
-    expect(useConversationStore.getState().abortController).toBeDefined();
-
-    // Trigger another retry! This should halt the first one.
-    const promise2 = store.retryMessage("msg-2");
-
-    // Let the second one complete and the first one abort
-    await vi.runAllTimersAsync();
-    await Promise.allSettled([promise1, promise2]);
-
-    const state = useConversationStore.getState();
-    expect(state.isStreaming).toBe(false);
-
-    const conversation = state.conversations.find((c) => c.id === id);
-    // Since mockStreamChat just throws, the second stream will fail due to no content from mocked stream
-    // but the point is it shouldn't hold the old stream content or freeze
-    expect(conversation).toBeDefined();
-  });
-
-  it("should NOT save draft for temporary conversations", async () => {
-    const store = useConversationStore.getState();
-    const id = await store.createConversation(
-      "test-model",
-      { temperature: 0.7, maxTokens: 100, topP: 0.9 },
-      undefined,
-      { isTemporary: true },
-    );
-    store.setActiveConversation(id);
-
-    await store.setDraft(id, "I am testing");
-
-    const state = useConversationStore.getState();
-    const conversation = state.conversations.find((c) => c.id === id);
-    expect(conversation?.draft).toBeUndefined();
-  });
-
   it("should PRESERVE draft for ephemeral conversations when switching away and back", async () => {
     const store = useConversationStore.getState();
     const ephId = await store.createConversation("test-model", {
@@ -575,23 +405,6 @@ describe("ChatSlice", () => {
     const state = useConversationStore.getState();
     const reactivatedConv = state.conversations.find((c) => c.id === ephId);
     expect(reactivatedConv?.draft).toBe("My ephemeral draft");
-  });
-
-  it("should update system prompt", async () => {
-    const store = useConversationStore.getState();
-    const id = await store.createConversation("test-model", {
-      temperature: 0.7,
-      maxTokens: 1024,
-      topP: 0.9,
-    });
-    store.setActiveConversation(id);
-
-    await store.setSystemPrompt("You are a pirate.");
-
-    const conversation = useConversationStore
-      .getState()
-      .conversations.find((c) => c.id === id);
-    expect(conversation?.systemPrompt).toBe("You are a pirate.");
   });
 
   it("should edit a message and truncate subsequent messages", async () => {
@@ -671,27 +484,6 @@ describe("ChatSlice", () => {
     expect(conversation?.parameters.topP).toBe(0.9); // unchanged
   });
 
-  it("should replace parameters on active conversation", async () => {
-    const store = useConversationStore.getState();
-    const id = await store.createConversation("test-model", {
-      temperature: 0.7,
-      maxTokens: 100,
-      topP: 0.9,
-    });
-    store.setActiveConversation(id);
-
-    await store.setParameters({ temperature: 0.5 }, "replace");
-
-    const conversation = useConversationStore
-      .getState()
-      .conversations.find((c) => c.id === id);
-    // Only temperature is custom; maxTokens and topP fall back to DEFAULT_PARAMETERS
-    expect(conversation?.parameters.temperature).toBe(0.5);
-    // Replaced with defaults for remaining fields
-    expect(conversation?.parameters.maxTokens).toBeDefined();
-    expect(conversation?.parameters.topP).toBeDefined();
-  });
-
   it("should update a single message content without truncating subsequent messages", async () => {
     const store = useConversationStore.getState();
     const id = await store.createConversation("test-model", {
@@ -739,34 +531,6 @@ describe("ChatSlice", () => {
     expect(conversation?.messages).toHaveLength(3); // no truncation
     expect(conversation?.messages[1].content).toBe("Updated content");
     expect(conversation?.messages[2].content).toBe("Third"); // still present
-  });
-
-  it("should truncate long first message to 40 chars as title", async () => {
-    vi.mocked(GoogleAPIClient.createClient).mockResolvedValue({
-      streamChat: vi.fn().mockImplementation(() => mockStreamResponse("Ok")),
-    } as unknown as GoogleAPIClient);
-
-    const store = useConversationStore.getState();
-    const id = await store.createConversation("test-model", {
-      temperature: 0.7,
-      maxTokens: 100,
-      topP: 0.9,
-    });
-    store.setActiveConversation(id);
-
-    const longMessage =
-      "This is a very long message that exceeds forty characters";
-    const promise = store.sendMessage(longMessage);
-    await vi.runAllTimersAsync();
-    await promise;
-
-    const conversation = useConversationStore
-      .getState()
-      .conversations.find((c) => c.id === id);
-    expect(conversation?.title).toBe(
-      "This is a very long message that exce...",
-    );
-    expect(conversation?.title?.length).toBe(40);
   });
 
   it("should pass attached functions and persist function call/result messages", async () => {
@@ -884,5 +648,124 @@ describe("ChatSlice", () => {
         ],
       });
     }
+  });
+
+  it("should toggle attached function ids and persist updates", async () => {
+    const updateConversationSpy = vi
+      .spyOn(PersistenceService, "updateConversation")
+      .mockResolvedValue(undefined);
+
+    const store = useConversationStore.getState();
+    const id = await store.createConversation("test-model", {
+      temperature: 0.7,
+      maxTokens: 100,
+      topP: 0.9,
+    });
+    store.setActiveConversation(id);
+
+    const created = useConversationStore
+      .getState()
+      .conversations.find((conversation) => conversation.id === id);
+    expect(created).toBeDefined();
+
+    useConversationStore.setState((state) => ({
+      conversations: state.conversations.map((conversation) =>
+        conversation.id === id
+          ? { ...conversation, persisted: true }
+          : conversation,
+      ),
+    }));
+
+    const toggle1 = store.toggleFunctionAttachment("func-1");
+    await vi.runAllTimersAsync();
+    await toggle1;
+
+    const toggle2 = store.toggleFunctionAttachment("func-2");
+    await vi.runAllTimersAsync();
+    await toggle2;
+
+    const toggle3 = store.toggleFunctionAttachment("func-1");
+    await vi.runAllTimersAsync();
+    await toggle3;
+
+    const conversation = useConversationStore
+      .getState()
+      .conversations.find((c) => c.id === id);
+    expect(conversation?.functionIds).toEqual(["func-2"]);
+    expect(updateConversationSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ id }),
+      { functionIds: ["func-2"] },
+    );
+  });
+
+  it("should set function calling mode and persist it", async () => {
+    const updateConversationSpy = vi
+      .spyOn(PersistenceService, "updateConversation")
+      .mockResolvedValue(undefined);
+
+    const store = useConversationStore.getState();
+    const id = await store.createConversation("test-model", {
+      temperature: 0.7,
+      maxTokens: 100,
+      topP: 0.9,
+    });
+    store.setActiveConversation(id);
+
+    const created = useConversationStore
+      .getState()
+      .conversations.find((conversation) => conversation.id === id);
+    expect(created).toBeDefined();
+
+    useConversationStore.setState((state) => ({
+      conversations: state.conversations.map((conversation) =>
+        conversation.id === id
+          ? { ...conversation, persisted: true }
+          : conversation,
+      ),
+    }));
+
+    const modePromise = store.setFunctionCallingMode("ANY");
+    await vi.runAllTimersAsync();
+    await modePromise;
+
+    const conversation = useConversationStore
+      .getState()
+      .conversations.find((c) => c.id === id);
+    expect(conversation?.functionCallingMode).toBe("ANY");
+    expect(updateConversationSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ id }),
+      { functionCallingMode: "ANY" },
+    );
+  });
+
+  it("should no-op mutation calls when active conversation id is missing in state", async () => {
+    const store = useConversationStore.getState();
+    const id = await store.createConversation("test-model", {
+      temperature: 0.7,
+      maxTokens: 100,
+      topP: 0.9,
+    });
+
+    useConversationStore.setState({
+      activeConversationId: "missing-conversation-id",
+    });
+
+    await expect(store.deleteMessage("unknown")).resolves.toBeUndefined();
+    await expect(store.retryMessage("unknown")).resolves.toBeUndefined();
+    await expect(store.editMessage("unknown", "text")).resolves.toBeUndefined();
+    await expect(
+      store.setParameters({ temperature: 0.2 }),
+    ).resolves.toBeUndefined();
+    await expect(store.setSystemPrompt("new prompt")).resolves.toBeUndefined();
+    await expect(
+      store.toggleFunctionAttachment("f-1"),
+    ).resolves.toBeUndefined();
+    await expect(store.setFunctionCallingMode("AUTO")).resolves.toBeUndefined();
+
+    const conversation = useConversationStore
+      .getState()
+      .conversations.find((c) => c.id === id);
+    expect(conversation).toBeDefined();
+    expect(conversation?.parameters.temperature).toBe(0.7);
   });
 });

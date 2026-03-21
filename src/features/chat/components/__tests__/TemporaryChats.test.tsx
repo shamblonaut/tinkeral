@@ -1,5 +1,4 @@
-import { act, render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { conversations as conversationsDb } from "@/db";
@@ -64,6 +63,14 @@ vi.mock("@/services/api/google", () => ({
 
 setupChatTests();
 
+const triggerClick = (element: Element) => {
+  fireEvent.pointerDown(element);
+  fireEvent.mouseDown(element);
+  fireEvent.pointerUp(element);
+  fireEvent.mouseUp(element);
+  fireEvent.click(element);
+};
+
 describe("Temporary Chats", () => {
   beforeEach(() => {
     vi.useFakeTimers({
@@ -82,36 +89,31 @@ describe("Temporary Chats", () => {
   });
 
   it("should create a temporary conversation and NOT persist it", async () => {
-    const user = userEvent.setup({ delay: null });
     render(
       <TooltipProvider>
         <ChatInterface />
       </TooltipProvider>,
     );
 
-    const btnPromise = screen.findByRole("button", { name: "More options" });
     await act(async () => {
       await vi.runAllTimersAsync();
     });
-    const btn = await btnPromise;
+    const btn = screen.getByRole("button", { name: "More options" });
 
-    const click1 = user.click(btn);
+    triggerClick(btn);
     await act(async () => {
       await vi.runAllTimersAsync();
     });
-    await click1;
 
-    const optPromise = screen.findByText("Temporary Chat");
     await act(async () => {
       await vi.runAllTimersAsync();
     });
-    const opt = await optPromise;
+    const opt = screen.getByText("Temporary Chat");
 
-    const click2 = user.click(opt);
+    triggerClick(opt);
     await act(async () => {
       await vi.runAllTimersAsync();
     });
-    await click2;
 
     const state = useConversationStore.getState();
     const activeConv = state.conversations.find(
@@ -131,7 +133,6 @@ describe("Temporary Chats", () => {
   });
 
   it("should preserve temporary status when switching models", async () => {
-    const user = userEvent.setup({ delay: null });
     useUIStore.setState({ isChatSettingsOpen: true });
     useConversationStore.setState({
       conversations: [
@@ -151,23 +152,20 @@ describe("Temporary Chats", () => {
     );
 
     const combo = screen.getAllByRole("combobox")[0];
-    const click1 = user.click(combo);
+    triggerClick(combo);
     await act(async () => {
       await vi.runAllTimersAsync();
     });
-    await click1;
 
-    const modelOptPromise = screen.findByText("Model 2", {}, { timeout: 2000 });
     await act(async () => {
       await vi.runAllTimersAsync();
     });
-    const modelOpt = await modelOptPromise;
+    const modelOpt = screen.getByText("Model 2");
 
-    const click2 = user.click(modelOpt);
+    triggerClick(modelOpt);
     await act(async () => {
       await vi.runAllTimersAsync();
     });
-    await click2;
 
     await act(async () => {
       await vi.runAllTimersAsync();
@@ -212,7 +210,6 @@ describe("Temporary Chats", () => {
   });
 
   it("should allow switching models (UI Features)", async () => {
-    const user = userEvent.setup({ delay: null });
     useUIStore.setState({ isChatSettingsOpen: true });
     useConversationStore.setState({
       conversations: [createMockConv("c1", "Chat")],
@@ -230,23 +227,20 @@ describe("Temporary Chats", () => {
     );
 
     const combo = screen.getAllByRole("combobox")[0];
-    const click1 = user.click(combo);
+    triggerClick(combo);
     await act(async () => {
       await vi.runAllTimersAsync();
     });
-    await click1;
 
-    const modelOptPromise = screen.findByText("Model 2", {}, { timeout: 2000 });
     await act(async () => {
       await vi.runAllTimersAsync();
     });
-    const modelOpt = await modelOptPromise;
+    const modelOpt = screen.getByText("Model 2");
 
-    const click2 = user.click(modelOpt);
+    triggerClick(modelOpt);
     await act(async () => {
       await vi.runAllTimersAsync();
     });
-    await click2;
 
     await act(async () => {
       await vi.runAllTimersAsync();
