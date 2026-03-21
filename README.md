@@ -1,24 +1,35 @@
 # Tinkeral
 
-**A powerful, privacy-first playground for exploring LLM API capabilities.**
+**A browser-only playground for exploring LLM chat + tool/function calling.**
 
-Tinkeral bridges the gap between simple chat interfaces and raw API usage, giving you a visual way to understand and experiment with Large Language Model capabilities through parameter tuning and feature exploration—all running entirely in your browser.
+Tinkeral bridges the gap between simple chat UIs and raw API calls. Tune parameters, test function-calling flows, and inspect results — all in the browser.
 
-## 🚀 Quick Start
+## Features
+
+- Chat with streaming responses
+- Parameter tuning per conversation (temperature, top‑p, max tokens, etc.)
+- Function/tool calling: create, test, attach, and inspect calls/results
+- Local persistence (IndexedDB via Dexie) + Import/Export
+- Theme + UI preferences
+- Token usage display (when provided by the API)
+
+## Privacy & security
+
+- No backend: your API key is stored locally in your browser (IndexedDB via Dexie).
+- Requests go directly from your browser to the provider API (currently Google).
+- Recommended: use restricted keys, avoid shared machines, and export/clear your data when needed.
+
+## Quick start
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/en/download)
+- Node.js (current LTS recommended)
 - [pnpm](https://pnpm.io/installation)
-- An API key from [Google AI Studio](https://aistudio.google.com/app/apikey) (free tier available)
+- A Google API key from [Google AI Studio](<(https://aistudio.google.com/app/apikey)>) (free tier available)
 
 ### Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/your-org/tinkeral.git
-cd tinkeral
-
 # Install dependencies
 pnpm install
 
@@ -28,29 +39,50 @@ pnpm run dev
 
 Open [http://localhost:5173](http://localhost:5173) in your browser.
 
-## 🧰 Function Calling
+### First run
 
-Tinkeral includes built-in function calling so you can test tool-use flows end-to-end in the browser.
+On first launch, you will have to provide a Google AI Studio API key to access the interface.
 
-### What you can do
+## How to use
 
-- Create and edit JavaScript functions in the **Functions** view
-- Define structured input parameters with JSON Schema fields
-- Run functions in an isolated Web Worker sandbox before using them in chat
-- Attach functions to a conversation and let Gemini call them during responses
-- Inspect function-call arguments, results, errors, and execution time in chat messages
+### Chat
 
-### How to use it
+- Pick a model and tweak parameters in Settings.
+- Add an optional system prompt.
+- Send messages and watch streaming updates in the chat view.
 
-1. Open **Functions** from the header toggle.
-2. Create a function (name, description, parameters, implementation).
-3. Use the built-in test runner to validate behavior.
-4. Switch back to **Chat** and attach one or more functions to the current conversation.
-5. Send a prompt that requires tool use and review the function call/result cards.
+### Functions (tool calling)
 
-### Safety and performance notes
+- Create/edit functions in the **Functions** view (name, description, JSON Schema parameters, implementation).
+- Use the built-in test runner to validate behavior.
+- Attach functions to a conversation and let the model call them.
+- Inspect function call arguments, results, errors, and execution time in message cards.
 
-- Function code executes in a Web Worker, not the DOM thread.
-- Execution timeouts are enforced per function.
-- Function result rendering is truncated in the UI for large payloads.
-- The CodeMirror editor is lazy-loaded to keep initial bundle load smaller.
+### Backup & restore
+
+Use Settings → Data Management to export/import your local data (settings + conversations).
+
+## Development
+
+Common commands:
+
+```bash
+pnpm run dev
+pnpm run build
+pnpm run preview
+pnpm run test
+pnpm run test:coverage
+pnpm run lint
+pnpm run typecheck
+pnpm run format
+pnpm run format:check
+```
+
+## Documentation
+
+- Architecture overview: `docs/ARCHITECTURE.md`
+- Types & contracts conventions: `docs/CONVENTIONS.md`
+
+## License
+
+See `LICENSE`.
