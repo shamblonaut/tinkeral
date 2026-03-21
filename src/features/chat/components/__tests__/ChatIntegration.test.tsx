@@ -255,6 +255,20 @@ describe("ChatInterface — Messaging & Streaming", () => {
 
     expect(toast.error).toHaveBeenCalledWith("Stream failed");
   });
+
+  it("should display fallback error toast for blank error messages", async () => {
+    useConversationStore.setState({
+      error: "",
+    });
+
+    render(
+      <TooltipProvider>
+        <ChatInterface />
+      </TooltipProvider>,
+    );
+
+    expect(toast.error).toHaveBeenCalledWith("An unexpected error occurred");
+  });
 });
 
 describe("ChatInterface — Message Interactions", () => {

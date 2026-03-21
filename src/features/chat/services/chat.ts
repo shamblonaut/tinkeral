@@ -3,7 +3,6 @@ import {
   FunctionExecutor,
 } from "@/features/functions";
 import { GoogleAPIClient, ProviderError } from "@/shared/services/api";
-import { RateLimiter } from "@/shared/services/rateLimiter";
 import type {
   FinishReason,
   FunctionCall,
@@ -66,186 +65,175 @@ export class ChatService {
     } = request;
     const { onChunk, onFinish, onError, onFunctionCall, onFunctionResult } =
       callbacks;
-    const rateLimiter = new RateLimiter();
     const maxFunctionCallIterations = 10;
 
-    const attempt = async (): Promise<void> => {
-      let fullContent = "";
-      const workingMessages = [...messages];
-      const executor = new FunctionExecutor();
+    let fullContent = "";
+    const workingMessages = [...messages];
+    const executor = new FunctionExecutor();
 
-      try {
-        if (!apiKey) {
-          throw new Error("API key not found for Google provider");
+    try {
+      if (!apiKey) {
+        throw new Error("API key not found for Google provider");
+      }
+
+      const client = await GoogleAPIClient.createClient(apiKey);
+      let loopCount = 0;
+      let shouldContinueFunctionLoop = true;
+      const lastMetadata: ChatMetadata = {};
+
+      while (shouldContinueFunctionLoop) {
+        loopCount += 1;
+        if (loopCount > maxFunctionCallIterations) {
+          throw new Error(
+            `Exceeded maximum function-call iterations (${maxFunctionCallIterations})`,
+          );
         }
 
-        const client = await GoogleAPIClient.createClient(apiKey);
-        let loopCount = 0;
-        let shouldContinueFunctionLoop = true;
-        const lastMetadata: ChatMetadata = {};
+        const providerRequest: ProviderChatRequest = {
+          messages: workingMessages,
+          model: modelId,
+          parameters,
+          systemPrompt,
+          ...(functions?.length ? { functions, functionCallingMode } : {}),
+        };
 
-        while (shouldContinueFunctionLoop) {
-          loopCount += 1;
-          if (loopCount > maxFunctionCallIterations) {
-            throw new Error(
-              `Exceeded maximum function-call iterations (${maxFunctionCallIterations})`,
-            );
+        const stream = client.streamChat(providerRequest, abortSignal);
+        let turnContent = "";
+        fullContent = ""; // Reset fullContent for each turn
+        let turnFunctionCall: FunctionCall | undefined;
+        let lastUpdate = Date.now();
+
+        for await (const chunk of stream) {
+          if (abortSignal?.aborted) {
+            throw new DOMException("Aborted", "AbortError");
           }
 
-          const providerRequest: ProviderChatRequest = {
-            messages: workingMessages,
-            model: modelId,
-            parameters,
-            systemPrompt,
-            ...(functions?.length ? { functions, functionCallingMode } : {}),
-          };
-
-          const stream = client.streamChat(providerRequest, abortSignal);
-          let turnContent = "";
-          fullContent = ""; // Reset fullContent for each turn
-          let turnFunctionCall: FunctionCall | undefined;
-          let lastUpdate = Date.now();
-
-          for await (const chunk of stream) {
-            if (abortSignal?.aborted) {
-              throw new DOMException("Aborted", "AbortError");
-            }
-
-            turnContent += chunk.delta;
-            fullContent = turnContent;
-
-            if (chunk.functionCall?.name) {
-              const isNewFunctionCall = !turnFunctionCall;
-              turnFunctionCall = {
-                id: chunk.functionCall.id,
-                name: chunk.functionCall.name,
-                arguments: chunk.functionCall.arguments || {},
-              };
-
-              if (isNewFunctionCall) {
-                onFunctionCall?.(turnFunctionCall);
-              }
-            }
-
-            if (chunk.finishReason) {
-              lastMetadata.finishReason = chunk.finishReason as FinishReason;
-            }
-
-            if (chunk.usage) {
-              const lastUsage = lastMetadata.usage || {};
-              lastMetadata.usage = {
-                inputTokens:
-                  Math.max(
-                    chunk.usage.inputTokens || 0,
-                    lastUsage.inputTokens || 0,
-                  ) || undefined,
-                outputTokens:
-                  Math.max(
-                    chunk.usage.outputTokens || 0,
-                    lastUsage.outputTokens || 0,
-                  ) || undefined,
-                totalTokens:
-                  Math.max(
-                    chunk.usage.totalTokens || 0,
-                    lastUsage.totalTokens || 0,
-                  ) || undefined,
-                thinkingTokens:
-                  Math.max(
-                    chunk.usage.thinkingTokens || 0,
-                    lastUsage.thinkingTokens || 0,
-                  ) || undefined,
-                cachedTokens:
-                  Math.max(
-                    chunk.usage.cachedTokens || 0,
-                    lastUsage.cachedTokens || 0,
-                  ) || undefined,
-              };
-            }
-
-            const now = Date.now();
-            if (process.env.NODE_ENV === "test" || now - lastUpdate >= 16) {
-              onChunk(turnContent);
-              lastUpdate = now;
-            }
-          }
-
+          turnContent += chunk.delta;
           fullContent = turnContent;
 
-          if (
-            turnFunctionCall &&
-            (lastMetadata.finishReason === "function_call" ||
-              lastMetadata.finishReason === "stop")
-          ) {
-            await onFunctionCall?.(turnFunctionCall);
+          if (chunk.functionCall?.name) {
+            const isNewFunctionCall = !turnFunctionCall;
+            turnFunctionCall = {
+              id: chunk.functionCall.id,
+              name: chunk.functionCall.name,
+              arguments: chunk.functionCall.arguments || {},
+            };
 
-            const functionResult = await this.executeFunctionCall(
-              turnFunctionCall,
-              functions,
-              executor,
-              abortSignal,
-            );
-            await onFunctionResult?.(functionResult);
-
-            workingMessages.push(
-              {
-                id: crypto.randomUUID(),
-                role: "model",
-                content: turnContent,
-                timestamp: Date.now(),
-                functionCall: turnFunctionCall,
-                metadata: {
-                  model: modelId,
-                  finishReason: "function_call",
-                },
-              },
-              {
-                id: crypto.randomUUID(),
-                role: "user",
-                content: this.serializeFunctionResult(functionResult),
-                timestamp: Date.now(),
-                functionResult,
-              },
-            );
-
-            continue;
+            if (isNewFunctionCall) {
+              onFunctionCall?.(turnFunctionCall);
+            }
           }
 
-          shouldContinueFunctionLoop = false;
+          if (chunk.finishReason) {
+            lastMetadata.finishReason = chunk.finishReason as FinishReason;
+          }
+
+          if (chunk.usage) {
+            const lastUsage = lastMetadata.usage || {};
+            lastMetadata.usage = {
+              inputTokens:
+                Math.max(
+                  chunk.usage.inputTokens || 0,
+                  lastUsage.inputTokens || 0,
+                ) || undefined,
+              outputTokens:
+                Math.max(
+                  chunk.usage.outputTokens || 0,
+                  lastUsage.outputTokens || 0,
+                ) || undefined,
+              totalTokens:
+                Math.max(
+                  chunk.usage.totalTokens || 0,
+                  lastUsage.totalTokens || 0,
+                ) || undefined,
+              thinkingTokens:
+                Math.max(
+                  chunk.usage.thinkingTokens || 0,
+                  lastUsage.thinkingTokens || 0,
+                ) || undefined,
+              cachedTokens:
+                Math.max(
+                  chunk.usage.cachedTokens || 0,
+                  lastUsage.cachedTokens || 0,
+                ) || undefined,
+            };
+          }
+
+          const now = Date.now();
+          if (process.env.NODE_ENV === "test" || now - lastUpdate >= 16) {
+            onChunk(turnContent);
+            lastUpdate = now;
+          }
         }
 
-        if (!fullContent && workingMessages.length > messages.length) {
-          throw new ProviderError({
-            type: "unknown",
-            provider: "google",
-            message:
-              "Model failed to provide a final response after function calls.",
-            retriable: false,
-          });
-        }
+        fullContent = turnContent;
 
-        await onFinish(fullContent, lastMetadata);
-      } catch (error) {
         if (
-          abortSignal?.aborted ||
-          (error instanceof DOMException && error.name === "AbortError")
+          turnFunctionCall &&
+          (lastMetadata.finishReason === "function_call" ||
+            lastMetadata.finishReason === "stop")
         ) {
-          onError(error as ProviderError | string, fullContent);
-          return;
+          await onFunctionCall?.(turnFunctionCall);
+
+          const functionResult = await this.executeFunctionCall(
+            turnFunctionCall,
+            functions,
+            executor,
+            abortSignal,
+          );
+          await onFunctionResult?.(functionResult);
+
+          workingMessages.push(
+            {
+              id: crypto.randomUUID(),
+              role: "model",
+              content: turnContent,
+              timestamp: Date.now(),
+              functionCall: turnFunctionCall,
+              metadata: {
+                model: modelId,
+                finishReason: "function_call",
+              },
+            },
+            {
+              id: crypto.randomUUID(),
+              role: "user",
+              content: this.serializeFunctionResult(functionResult),
+              timestamp: Date.now(),
+              functionResult,
+            },
+          );
+
+          continue;
         }
 
-        const delay = rateLimiter.getRetryDelay(error);
-        if (delay !== null) {
-          await new Promise((resolve) => setTimeout(resolve, delay));
-          return attempt();
-        }
-
-        onError(error as ProviderError | string, fullContent);
-      } finally {
-        executor.terminate();
+        shouldContinueFunctionLoop = false;
       }
-    };
 
-    return attempt();
+      if (!fullContent && workingMessages.length > messages.length) {
+        throw new ProviderError({
+          type: "unknown",
+          provider: "google",
+          message:
+            "Model failed to provide a final response after function calls.",
+          retriable: false,
+        });
+      }
+
+      await onFinish(fullContent, lastMetadata);
+    } catch (error) {
+      if (
+        abortSignal?.aborted ||
+        (error instanceof DOMException && error.name === "AbortError")
+      ) {
+        onError(error as ProviderError | string, fullContent);
+        return;
+      }
+
+      onError(error as ProviderError | string, fullContent);
+    } finally {
+      executor.terminate();
+    }
   }
 
   private static async executeFunctionCall(

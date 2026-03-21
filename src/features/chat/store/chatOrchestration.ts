@@ -3,14 +3,51 @@ import type { StoreApi } from "zustand";
 import { functions as functionsDb } from "@/db";
 import type { FunctionDefinition } from "@/features/functions";
 import { useSettingsStore } from "@/features/settings";
+import type { ProviderError } from "@/shared/services/api";
 import type { FunctionCall, FunctionResult, Message } from "@/shared/types";
 
 import { ChatService, type ChatMetadata } from "../services";
-import { persistFinalChatConversation } from "./chatPersistence";
+import {
+  persistConversationUpdate,
+  persistFinalChatConversation,
+} from "./chatPersistence";
 import type { ConversationState } from "./types";
+import { deleteMessageAndFollowing } from "./utils";
 
 type SetConversationState = StoreApi<ConversationState>["setState"];
 type GetConversationState = StoreApi<ConversationState>["getState"];
+
+function isAbortError(error: unknown): boolean {
+  if (error instanceof DOMException && error.name === "AbortError") {
+    return true;
+  }
+
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "name" in error &&
+    (error as { name?: unknown }).name === "AbortError"
+  );
+}
+
+function normalizeChatError(error: unknown): string | ProviderError {
+  if (typeof error === "string") {
+    const trimmed = error.trim();
+    return trimmed || "An unexpected error occurred";
+  }
+
+  if (error && typeof error === "object") {
+    const message =
+      "message" in error && typeof error.message === "string"
+        ? error.message.trim()
+        : "";
+    if (message) {
+      return error as ProviderError;
+    }
+  }
+
+  return "An unexpected error occurred";
+}
 
 async function loadAttachedFunctions(
   functionIds: string[] | undefined,
@@ -319,8 +356,7 @@ export async function executeChat(
             }));
           }
 
-          const isAborted =
-            error instanceof DOMException && error.name === "AbortError";
+          const isAborted = isAbortError(error);
 
           const currentConversation = get().conversations.find(
             (item) => item.id === conversationId,
@@ -337,7 +373,20 @@ export async function executeChat(
             !hasFunctionResults
           ) {
             void get().setDraft(conversationId, userMessage.content);
-            void get().deleteMessage(userMessage.id);
+            set((state) => ({
+              conversations: state.conversations.map((item) =>
+                item.id === conversationId
+                  ? {
+                      ...item,
+                      messages: deleteMessageAndFollowing(
+                        item.messages,
+                        userMessage.id,
+                      ),
+                    }
+                  : item,
+              ),
+            }));
+            void persistConversationUpdate(get, conversationId);
           }
 
           set((state) => {
@@ -346,7 +395,7 @@ export async function executeChat(
             }
 
             return {
-              error: isAborted ? null : error,
+              error: isAborted ? null : normalizeChatError(error),
               isLoading: false,
               isStreaming: false,
               abortController: null,
@@ -363,7 +412,7 @@ export async function executeChat(
     }
 
     set({
-      error: (error as Error).message,
+      error: normalizeChatError(error),
       isLoading: false,
       isStreaming: false,
       abortController: null,

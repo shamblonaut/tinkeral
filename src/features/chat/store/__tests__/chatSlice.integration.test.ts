@@ -196,6 +196,33 @@ describe("ChatSlice", () => {
     expect(state.isStreaming).toBe(false);
   });
 
+  it("should normalize blank errors to a fallback message", async () => {
+    const mockStream = async function* () {
+      yield { delta: "" };
+      throw new Error("");
+    };
+
+    vi.mocked(GoogleAPIClient.createClient).mockResolvedValue({
+      streamChat: vi.fn().mockImplementation(() => mockStream()),
+    } as unknown as GoogleAPIClient);
+
+    const store = useConversationStore.getState();
+    const id = await store.createConversation("test-model", {
+      temperature: 0.7,
+      maxTokens: 100,
+      topP: 0.9,
+    });
+    store.setActiveConversation(id);
+
+    const sendPromise = store.sendMessage("Hi");
+    await vi.runAllTimersAsync();
+    await sendPromise;
+
+    const state = useConversationStore.getState();
+    expect(state.error).toBe("An unexpected error occurred");
+    expect(state.isStreaming).toBe(false);
+  });
+
   it("should abort generation", async () => {
     let resolveStream: () => void = () => {};
     const streamTrigger = new Promise<void>((r) => {

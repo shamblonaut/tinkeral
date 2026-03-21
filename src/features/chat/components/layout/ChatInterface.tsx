@@ -76,13 +76,14 @@ export function ChatInterface() {
   );
 
   useEffect(() => {
-    if (error) {
-      const message =
-        typeof error === "object"
-          ? error.userMessage || error.message || "An unexpected error occurred"
-          : String(error || "");
-      toast.error(message);
-    }
+    if (error === null) return;
+
+    const rawMessage =
+      typeof error === "object"
+        ? error.userMessage || error.message || ""
+        : String(error ?? "");
+    const message = rawMessage.trim() || "An unexpected error occurred";
+    toast.error(message);
   }, [error]);
 
   useEffect(() => {

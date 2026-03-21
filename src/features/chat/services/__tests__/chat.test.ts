@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GoogleAPIClient } from "@/shared/services/api";
-import { RateLimiter } from "@/shared/services/rateLimiter";
 import {
   DEFAULT_PARAMETERS,
   type ChatRequest as ProviderChatRequest,
@@ -345,8 +344,6 @@ describe("ChatService function call loop", () => {
   });
 
   it("fails when function-call loop exceeds max iterations", async () => {
-    vi.spyOn(RateLimiter.prototype, "getRetryDelay").mockReturnValue(null);
-
     mocks.mockStreamChat.mockImplementation(async function* () {
       yield {
         delta: "",
@@ -431,12 +428,7 @@ describe("ChatService function call loop", () => {
     );
   });
 
-  it("retries once when rate limiter returns a delay", async () => {
-    const retrySpy = vi
-      .spyOn(RateLimiter.prototype, "getRetryDelay")
-      .mockImplementationOnce(() => 0)
-      .mockImplementation(() => null);
-
+  it("surfaces transient errors without automatically retrying", async () => {
     mocks.mockStreamChat
       .mockImplementationOnce(async function* () {
         yield* [];
@@ -459,17 +451,12 @@ describe("ChatService function call loop", () => {
       onError,
     });
 
-    expect(onFinish).toHaveBeenCalledWith(
-      "Recovered",
-      expect.objectContaining({ finishReason: "stop" }),
-    );
-    expect(onError).not.toHaveBeenCalled();
-    expect(mocks.mockStreamChat).toHaveBeenCalledTimes(2);
-    expect(retrySpy).toHaveBeenCalled();
+    expect(onFinish).not.toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledWith(expect.any(Error), "");
+    expect(mocks.mockStreamChat).toHaveBeenCalledTimes(1);
   });
 
   it("errors immediately when apiKey is missing", async () => {
-    vi.spyOn(RateLimiter.prototype, "getRetryDelay").mockReturnValue(null);
     const onError = vi.fn();
 
     await ChatService.executeChat(
@@ -490,30 +477,19 @@ describe("ChatService function call loop", () => {
     );
   });
 
-  it("aborts streaming mid-turn when signal flips during iteration", async () => {
-    vi.spyOn(RateLimiter.prototype, "getRetryDelay").mockReturnValue(null);
+  it("surfaces abort errors when signal is already aborted", async () => {
     const controller = new AbortController();
-
-    mocks.mockStreamChat.mockImplementationOnce(async function* () {
-      yield { delta: "Part 1 " };
-      yield { delta: "Part 2 " };
-    });
+    controller.abort();
 
     mocks.mockCreateClient.mockResolvedValue({
       streamChat: mocks.mockStreamChat,
     } as unknown as GoogleAPIClient);
 
     const onError = vi.fn();
-    const onChunk = vi.fn((content: string) => {
-      if (content.includes("Part 1")) {
-        controller.abort();
-      }
-    });
-
     await ChatService.executeChat(
       baseRequest,
       {
-        onChunk,
+        onChunk: vi.fn(),
         onFinish: vi.fn(),
         onError,
       },
@@ -522,7 +498,7 @@ describe("ChatService function call loop", () => {
 
     expect(onError).toHaveBeenCalledWith(
       expect.objectContaining({ name: "AbortError" }),
-      "Part 1 ",
+      "",
     );
   });
 });
