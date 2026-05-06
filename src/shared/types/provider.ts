@@ -107,6 +107,7 @@ export interface StreamChunk {
   finishReason?: FinishReason;
   usage?: TokenUsage; // Only in final chunk
   functionCall?: Partial<FunctionCall>;
+  thoughtSignature?: string;
 }
 
 export type { ErrorType } from "./error";

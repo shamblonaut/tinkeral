@@ -201,7 +201,7 @@ export async function executeChat(
           : {}),
       },
       {
-        onChunk: (chunk: string) => {
+        onChunk: (chunk: string, thoughtSignature?: string) => {
           set((state) => ({
             conversations: state.conversations.map((item) =>
               item.id === conversationId
@@ -209,7 +209,11 @@ export async function executeChat(
                     ...item,
                     messages: item.messages.map((message) =>
                       message.id === assistantMessageId
-                        ? { ...message, content: chunk }
+                        ? {
+                            ...message,
+                            content: chunk,
+                            ...(thoughtSignature ? { thoughtSignature } : {}),
+                          }
                         : message,
                     ),
                   }

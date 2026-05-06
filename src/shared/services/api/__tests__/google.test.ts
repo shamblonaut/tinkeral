@@ -342,6 +342,128 @@ describe("GoogleAPIClient", () => {
       );
     });
 
+    it("should include thoughtSignature in outgoing text parts when present on message", async () => {
+      const requestWithThoughtSignature: ChatRequest = {
+        messages: [
+          {
+            id: "1",
+            role: "user",
+            content: "What is 2+2?",
+            timestamp: 1,
+          },
+          {
+            id: "2",
+            role: "model",
+            content: "The answer is 4.",
+            timestamp: 2,
+            thoughtSignature: "thought-sig-previous",
+          },
+        ],
+        model: "gemini-pro",
+        parameters: DEFAULT_PARAMETERS,
+      };
+
+      mocks.mockGenerateContent.mockResolvedValue({ text: "ok" });
+
+      await client.chat(requestWithThoughtSignature);
+
+      expect(mocks.mockGenerateContent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          contents: [
+            {
+              role: "user",
+              parts: [{ text: "What is 2+2?" }],
+            },
+            {
+              role: "model",
+              parts: [
+                expect.objectContaining({
+                  text: "The answer is 4.",
+                  thoughtSignature: "thought-sig-previous",
+                }),
+              ],
+            },
+          ],
+        }),
+      );
+    });
+
+    it("should not include thoughtSignature in text parts when absent from message", async () => {
+      const requestWithoutThoughtSignature: ChatRequest = {
+        messages: [
+          {
+            id: "1",
+            role: "model",
+            content: "No thinking happened",
+            timestamp: 1,
+          },
+        ],
+        model: "gemini-pro",
+        parameters: DEFAULT_PARAMETERS,
+      };
+
+      mocks.mockGenerateContent.mockResolvedValue({ text: "ok" });
+
+      await client.chat(requestWithoutThoughtSignature);
+
+      expect(mocks.mockGenerateContent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          contents: [
+            {
+              role: "model",
+              parts: [{ text: "No thinking happened" }],
+            },
+          ],
+        }),
+      );
+    });
+
+    it("should always include thoughtSignature on functionCall parts", async () => {
+      const requestWithToolNoThoughtSignature: ChatRequest = {
+        messages: [
+          {
+            id: "1",
+            role: "model",
+            content: "Let me check that.",
+            timestamp: 1,
+            functionCall: {
+              id: "call-1",
+              name: "get_weather",
+              arguments: { city: "Tokyo" },
+            },
+          },
+          {
+            id: "2",
+            role: "user",
+            content: "",
+            timestamp: 2,
+            functionResult: {
+              id: "call-1",
+              name: "get_weather",
+              result: { temp: 22 },
+            },
+          },
+        ],
+        model: "gemini-pro",
+        parameters: DEFAULT_PARAMETERS,
+      };
+
+      mocks.mockGenerateContent.mockResolvedValue({ text: "ok" });
+
+      await client.chat(requestWithToolNoThoughtSignature);
+
+      const callArgs = mocks.mockGenerateContent.mock.calls[0][0];
+      const modelContent = callArgs.contents.find(
+        (c: { role: string }) => c.role === "model",
+      );
+
+      const functionCallPart = modelContent.parts.find(
+        (p: { functionCall?: { name: string } }) =>
+          p.functionCall?.name === "get_weather",
+      );
+      expect(functionCallPart).toHaveProperty("thoughtSignature");
+    });
+
     it("should map finish reasons correctly", async () => {
       mocks.mockGenerateContent.mockResolvedValue({
         text: "Incomplete",
@@ -447,6 +569,76 @@ describe("GoogleAPIClient", () => {
           },
         }),
       );
+    });
+
+    it("streamChat should extract thoughtSignature from chunk parts", async () => {
+      const mockStream = {
+        async *[Symbol.asyncIterator]() {
+          yield {
+            text: "Let me think...",
+            candidates: [
+              {
+                finishReason: undefined,
+                content: {
+                  parts: [
+                    {
+                      text: "Let me think...",
+                      thoughtSignature: "sig-abc-123",
+                    },
+                  ],
+                },
+              },
+            ],
+          };
+          yield {
+            text: "Here's the answer.",
+            candidates: [
+              {
+                finishReason: "STOP",
+                content: {
+                  parts: [
+                    {
+                      text: "Here's the answer.",
+                      thoughtSignature: "sig-xyz-789",
+                    },
+                  ],
+                },
+              },
+            ],
+          };
+        },
+      };
+
+      mocks.mockGenerateContentStream.mockResolvedValue(mockStream);
+
+      const chunks = [];
+      for await (const chunk of client.streamChat(mockRequest)) {
+        chunks.push(chunk);
+      }
+
+      expect(chunks).toHaveLength(2);
+      expect(chunks[0].thoughtSignature).toBe("sig-abc-123");
+      expect(chunks[1].thoughtSignature).toBe("sig-xyz-789");
+    });
+
+    it("streamChat should not include thoughtSignature when absent from chunk", async () => {
+      const mockStream = {
+        async *[Symbol.asyncIterator]() {
+          yield {
+            text: "Simple answer",
+            candidates: [{ finishReason: "STOP" }],
+          };
+        },
+      };
+
+      mocks.mockGenerateContentStream.mockResolvedValue(mockStream);
+
+      const chunks = [];
+      for await (const chunk of client.streamChat(mockRequest)) {
+        chunks.push(chunk);
+      }
+
+      expect(chunks[0].thoughtSignature).toBeUndefined();
     });
   });
 

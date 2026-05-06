@@ -242,6 +242,8 @@ export class GoogleAPIClient implements LLMProvider {
             functionCall,
           ),
           functionCall,
+          thoughtSignature:
+            chunk.candidates?.[0]?.content?.parts?.[0]?.thoughtSignature,
           usage: chunk.usageMetadata
             ? {
                 inputTokens: chunk.usageMetadata.promptTokenCount || 0,
@@ -351,7 +353,10 @@ export class GoogleAPIClient implements LLMProvider {
       const parts: NonNullable<Content["parts"]> = [];
 
       if (message.content?.trim() && !message.functionResult?.name) {
-        parts.push({ text: message.content });
+        parts.push({
+          text: message.content,
+          thoughtSignature: message.thoughtSignature || undefined,
+        });
       }
 
       if (message.functionCall?.name) {
@@ -371,7 +376,10 @@ export class GoogleAPIClient implements LLMProvider {
           functionCall.args = message.functionCall.arguments;
         }
 
-        parts.push({ functionCall });
+        parts.push({
+          functionCall,
+          thoughtSignature: message.thoughtSignature,
+        });
       }
 
       if (message.functionResult?.name) {

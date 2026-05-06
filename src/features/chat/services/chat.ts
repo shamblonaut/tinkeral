@@ -36,7 +36,7 @@ export interface ChatServiceRequest {
 }
 
 export interface ChatCallbacks {
-  onChunk: (content: string) => void;
+  onChunk: (content: string, thoughtSignature?: string) => void;
   onFinish: (finalContent: string, metadata: ChatMetadata) => void;
   onError: (error: string | ProviderError, partialContent?: string) => void;
   onFunctionCall?: (functionCall: FunctionCall) => void | Promise<void>;
@@ -101,6 +101,7 @@ export class ChatService {
         let turnContent = "";
         fullContent = ""; // Reset fullContent for each turn
         let turnFunctionCall: FunctionCall | undefined;
+        let thoughtSignature = "";
         let lastUpdate = Date.now();
 
         for await (const chunk of stream) {
@@ -122,6 +123,10 @@ export class ChatService {
             if (isNewFunctionCall) {
               onFunctionCall?.(turnFunctionCall);
             }
+          }
+
+          if (chunk.thoughtSignature) {
+            thoughtSignature = chunk.thoughtSignature;
           }
 
           if (chunk.finishReason) {
@@ -161,7 +166,7 @@ export class ChatService {
 
           const now = Date.now();
           if (process.env.NODE_ENV === "test" || now - lastUpdate >= 16) {
-            onChunk(turnContent);
+            onChunk(turnContent, thoughtSignature || undefined);
             lastUpdate = now;
           }
         }
@@ -190,6 +195,7 @@ export class ChatService {
               content: turnContent,
               timestamp: Date.now(),
               functionCall: turnFunctionCall,
+              thoughtSignature,
               metadata: {
                 model: modelId,
                 finishReason: "function_call",

@@ -41,6 +41,7 @@ export interface Message {
   };
   functionCall?: FunctionCall;
   functionResult?: FunctionResult;
+  thoughtSignature?: string;
 }
 
 export interface ModelParameters {

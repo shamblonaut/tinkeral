@@ -795,4 +795,144 @@ describe("ChatSlice", () => {
     expect(conversation).toBeDefined();
     expect(conversation?.parameters.temperature).toBe(0.7);
   });
+
+  it("should store thoughtSignature from model response and send it back to API in the next turn", async () => {
+    vi.useRealTimers();
+    try {
+      const mockStreamChat = vi
+        .fn()
+        .mockImplementationOnce(async function* () {
+          yield {
+            delta: "Thinking answer...",
+            thoughtSignature: "sig-first-turn",
+          };
+          yield {
+            delta: "",
+            finishReason: "stop" as FinishReason,
+            usage: { totalTokens: 10, inputTokens: 5, outputTokens: 5 },
+          };
+        })
+        .mockImplementationOnce(async function* () {
+          yield {
+            delta: "Follow-up answer.",
+          };
+          yield {
+            delta: "",
+            finishReason: "stop" as FinishReason,
+            usage: { totalTokens: 8, inputTokens: 4, outputTokens: 4 },
+          };
+        });
+
+      vi.mocked(GoogleAPIClient.createClient).mockResolvedValue({
+        streamChat: mockStreamChat,
+      } as unknown as GoogleAPIClient);
+
+      const store = useConversationStore.getState();
+      const id = await store.createConversation("test-model", {
+        temperature: 0.7,
+        maxTokens: 100,
+        topP: 0.9,
+      });
+      store.setActiveConversation(id);
+
+      // First turn
+      await store.sendMessage("What is 2+2?");
+
+      // Verify thoughtSignature was stored on the assistant message
+      const afterFirstTurn = useConversationStore
+        .getState()
+        .conversations.find((c) => c.id === id);
+      const assistantMessage = afterFirstTurn?.messages.find(
+        (m) => m.role === "model",
+      );
+      expect(assistantMessage?.thoughtSignature).toBe("sig-first-turn");
+
+      // Second turn — send a follow-up
+      await store.sendMessage("And 3+3?");
+
+      // Verify the second API call included thoughtSignature in the outgoing parts
+      const secondRequest = mockStreamChat.mock.calls[1][0] as {
+        messages: Array<{
+          role: string;
+          content?: string;
+          thoughtSignature?: string;
+        }>;
+      };
+      const firstModelMessage = secondRequest.messages.find(
+        (m) => m.role === "model" && m.content === "Thinking answer...",
+      );
+      expect(firstModelMessage?.thoughtSignature).toBe("sig-first-turn");
+    } finally {
+      vi.useFakeTimers({
+        toFake: [
+          "setTimeout",
+          "clearTimeout",
+          "setInterval",
+          "clearInterval",
+          "Date",
+          "setImmediate",
+          "clearImmediate",
+        ],
+      });
+    }
+  });
+
+  it("should not add thoughtSignature to messages when model does not provide one", async () => {
+    vi.useRealTimers();
+    try {
+      const mockStreamChat = vi.fn().mockImplementation(async function* () {
+        yield { delta: "No thinking here" };
+        yield {
+          delta: "",
+          finishReason: "stop" as FinishReason,
+          usage: { totalTokens: 5, inputTokens: 3, outputTokens: 2 },
+        };
+      });
+
+      vi.mocked(GoogleAPIClient.createClient).mockResolvedValue({
+        streamChat: mockStreamChat,
+      } as unknown as GoogleAPIClient);
+
+      const store = useConversationStore.getState();
+      const id = await store.createConversation("test-model", {
+        temperature: 0.7,
+        maxTokens: 100,
+        topP: 0.9,
+      });
+      store.setActiveConversation(id);
+
+      await store.sendMessage("Hello");
+
+      const conversation = useConversationStore
+        .getState()
+        .conversations.find((c) => c.id === id);
+      const assistantMessage = conversation?.messages.find(
+        (m) => m.role === "model",
+      );
+      expect(assistantMessage?.thoughtSignature).toBeUndefined();
+
+      // Verify the API call also did not include thoughtSignature
+      const firstRequest = mockStreamChat.mock.calls[0][0] as {
+        messages: Array<{ role: string; thoughtSignature?: string }>;
+      };
+      const modelMessages = firstRequest.messages.filter(
+        (m) => m.role === "model",
+      );
+      for (const msg of modelMessages) {
+        expect(msg.thoughtSignature).toBeUndefined();
+      }
+    } finally {
+      vi.useFakeTimers({
+        toFake: [
+          "setTimeout",
+          "clearTimeout",
+          "setInterval",
+          "clearInterval",
+          "Date",
+          "setImmediate",
+          "clearImmediate",
+        ],
+      });
+    }
+  });
 });
