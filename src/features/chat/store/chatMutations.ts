@@ -23,23 +23,25 @@ export async function setDraft(
   conversationId: string,
   message: string,
 ): Promise<void> {
-  set((state) => {
-    const currentConversation = state.conversations.find(
-      (conversation) => conversation.id === conversationId,
-    );
+  const currentConversation = get().conversations.find(
+    (conversation) => conversation.id === conversationId,
+  );
 
-    if (!currentConversation || currentConversation.isTemporary) {
-      return {};
-    }
+  if (
+    !currentConversation ||
+    currentConversation.isTemporary ||
+    currentConversation.draft === message
+  ) {
+    return;
+  }
 
-    const updatedConversation = { ...currentConversation, draft: message };
-
-    return {
-      conversations: state.conversations.map((conversation) =>
-        conversation.id === conversationId ? updatedConversation : conversation,
-      ),
-    };
-  });
+  set((state) => ({
+    conversations: state.conversations.map((conversation) =>
+      conversation.id === conversationId
+        ? { ...currentConversation, draft: message }
+        : conversation,
+    ),
+  }));
 
   await persistConversationUpdate(get, conversationId);
 }
