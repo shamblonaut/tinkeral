@@ -78,6 +78,8 @@ export function ChatInterface() {
   useEffect(() => {
     if (error === null) return;
 
+    console.error(error);
+
     const rawMessage =
       typeof error === "object"
         ? error.userMessage || error.message || ""
