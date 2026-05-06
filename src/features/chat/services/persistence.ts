@@ -61,14 +61,15 @@ export class PersistenceService {
   ) {
     if (conversation.persisted === false || conversation.isTemporary) return;
 
+    const {
+      persisted: _persisted,
+      isTemporary: _isTemporary,
+      ...conversationData
+    } = conversation;
+
     try {
       await conversationsDb.update(conversation.id, {
-        messages: conversation.messages,
-        title: conversation.title,
-        updatedAt: conversation.updatedAt,
-        parameters: conversation.parameters,
-        systemPrompt: conversation.systemPrompt,
-        metadata: conversation.metadata,
+        ...conversationData,
         ...changes,
       });
     } catch (error) {
