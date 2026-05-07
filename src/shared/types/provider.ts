@@ -15,7 +15,7 @@ export interface ModelInfo {
   readonly id: string;
   readonly name: string;
   readonly provider: string; // 'google'
-  readonly family: "gemini" | "gemma" | "imagen" | "veo" | "other";
+  readonly family: "gemini" | "gemma" | "imagen" | "veo" | "lyria" | "other";
   readonly tier?: "flash" | "pro" | "ultra" | "nano" | "fast" | "lite";
   readonly stage: "stable" | "preview" | "experimental" | "legacy";
 
